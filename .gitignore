@@ -38,10 +38,8 @@ test-results/
 .idea/
 .vscode/
 
-# Governance harus dapat dicatat, termasuk bila ada global ignore Markdown.
-!/AGENTS.md
-!/HANDOVER.md
-!/PRD-Dompis-v3-Agent-Governance.md
-!/REVIEW-PRD-Dompis-v3-Agent-Governance.md
-!/docs/
-!/docs/**/*.md
+# Konfigurasi agent dan dokumentasi lokal
+/.agents/
+/.claude/
+/docs/
+*.md
