@@ -1,0 +1,47 @@
+# Dependency dan output lokal
+node_modules/
+.svelte-kit/
+.next/
+.turbo/
+.cache/
+dist/
+dist-workers/
+build/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Rahasia dan konfigurasi mesin
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+
+# Data runtime, dump dan log
+/uploads/
+/public/uploads/
+/backups/
+/dumps/
+/logs/
+*.log
+*.sql.gz
+*.dump
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+# Berkas lokal OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# Governance harus dapat dicatat, termasuk bila ada global ignore Markdown.
+!/AGENTS.md
+!/HANDOVER.md
+!/PRD-Dompis-v3-Agent-Governance.md
+!/REVIEW-PRD-Dompis-v3-Agent-Governance.md
+!/docs/
+!/docs/**/*.md
