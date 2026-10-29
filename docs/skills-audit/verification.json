@@ -1,0 +1,50 @@
+{
+  "verified_at": "2026-10-29T15:54:02.314218+07:00",
+  "scope": "Local skill package structure/integrity/governance; no upstream code or application workflows executed",
+  "checks": [
+    {
+      "check": "integrity",
+      "actual_exit_code": 0,
+      "expected_exit_code": 0,
+      "output": "PASS: 15 project skills, hashes/provenance, Claude aliases, 468 audit records, evidence integrity; upstream scripts/hooks absent"
+    },
+    {
+      "check": "quick_validate_all_15",
+      "actual_exit_code": 0,
+      "expected_exit_code": 0,
+      "output": "15 valid name/description/frontmatter entries"
+    },
+    {
+      "check": "changed_skill",
+      "actual_exit_code": 1,
+      "expected_exit_code": 1,
+      "output": "FAIL: Hash mismatch: .agents/skills/dompis-api-contract-review/SKILL.md"
+    },
+    {
+      "check": "missing_alias",
+      "actual_exit_code": 1,
+      "expected_exit_code": 1,
+      "output": "FAIL: Claude alias missing: dompis-api-contract-review"
+    },
+    {
+      "check": "extra_file",
+      "actual_exit_code": 1,
+      "expected_exit_code": 1,
+      "output": "FAIL: Unregistered files or executable resources in canonical skills"
+    },
+    {
+      "check": "changed_provenance",
+      "actual_exit_code": 1,
+      "expected_exit_code": 1,
+      "output": "FAIL:"
+    },
+    {
+      "check": "governance_and_links",
+      "actual_exit_code": 0,
+      "expected_exit_code": 0,
+      "output": "23 Markdown paths checked; relative links/tables/fences, v1.9, CP history, 64 R/43 KI/14 RV/10 foundation tasks, preserved graphify/antislop"
+    }
+  ],
+  "agent_cli_runtime_tested": false,
+  "application_tests_run": false
+}

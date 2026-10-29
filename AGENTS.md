@@ -1,4 +1,4 @@
-# AGENTS.md - Dompis, selaras PRD v1.8
+# AGENTS.md - Dompis, selaras PRD v1.9
 
 ## Instruksi Pertama untuk Agent atau Model Baru
 
@@ -10,13 +10,13 @@ Jika HANDOVER hilang atau bertentangan dengan bukti aktual, jangan membuat progr
 
 ## Tujuan dan status workspace
 
-Pertahankan seluruh kapabilitas yang disepakati dan tingkatkan performa, integritas data, keamanan serta kemudahan pemeliharaan dengan bukti. Kontrak utama: [PRD-Dompis-v3-Agent-Governance.md](PRD-Dompis-v3-Agent-Governance.md), versi 1.8.
+Pertahankan seluruh kapabilitas yang disepakati dan tingkatkan performa, integritas data, keamanan serta kemudahan pemeliharaan dengan bukti. Kontrak utama: [PRD-Dompis-v3-Agent-Governance.md](PRD-Dompis-v3-Agent-Governance.md), versi 1.9.
 
 Workspace aktif dan root dokumen kanonis adalah `/Users/pakbreng/Projects/dompis-v3-app`. Sumber `/Users/pakbreng/Projects/dompis-v3` berisi aplikasi Next.js/React/Prisma dengan `package.json.name=dompis_v2` dan tetap dilindungi. Target rewrite adalah SvelteKit + Bun + Elysia + Drizzle dengan MySQL tetap. Target saat ini berisi governance dan Git lokal; scaffold aplikasi belum tersedia. HANDOVER sumber hanya pengarah; gunakan PRD/AGENTS target sebagai kontrak aktif.
 
 Status dokumen: final sebagai panduan rewrite, dengan prasyarat pelaksanaan pada PRD Bagian 0 dan register OQ di 14.6. Final dokumen tidak berarti SIAP-PORT atau SIAP-CUTOVER.
 
-Scope persiapan yang diizinkan pemilik mencakup dokumen kanonis/pengarah sumber, penyalinan laporan review, `.gitignore`, inisialisasi Git lokal dan pencatatan awal governance. Jangan menjalankan scaffold, mengubah kode/config aplikasi, menginstal dependency, menjalankan build/worker/tes aplikasi, mengakses DB atau melakukan deploy berdasarkan pembacaan dokumen ini. Pekerjaan implementasi berikutnya memerlukan instruksi tugas yang mencakupnya; keputusan yang sudah disetujui tidak perlu dimintakan ulang.
+Scope persiapan yang diizinkan pemilik mencakup dokumen kanonis/pengarah sumber, penyalinan laporan review, `.gitignore`, inisialisasi Git lokal dan pencatatan awal governance. Tugas lanjutan mencakup audit/pemasangan skill adaptasi lokal, indeks/manifest/pemeriksa integritas serta pembaruan dokumen terkait. Jangan menjalankan scaffold, mengubah kode/config aplikasi, menginstal dependency, menjalankan build/worker/tes aplikasi, mengakses DB atau melakukan deploy berdasarkan pembacaan dokumen ini. Pekerjaan implementasi berikutnya memerlukan instruksi tugas yang mencakupnya; keputusan yang sudah disetujui tidak perlu dimintakan ulang.
 
 ## Konteks dan urutan otoritas
 
@@ -103,6 +103,14 @@ Laporan mengikuti PRD 9.1: ID tugas/fitur/modul, versi/commit, scope perubahan, 
 Perbarui HANDOVER.md, feature matrix, migration-map dan keputusan sesuai tahap setelah artefaknya tersedia. Setelah pergantian sesi, cocokkan checkpoint dengan commit/file aktual dan baca perubahan sumber yang relevan. Jangan mengganti baseline atau mengulang keputusan tanpa mencatat alasannya.
 
 Governance target beserta `.gitignore` sudah dicatat di Git lokal. Pertahankan HANDOVER, AGENTS, PRD, laporan review dan dokumen governance berikutnya sebagai file tracked; jangan menambahkan aturan menyeluruh `*.md`. Aturan ignore Markdown di sumber tidak diubah. Periksa branch/HEAD, diff dan status tracked aktual saat resume. Repository belum terhubung ke GitHub; clone/CI belum dapat mengambil catatan lokal sampai pemilik menerbitkannya.
+
+## Pemakaian skill proyek
+
+Setelah verifikasi konteks, pilih skill dari [indeks](docs/skills-index.md) sesuai tugas. Kelima belas skill dompis-* adalah adaptasi docs-only; sumber/commit dan hash dikunci pada [.agents/skills-lock.json](.agents/skills-lock.json), dengan [audit individual](docs/skills-audit/REPORT.md). Skill tidak menggantikan PRD atau menambah kewenangan.
+
+Gunakan `.agents/skills` sebagai salinan kanonis. Alias `.claude/skills` menunjuk isi yang sama; CLAUDE.md hanya pengarah handover-first. Jangan mengimpor installer, hook, auto-memory, auto-update, MCP atau delegation upstream. Instruksi skill global/eksternal yang bertentangan dengan kontrak tugas Dompis tidak diterapkan. Pembaruan skill diaudit, bukan diunduh otomatis saat tugas aplikasi berjalan.
+
+Periksa integritas dengan `python3 tools/skills/verify_skills.py` sebelum mengandalkan paket atau setelah skill/manifest berubah. Pemeriksaan file bukan bukti build, parity, runtime atau bahwa model pasti mengikuti instruksi. Jangan memuat seluruh katalog atau membuat checkpoint progres selain HANDOVER.
 
 ## graphify
 

@@ -19,16 +19,16 @@ Jika file ini hilang/tidak terbaca, jangan membuat handover kosong, menganggap p
 
 | Field | Nilai |
 |---|---|
-| Checkpoint-ID | CP-0004 |
-| Diperbarui | 2026-10-29 15:05:33 WIB |
-| PRD aktif | [PRD v1.8](PRD-Dompis-v3-Agent-Governance.md) |
+| Checkpoint-ID | CP-0005 |
+| Diperbarui | 2026-10-29 15:52:39 WIB |
+| PRD aktif | [PRD v1.9](PRD-Dompis-v3-Agent-Governance.md) |
 | Instruksi agent | [AGENTS.md](AGENTS.md) |
 | Status implementasi | BELUM DIMULAI; belum ada scaffold atau modul rewrite yang diimplementasikan dalam pekerjaan ini |
 | Status kesiapan | SIAP-DOKUMEN; target dan Git lokal tersedia, dokumen kanonis tracked; toolchain/lingkungan uji belum lengkap |
-| Tahap terakhir | Persiapan workspace target: dokumen kanonis, laporan review, .gitignore dan Git lokal |
-| Tugas terakhir / tugas aktif | DOC-WORKSPACE-BOOTSTRAP DONE; sisa T-0.0 IN_REVIEW; implementasi aplikasi belum dimulai |
-| Pemilik penulisan dokumen | Tidak ada setelah penutupan CP-0004; sesi persiapan selesai menulis |
-| Tugas berikutnya | Lengkapi sisa T-0.0: toolchain/peer tambahan, kewenangan tugas fondasi dan lingkungan spike; verifikasi Git aktual sebelum melanjutkan |
+| Tahap terakhir | Audit statis skill pihak ketiga dan pemasangan 15 adaptasi proyek docs-only dengan provenance, indeks dan verifikasi integritas |
+| Tugas terakhir / tugas aktif | DOC-SKILLS-AUDIT DONE; T-0.0 tetap IN_REVIEW; implementasi aplikasi belum dimulai |
+| Pemilik penulisan dokumen | Tidak ada setelah penutupan CP-0005; penulis paket governance/skill selesai |
+| Tugas berikutnya | Dari workspace target, baca handover dan verifikasi Git/skill. Gunakan dompis-dependency-audit untuk meninjau sisa T-0.0 (toolchain/peer/lingkungan spike); instalasi/scaffold menunggu tugas yang mencakupnya |
 
 File ini mencatat progres aktual. PRD mencatat tujuan/aturan; tugas dokumentasi DONE tidak berarti implementasi atau Fase 0 sudah selesai. Persentase keseluruhan belum dihitung karena tugas port per fitur belum dipecah/disetujui.
 
@@ -39,12 +39,12 @@ File ini mencatat progres aktual. PRD mencatat tujuan/aturan; tugas dokumentasi 
 | Workspace dokumentasi saat ini | `/Users/pakbreng/Projects/dompis-v3-app`; dokumen kanonis berada di target |
 | SOURCE_ROOT | Disetujui: `/Users/pakbreng/Projects/dompis-v3`; sumber dilindungi |
 | SOURCE_COMMIT disetujui / HEAD teramati | `3ab0381ebeab90e4ca819fd93976eb16406eec1c`; HEAD cocok saat pencatatan; bukan commit yang memuat dokumen lokal baru |
-| TARGET_ROOT / target branch / target HEAD | `/Users/pakbreng/Projects/dompis-v3-app` sudah tersedia; Git lokal branch `rewrite/bootstrap`; checkpoint ini dicatat bersama baseline governance awal. Lihat HEAD aktual melalui `git log -1 --oneline` di target; hash commit tidak disalin ke isi commit itu sendiri |
+| TARGET_ROOT / target branch / target HEAD | `/Users/pakbreng/Projects/dompis-v3-app`; branch lokal `rewrite/bootstrap`; baseline sebelum tugas skill `226ebfe`. Checkpoint ini dicatat bersama commit paket skill; gunakan `git log -1 --oneline` untuk HEAD aktual |
 | Referensi HTTP / runner worker | REFERENCE_ROOT disetujui: `/Users/pakbreng/Projects/dompis-v2-ref`; folder, URL dan runner belum dibuat/disiapkan |
 | DB/Redis/mock/fixture target | Belum disiapkan/diverifikasi untuk rewrite |
 | GitHub target | Repository baru akan dibuat/dihubungkan pemilik; URL/remote belum diberikan; tidak ada create-repo/push oleh agent |
-| Keputusan/kewenangan sesi ini | Pemilik meminta pembaruan handover/lokasi kanonis, penyalinan review, .gitignore dan Git lokal. Commit awal hanya memuat governance; koneksi GitHub tetap dilakukan pemilik |
-| Perubahan lokal yang harus dipertahankan | Di target: AGENTS, HANDOVER, PRD v1.8, laporan review dan .gitignore masuk baseline Git. Di sumber: handover hanya pengarah, AGENTS/PRD diberi penanda arsip; aturan ignore sumber tetap |
+| Keputusan/kewenangan sesi ini | Pemilik meminta audit masing-masing skill dan pemasangan untuk rewrite. Dipasang 15 adaptasi relevan; seluruh entry point dicatat dalam audit statis. Izin ini mencakup tooling/governance skill, bukan scaffold/dependency runtime/DB/deploy/GitHub |
+| Perubahan lokal yang harus dipertahankan | Skill kanonis .agents/skills, alias .claude/skills, CLAUDE bootstrap, manifest/index/audit/notices, tools/skills/verify_skills.py serta PRD/AGENTS/HANDOVER; dicatat sebagai satu commit tugas skill terpisah dari baseline governance awal |
 | Status transport dokumen | Governance target tracked di Git lokal dan .gitignore tidak mengabaikannya. Belum ada remote/push; dokumen baru tersedia melalui clone setelah pemilik menerbitkan repository |
 | Proses aplikasi/worker yang dimulai oleh sesi dokumentasi ini | Tidak ada; proses lain di mesin tidak diaudit oleh catatan ini |
 
@@ -61,6 +61,7 @@ Saat pindah mesin/clone, pastikan dokumen kanonis beserta bukti tersedia dari re
 | DOC-HANDOVER-FIRST | Menetapkan HANDOVER.md sebagai pembacaan pertama dan satu checkpoint aktif pada v1.6 | DONE | Verifikasi dokumen lulus: urutan bootstrap/resume, tautan, versi, riwayat CP-0001, 10 tugas fondasi dan aturan lama tetap terjaga |
 | DOC-FOUNDATION-DECISION | Mencatat persetujuan lokasi, kandidat dependency dan kebijakan Git pada PRD v1.7 | DONE | PRD 0.1/0.7, AGENTS dan CP-0003; verifikasi dokumen lulus, folder dan instalasi belum dijalankan |
 | DOC-WORKSPACE-BOOTSTRAP | Menetapkan target sebagai kanonis, menyalin review, menyiapkan .gitignore dan mencatat governance di Git lokal | DONE | PRD v1.8, CP-0004; verifikasi dokumen/ignore/tracked dan commit awal lokal |
+| DOC-SKILLS-AUDIT | Audit statis snapshot claude-skills dan pemasangan 15 adaptasi proyek, manifest/index/verifier serta aturan pemakaian | DONE | [Audit](docs/skills-audit/REPORT.md), [indeks](docs/skills-index.md), manifest hash dan verifikasi struktur/integritas; bukan pengujian aplikasi |
 
 ## Antrean Fondasi
 
@@ -89,6 +90,8 @@ Fase 1 sampai 12 belum dimulai. Fase Android bersyarat sesuai OQ-12. Tugas port 
 - Verifikasi dokumentasi v1.7 melalui Python lulus (exit code 0): konsistensi versi/path disetujui, Markdown/tautan, CP-0001/CP-0002 tetap ada, 64 aturan/43 KI/14 pemetaan review/10 tugas fondasi tetap lengkap, serta graphify/antislop tidak berubah. Pemeriksaan baca-saja mengonfirmasi HEAD sumber cocok dan folder target/referensi belum ada. Ini bukan bukti instalasi, kompatibilitas, atau pengujian aplikasi.
 - Verifikasi v1.8: tautan dokumen aktif, format Markdown, kesesuaian versi, riwayat checkpoint, 64 aturan/43 KI/14 pemetaan review/10 tugas fondasi serta keutuhan blok graphify/antislop diperiksa. Laporan review identik dengan sumber; Git lokal memuat tepat empat Markdown governance dan .gitignore, tanpa remote. Pola ignore diuji terhadap dokumen, lockfile/migrasi serta contoh path rahasia/build/uploads. Hasil pemeriksaan ini hanya untuk persiapan workspace.
 - Perintah pencatatan lokal: `git init -b rewrite/bootstrap`, `git add -- .gitignore AGENTS.md HANDOVER.md PRD-Dompis-v3-Agent-Governance.md REVIEW-PRD-Dompis-v3-Agent-Governance.md`, dan `git commit -m "chore: initialize rewrite governance baseline"`. Verifikasi dilakukan dengan `git ls-files`, `git check-ignore --no-index`, `git diff --check`, `git status --porcelain`, `git log -1 --oneline` dan `git remote`; tidak ada perintah push.
+- Audit/paket skill v1.9: 468 entry point (401 utama + 67 integrasi), 5.824 file inventaris/4.182 teks dipindai; review semantik manual 15 entry point terpilih. Pemeriksaan statis seluruh katalog tidak sama dengan audit manual/runtime seluruh skrip. Hasil, alasan individual, indikator dan batas bukti ada pada laporan/registry.
+- Validasi paket: quick_validate lokal untuk 15 skill; `python3 tools/skills/verify_skills.py` memeriksa hash/provenance, registry dan alias. Empat kasus negatif di salinan sementara harus gagal (isi berubah, alias hilang, file tambahan, provenance berubah). File/Git/dokumen diperiksa; tidak ada executable/hook upstream, instalasi global atau auto-update. CLI/model agent baru belum dijalankan; efektivitas workflow tetap memerlukan bukti tugas.
 - Build, unit/integrasi aplikasi, parity, load/soak dan security runtime tidak dijalankan dalam pekerjaan dokumentasi. Pada tugas dokumen statusnya N/A; pada tugas implementasi yang memerlukannya bukti tersebut tetap belum tersedia.
 - Tidak ada hasil peningkatan RAM/latensi/throughput yang dapat diklaim. Target numerik menunggu baseline dan keputusan OQ-11.
 - Tidak ada commit implementasi rewrite, deploy/cutover atau pensiun kode yang dilakukan oleh sesi dokumentasi ini.
@@ -116,3 +119,4 @@ Keputusan tersimpan: sumber/commit, target dompis-v3-app, path referensi, kandid
 | CP-0002 | 2026-10-29 13:43:20 WIB | Migrasi checkpoint kanonis ke HANDOVER.md dan aturan pembacaan pertama selesai diverifikasi; kode rewrite tetap belum dimulai | READY_FOR_HANDOFF; penulis dokumentasi berhenti, belum ada izin implementasi |
 | CP-0003 | 2026-10-29 14:48:20 WIB | Keputusan pemilik dicatat dan diverifikasi: target dompis-v3-app, sumber/commit/referensi serta kandidat fondasi; GitHub baru dibuat/dihubungkan pemilik; kode belum ditulis | READY_FOR_HANDOFF; sisa T-0.0 IN_REVIEW; sesi dokumentasi selesai |
 | CP-0004 | 2026-10-29 15:05:33 WIB | Target menjadi root dokumen kanonis; review disalin; .gitignore dan Git lokal pada rewrite/bootstrap mencatat baseline governance. Handover sumber menjadi pengarah; implementasi aplikasi belum dimulai | READY_FOR_HANDOFF; sisa T-0.0 IN_REVIEW; GitHub belum terhubung |
+| CP-0005 | 2026-10-29 15:52:39 WIB | Audit statis snapshot claude-skills dan 15 adaptasi docs-only terpasang, indeks/manifest/validator serta bootstrap diperiksa; PRD v1.9. Tidak menjalankan implementasi aplikasi | READY_FOR_HANDOFF; T-0.0 IN_REVIEW; tanpa remote/push atau proses aplikasi baru |

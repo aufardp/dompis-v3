@@ -3,13 +3,13 @@
 **Proyek:** `dompis-v3-app` (folder target monorepo baru), menggantikan aplikasi sumber `dompis_v2` secara bertahap (strangler-fig)
 **Produk:** Dompis - Telkom Akses Area 3 (Suramadu)
 **Database:** MySQL (tetap, tidak berganti)
-**Versi Dokumen:** 1.8. Dokumen kanonis berada di dompis-v3-app, laporan review tersedia dan governance dicatat di Git lokal; implementasi aplikasi belum dimulai.
+**Versi Dokumen:** 1.9. Menambahkan kebijakan skill proyek hasil audit dan adaptasi untuk rewrite; dokumen target tetap kanonis dan implementasi aplikasi belum dimulai.
 **Tanggal:** 29 Oktober 2026 (WIB)
 **Status:** Final sebagai panduan rewrite; prasyarat pelaksanaan pada Bagian 0 dan 14.6 tetap harus dipenuhi sebelum tahap terkait dimulai.
 **Progres aktual:** [HANDOVER.md](HANDOVER.md). PRD menetapkan tujuan/aturan; checkpoint tersebut mencatat pekerjaan yang sudah dilakukan, pekerjaan parsial, bukti, blocker dan langkah berikutnya.
 **Pembaca utama:** agent AI (OpenCode / Codex CLI) yang mengeksekusi kode, dan PakBreng sebagai pemilik keputusan.
 
-> **Batas pekerjaan saat persiapan workspace.** Pemilik mengizinkan pembaruan dokumen dan pengarah sumber, penyalinan laporan review, pembuatan `.gitignore`, inisialisasi Git lokal dan pencatatan awal dokumen governance di target. Persiapan ini terpisah dari implementasi aplikasi. Belum ada izin menjalankan scaffold, mengubah kode/config aplikasi, menginstal dependency, menjalankan build/worker/tes aplikasi, mengakses DB, atau melakukan deploy. Perintah dan artefak di bawah adalah persyaratan untuk tahap pelaksanaan berikutnya, bukan instruksi untuk langsung dieksekusi saat membaca dokumen.
+> **Batas pekerjaan saat persiapan workspace.** Pemilik mengizinkan pembaruan dokumen dan pengarah sumber, penyalinan laporan review, pembuatan `.gitignore`, inisialisasi Git lokal dan pencatatan awal dokumen governance di target. Tugas lanjutan mengizinkan audit skill pihak ketiga, pemasangan skill adaptasi lokal beserta indeks/manifest/pemeriksa integritas dan pembaruan governance terkait. Persiapan ini terpisah dari implementasi aplikasi. Belum ada izin menjalankan scaffold, mengubah kode/config aplikasi, menginstal dependency, menjalankan build/worker/tes aplikasi, mengakses DB, atau melakukan deploy. Perintah dan artefak di bawah adalah persyaratan untuk tahap pelaksanaan berikutnya, bukan instruksi untuk langsung dieksekusi saat membaca dokumen.
 
 > **Cara memakai dokumen ini.** Pada awal sesi atau pergantian agent/model, baca HANDOVER.md terlebih dahulu, kemudian AGENTS.md, lalu PRD penuh pada awal keterlibatan. Pada setiap tugas berikutnya, muat Bagian 0, 1, 3, 4, 5, dan 8; spec modul, keputusan/DBC, serta bagian H/F/R/UI yang relevan. Catat versi PRD dan commit sumber pada checkpoint. Jika versi atau aturan inti berubah, baca ulang perubahan sebelum melanjutkan. Lampiran A adalah bahan penggabungan ke `AGENTS.md` target; jangan menimpa instruksi proyek yang masih berlaku. Riwayat revisi menjelaskan masa lalu, bukan aturan eksekusi saat ini.
 
@@ -28,6 +28,7 @@
 | 1.6 | 29 Okt 2026 | Memindahkan progres aktif ke HANDOVER.md di root, menjadikan execution-state pengarah, serta menetapkan urutan baca handover lebih dahulu pada AGENTS/PRD/prompt. Riwayat CP-0001 dipertahankan; implementasi belum dimulai |
 | 1.7 | 29 Okt 2026 | Pemilik menyetujui empat rekomendasi fondasi dengan nama target dompis-v3-app. Lokasi dan kandidat versi dicatat pada 0.7; repo GitHub baru dibuat/dihubungkan pemilik. Persetujuan keputusan dibedakan dari pelaksanaan scaffold/spike |
 | 1.8 | 29 Okt 2026 | Menetapkan dokumen target sebagai kanonis, memperbarui handover CP-0004 dan pengarah sumber, menyalin laporan review, serta menyiapkan .gitignore dan Git lokal pada rewrite/bootstrap. Implementasi aplikasi dan koneksi GitHub belum dimulai |
+| 1.9 | 29 Okt 2026 | Audit statis seluruh entry point snapshot claude-skills, pemasangan 15 skill adaptasi proyek docs-only, indeks/provenance/verifikasi integritas dan bootstrap Claude. Skill tunduk pada kontrak Dompis; tidak menjalankan implementasi aplikasi |
 
 ### Ralat v1.1 → v1.2 (ringkas)
 
@@ -166,6 +167,14 @@ Tanggal keputusan: 29 Oktober 2026 (WIB). Pemilik menyetujui rekomendasi empat k
 | typescript | 5.9.3 | Pemeriksaan tipe; kompatibilitas toolchain perlu diuji |
 
 Versi runtime/framework baru berasal dari rekomendasi rilis resmi yang diperiksa pada sesi sebelumnya; versi library backend berasal dari package-lock sumber. Kunci versi tepat dan `bun.lock` setelah dependency diselesaikan pada target; tidak ada instalasi/lockfile baru pada pencatatan ini. Versi adapter, Vite/plugin, Eden dan tooling lint/test tambahan belum dipilih dalam rekomendasi awal; catat pilihan kompatibel sesuai R-09 sebelum tahap pemakainya, tanpa mengarang persetujuan atau hasil spike.
+
+### 0.8 Skill Proyek yang Diaudit
+
+Skill kanonis berada di `.agents/skills`; pemilihan dan batas penggunaan ada pada [indeks skill](docs/skills-index.md). Skill yang dipasang adalah adaptasi docs-only dari snapshot upstream tertentu, bukan izin menjalankan paket upstream, mengubah stack/fitur/kontrak, mengakses produksi atau melonggarkan gerbang. Instruksi pemilik dan hierarki 0.2 tetap berlaku.
+
+Pilih skill sesuai tugas setelah pembacaan HANDOVER/AGENTS/PRD dan verifikasi konteks. Jangan memuat seluruh katalog pada tiap sesi, membuat handover/memori kedua, menyalakan hook/delegation/auto-update, atau menjalankan contoh upstream sebagai perintah proyek. Tidak ada executable upstream di paket lokal. Pemeriksa integritas lokal hanya membaca file; keberhasilan pemeriksaan itu bukan PASS build/parity atau bukti keamanan runtime.
+
+Sumber/commit, hash file, keputusan setiap entry point dan batas audit tersedia pada [laporan audit skill](docs/skills-audit/REPORT.md) serta `.agents/skills-lock.json`. Perubahan paket memerlukan audit delta, pemutakhiran manifest/bukti dan handover pada tugas yang mencakupnya; pin tidak boleh diganti otomatis. Alias Claude mengarah ke folder kanonis yang sama; agent lain dapat membaca SKILL.md langsung bila discovery platform belum tersedia. Tidak ada jaminan lintas model hanya dari pemasangan file.
 
 ## 1. Tujuan dan Non-Tujuan
 
@@ -834,7 +843,7 @@ Urutan berdasarkan risiko dan dependency kontrak 1.3. Infrastruktur dibangun seb
 ### 11.1 Prompt Induk (awali setiap tugas dengan ini)
 
 ```text
-Kamu mengerjakan satu tugas rewrite Dompis sesuai PRD versi 1.8.
+Kamu mengerjakan satu tugas rewrite Dompis sesuai PRD versi 1.9.
 Muat konteks menurut petunjuk pembuka, AGENTS aktif, checkpoint, spec modul dan DBC.
 Pastikan izin sesi mencakup tugas ini; membaca PRD bukan izin menjalankan rewrite.
 
@@ -920,7 +929,7 @@ TUGAS 0.8 - Inventaris dependensi, skrip operasional, dan konfigurasi
 - Lengkapi route-inventory dan feature-parity-matrix 1.4: semua method/path, 48 halaman, pemicu/skrip, dependency M00..M12, dan keputusan fitur Ditahan/Tidak diport. Satu endpoint satu modul pemilik.
 - Susun docs/transition-contract.md sesuai 12.3 dan matriks penulis ticket_raw per sumber/kolom. Tetapkan cohort/path routing dan kompatibilitas sesi/aset.
 
-TUGAS 0.9 - Perkakas Hunt, Pensiun, Gaya dan Coverage (v1.8)
+TUGAS 0.9 - Perkakas Hunt, Pensiun, Gaya dan Coverage (v1.9)
 - Buat docs/migration-map.md (15.2) dan isi awal dari inventaris: 156 rute, fungsi/kelas utama per service, 7 proses PM2, 12 cron ops, env, skrip operasional. Status awal: Belum.
 - Implementasikan check:hunt-report, test:queries (mode diagnostik/enforce), check:retirement, check:no-legacy dan pemeriksaan coverage fitur/method-route. Manifest diagnostik H berada di luar discovery suite wajib dan diaudit; jangan menyembunyikan tes gagal. Dependency tambahan mengikuti R-09.
 - Buat docs/known-issues.md dari tabel 6.3 dan folder docs/hunt, docs/dbc, docs/retirement.
@@ -1293,7 +1302,7 @@ Temuan awal ada di Bagian 6.3 (KI-01..KI-43) dengan status bukti statis. Verifik
 
 ### 14.6.1 Register Keputusan Kesiapan Tambahan
 
-Status keputusan pada revisi 1.8 dibedakan antara persetujuan rencana dan realisasinya. OQ-09/OQ-16 sudah terjawab sebagian melalui 0.7; butir lain tetap memerlukan bukti/keputusan yang disebutkan. Pemilik: PakBreng, dibantu hasil inventaris/spike agent ketika tugasnya diizinkan. Keputusan dicatat tanggal, bukti dan cakupannya; hanya pekerjaan yang bergantung padanya yang diblokir.
+Status keputusan pada revisi 1.9 dibedakan antara persetujuan rencana dan realisasinya. OQ-09/OQ-16 sudah terjawab sebagian melalui 0.7; butir lain tetap memerlukan bukti/keputusan yang disebutkan. Pemilik: PakBreng, dibantu hasil inventaris/spike agent ketika tugasnya diizinkan. Keputusan dicatat tanggal, bukti dan cakupannya; hanya pekerjaan yang bergantung padanya yang diblokir.
 
 | ID | Keputusan/bukti yang diperlukan | Menghalangi sampai tersedia |
 |---|---|---|
@@ -1328,7 +1337,7 @@ Jawaban OQ-01/OQ-04/OQ-15 dapat berbagi bukti, tetapi tidak ditutup hanya dari k
 **Prompt H, setelah P/parity atau ketika audit keamanan memang ditugaskan:**
 
 ```text
-Tugas H modul <ID>, PRD v1.8. Muat Bagian 0, aturan inti, 5.3, 14 dan spec modul.
+Tugas H modul <ID>, PRD v1.9. Muat Bagian 0, aturan inti, 5.3, 14 dan spec modul.
 1. Verifikasi commit sumber, kontrak fitur dan hasil P yang menjadi acuan. Audit S
    dapat mendahului P; jangan mengaktifkan jalur rentan untuk membuktikan parity.
 2. Baca penuh source dalam cakupan dan pemanggil relevan. Coba bantah KI lama/baru.
@@ -1346,7 +1355,7 @@ Tugas H modul <ID>, PRD v1.8. Muat Bagian 0, aturan inti, 5.3, 14 dan spec modul
 **Prompt F, satu temuan per tugas:**
 
 ```text
-Tugas F <KI> modul <ID>, PRD v1.8. Temuan/bukti dan scope sudah tersedia.
+Tugas F <KI> modul <ID>, PRD v1.9. Temuan/bukti dan scope sudah tersedia.
 Prasyarat: P lulus, kecuali S yang secara eksplisit boleh mendahului P.
 Untuk F2/S perubahan kontrak, DBC disetujui; dependensi dan baseline yang perlu siap.
 1. Konfirmasi reproducer merah dan oracle lama/baru. Jangan menguji pada produksi.
@@ -1436,7 +1445,7 @@ Cara rollback (tag, arsip):
 ### 15.6 Prompt R (pensiun satu modul)
 
 ```
-Kamu mengerjakan JALUR R (pensiun) untuk modul <MODUL>. Muat PRD v1.8 Bagian 0/15, aturan inti, AGENTS dan checkpoint.
+Kamu mengerjakan JALUR R (pensiun) untuk modul <MODUL>. Muat PRD v1.9 Bagian 0/15, aturan inti, AGENTS dan checkpoint.
 
 SYARAT: status modul di docs/migration-map.md adalah Observasi dan sudah memenuhi 15.3. Jika tidak, BERHENTI.
 LANGKAH:
@@ -1504,7 +1513,7 @@ Sebelum selesai, baca diff untuk menilai apakah nama, lapisan, komentar dan teks
 ### 16.5 Prompt Tambahan Kode/UI
 
 ```text
-Patuhi PRD v1.8 Bagian 16 dan design-contract modul.
+Patuhi PRD v1.9 Bagian 16 dan design-contract modul.
 Nama jelas, fungsi satu pekerjaan, tanpa lapisan spekulatif atau komentar promosi.
 Kontrak lama dan atomicity tidak dikorbankan demi lint/panjang nama/fungsi.
 Port mempertahankan visual baseline yang terdaftar; perubahan solid/teks hanya
@@ -1521,7 +1530,7 @@ state/tema/perangkat/interaksi yang diperiksa. Review diff dalam cakupan.
 Gabungkan indeks ini pada tahap fondasi yang telah diizinkan. Pertahankan instruksi proyek/skill/graphify yang masih berlaku; jangan menimpa AGENTS sumber. Versikan dokumen governance setelah pengecualian Git terarah disiapkan. Ringkasan tidak menggantikan aturan penuh bila ada konflik.
 
 ```markdown
-# AGENTS.md - Rewrite Dompis, PRD v1.8
+# AGENTS.md - Rewrite Dompis, PRD v1.9
 
 ## Pembacaan pertama
 Baca HANDOVER.md terlebih dahulu pada awal sesi/pergantian agent/model.
