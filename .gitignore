@@ -43,3 +43,4 @@ test-results/
 /.claude/
 /docs/
 *.md
+/tools/skills/
