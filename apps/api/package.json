@@ -1,0 +1,21 @@
+{
+  "name": "@dompis/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "bun build src/index.ts --target bun --outdir dist --packages external"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.52",
+    "elysia": "1.4.30",
+    "file-type": "22.2.0"
+  },
+  "devDependencies": {
+    "openapi-types": "12.1.3"
+  }
+}

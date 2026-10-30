@@ -1,0 +1,6 @@
+[install]
+exact = true
+auto = "disable"
+
+[install.cache]
+dir = ".cache/bun-install"

@@ -1,0 +1,17 @@
+{
+  "provenance": "Synthetic fixture generated with Node; no production data",
+  "nodeVersion": "24.15.0",
+  "now": "2026-10-29T17:00:00.000Z",
+  "key": [
+    19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
+    19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19
+  ],
+  "claims": {
+    "id_user": 1,
+    "role": "teknisi",
+    "role_id": 4
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZF91c2VyIjoxLCJyb2xlIjoidGVrbmlzaSIsInJvbGVfaWQiOjQsImlhdCI6MTc5MzI5MzIwMCwiZXhwIjoxNzkzMjkzMjYwfQ.PQEWPOe8jneUTagDmkHDanWjbNEX5XWITBvJz8pLKXY",
+  "password": "synthetic-spike-password",
+  "hash": "$2b$04$abcdefghijklmnopqrstuuOlWeowyfZonTseVpdJVxe06zfhDnQVe"
+}
