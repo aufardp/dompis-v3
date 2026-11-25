@@ -1,0 +1,3 @@
+# DOMPIS Rewrite — Final Blueprint v1.0
+
+25 November 2026. Final planning package, not a runnable application or production-approved schema. Start with Getting-Started.md and Implementation-Plan.md. PRD.md defines product; Architecture.md and Sync-Engine.md define runtime; Data-Contract.md and Field-Mapping.md supersede older source assumptions; Database.md and schema-proposed.sql define candidate schema; Design-System.md and Security.md define UX/security; Migration.md and Source-Audit.md document transition; Agents.md goes to root as AGENTS.md; Handover.md is append-only. All docs in repository docs/ except root AGENTS.md. No raw payload or secrets included. Actual closed fixture and KPI definitions remain release gates. No code or DB production changed.
