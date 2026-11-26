@@ -704,3 +704,39 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: kontrak lifecycle/KPI/TTR, akses user, geography, 84-field retention, dan identitas snapshot sumber tetap menghalangi implementasi yang bergantung padanya.
 - Rollback: dokumentasi saja berubah; revert entri ini melalui Git.
 - Langkah berikutnya: lanjutkan hardening/scaffold yang independen; untuk membuka produk/ETL, sediakan artifact dan persetujuan yang tercantum pada C0C-01–06 dan Phase 3A readiness.
+
+## 2026-11-26 — Runtime dependency boundary audit
+
+- Tindakan: memeriksa source dan package manifest runtime terhadap larangan dependency MySQL, Redis, piloting ticket, permanent `ticket_raw`, dan projection worker terpisah.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada database diakses.
+- Command tersanitasi: `rg` untuk pola larangan di `apps/` dan `packages/`; baca package manifests root/API/worker/DB; `git diff --check`.
+- Hasil aktual: tidak ada referensi MySQL/Redis/piloting/`ticket_raw`/projection worker pada runtime source; manifest API hanya memiliki workspace contracts/DB dan Elysia, DB hanya Drizzle, worker belum memiliki dependency pihak ketiga. Pencarian NOSSA hanya menemukan nama endpoint yang diwajibkan dan enum/provenance schema. Tidak menjalankan typecheck/build/test karena tidak ada perubahan kode.
+- Keputusan teknis: tidak mengubah source atau dependency; architecture boundary yang diperiksa saat ini konsisten dengan larangan runtime.
+- Risiko/blocker: worker/sync belum diimplementasikan; pencarian statis tidak membuktikan perilaku runtime selain source dan manifest yang diperiksa.
+- Rollback: dokumentasi saja berubah; revert entri ini melalui Git.
+- Langkah berikutnya: lanjutkan foundation/auth independen; mulai adapter hanya setelah fixture/kontrak upstream dan gate Phase 0C/3B tersedia.
+
+## 2026-11-26 — Concurrent login throttle reservation
+
+- Tindakan: menambahkan reservation account/IP secara sinkron sebelum query identity dan Argon2id; limiter sekarang menghitung `failedAttempts + inFlight`, lalu menyelesaikan reservation sebagai gagal, sukses, atau dilepas saat exception.
+- File berubah: `apps/api/src/auth.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah.
+- Command tersanitasi: `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan test suite atau concurrent runtime request.
+- Keputusan teknis: ambang 10/15 menit tetap; sukses membersihkan kegagalan account tetapi mempertahankan kegagalan IP; exception melepas reservation tanpa dihitung sebagai kredensial salah. Untuk blokir yang hanya disebabkan request in-flight, `Retry-After` minimum satu detik.
+- Risiko/blocker: race paralel belum diverifikasi lewat runtime/test; limiter tetap in-memory dan per proses.
+- Rollback: pulihkan implementasi limiter lama dan hapus ADR-020/entri ini; tidak ada rollback database.
+- Langkah berikutnya: uji tekanan paralel pada target auth sintetis saat verifikasi diizinkan; lanjutkan produk hanya setelah kontrak scope, ticket, dan permission tervalidasi.
+
+## 2026-11-26 — Logout unavailable-database response
+
+- Tindakan: membuat `/auth/logout` mengembalikan HTTP 503 `authentication_unavailable` bila session database tidak dikonfigurasi, alih-alih menghapus cookie dan menyatakan `signed_out` tanpa revocation. Menambahkan response schema 503.
+- File berubah: `apps/api/src/auth.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan runtime request atau test suite.
+- Keputusan teknis: 200 `signed_out` hanya diberikan jika session storage tersedia dan revocation query yang diperlukan selesai. Kegagalan query tetap memakai error handler generik.
+- Risiko/blocker: jalur tanpa database belum diverifikasi lewat runtime; UI yang menerima 503 mempertahankan state signed-in dan memberi pesan retry.
+- Rollback: hapus guard awal database dan schema 503, lalu pulihkan revocation bersyarat lama; tidak ada rollback database.
+- Langkah berikutnya: verifikasi kontrak 503 dengan request sintetis saat runtime QA tersedia; lanjutkan feature produk yang memerlukan owner contracts hanya setelah gate dibuka.

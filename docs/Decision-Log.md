@@ -20,6 +20,8 @@
 | ADR-017 | Validate opaque session token format consistently before hashing or lookup | Implemented locally | Shared auth guard review; API typecheck/build |
 | ADR-018 | Include valid auth origin in API readiness | Implemented locally | APP_ORIGIN validation path; API typecheck/build |
 | ADR-019 | Bound API request body size to 16 KiB | Implemented locally | Context7 Elysia/Bun server docs; current auth schema bounds; API typecheck/build |
+| ADR-020 | Reserve login attempts before async verification to enforce concurrency limit | Implemented locally | Static auth flow/race review; API typecheck/build |
+| ADR-021 | Do not report logout success when session revocation cannot run | Implemented locally | Auth route failure-path review; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -156,3 +158,23 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: oversized API bodies are rejected by the server before route schema handling; no dependency, DB, route payload schema, or business behavior changes. Any future larger request must revisit this limit with its payload contract.
 - Validation: `bun run typecheck`, `bun run build`, and `git diff --check` passed. No oversized runtime request or automated test was performed in this slice.
 - Rollback: remove `MAX_REQUEST_BODY_BYTES` and the Elysia `serve.maxRequestBodySize` setting, and remove the Security.md requirement/ADR-019; no database rollback is needed.
+
+## ADR-020 — Concurrent login attempt reservation (2026-11-26)
+
+- Status: implemented locally; limiter remains bounded and process-local per ADR-008.
+- Context: the login limiter previously incremented failures only after the asynchronous identity query and password verification. Parallel requests could all pass the threshold check before any failure was recorded.
+- Evidence: source flow awaited identity lookup and Argon2id before calling `failed`; there was no in-flight count or reservation.
+- Decision: reserve one account/IP attempt synchronously before DB/hash work. Block when failed attempts plus in-flight reservations reach 10. Finish each reservation as invalid credentials, successful account authentication, or release on unexpected error. Success clears account failures while retaining IP failures; unexpected errors release slots without counting as bad credentials.
+- Consequences: concurrency cannot bypass the configured per-account/IP cap; Retry-After reports at least one second for requests blocked only by in-flight work. No DB schema, dependency, password policy, or threshold changes.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No concurrency runtime request or automated test was performed in this slice.
+- Rollback: restore the prior limiter check/failure update flow and remove the in-flight reservation/finalization; no database or persistent state rollback is needed.
+
+## ADR-021 — Logout requires configured session storage (2026-11-26)
+
+- Status: implemented locally.
+- Context: `/auth/logout` skipped `revokeSession` when the database was unconfigured but still returned `signed_out`, implying server-side revocation had succeeded.
+- Evidence: the route conditionally wrote the session revocation and unconditionally removed the cookie/returned HTTP 200; session validation and protected routes are unavailable without the database.
+- Decision: return HTTP 503 `authentication_unavailable` before origin/CSRF processing when session storage is not configured. Only return `signed_out` after configured storage has processed revocation (or no valid session cookie was present).
+- Consequences: clients no longer receive a false success during an unavailable-auth state. On DB query errors, the existing generic 500 handler remains responsible; no session cookie is cleared before successful revocation.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime request or automated test was performed in this slice.
+- Rollback: remove the initial database guard, conditional revocation guard, and 503 response schema; no database or persistent state rollback is needed.

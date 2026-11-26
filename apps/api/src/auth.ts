@@ -13,51 +13,69 @@ const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 type AuthDatabase = NonNullable<typeof database>;
 
 interface LoginBucket {
-	count: number;
+	failedAttempts: number;
+	inFlight: number;
 	resetAt: number;
 }
 
 class LoginLimiter {
 	private readonly buckets = new Map<string, LoginBucket>();
 
-	retryAfterSeconds(keys: readonly string[], now: number): number | null {
+	reserve(keys: readonly string[], now: number): number | null {
 		this.prune(now);
 		let blockedUntil = 0;
 		for (const key of keys) {
 			const bucket = this.buckets.get(key);
-			if (bucket && bucket.count >= LOGIN_ATTEMPT_LIMIT) {
-				blockedUntil = Math.max(blockedUntil, bucket.resetAt);
+			if (bucket && bucket.failedAttempts + bucket.inFlight >= LOGIN_ATTEMPT_LIMIT) {
+				blockedUntil = Math.max(
+					blockedUntil,
+					bucket.failedAttempts >= LOGIN_ATTEMPT_LIMIT ? bucket.resetAt : now + 1000
+				);
 			}
 		}
 
-		if (this.buckets.size >= LOGIN_BUCKET_LIMIT && keys.some((key) => !this.buckets.has(key))) {
+		const missingKeys = keys.filter((key) => !this.buckets.has(key)).length;
+		if (this.buckets.size + missingKeys > LOGIN_BUCKET_LIMIT) {
 			const nextCapacityAt = Math.min(...Array.from(this.buckets.values(), (bucket) => bucket.resetAt));
 			blockedUntil = Math.max(blockedUntil, nextCapacityAt);
 		}
 
-		return blockedUntil > now ? Math.max(1, Math.ceil((blockedUntil - now) / 1000)) : null;
+		if (blockedUntil > now) return Math.max(1, Math.ceil((blockedUntil - now) / 1000));
+
+		for (const key of keys) {
+			let bucket = this.buckets.get(key);
+			if (!bucket) {
+				bucket = { failedAttempts: 0, inFlight: 0, resetAt: now + LOGIN_WINDOW_MS };
+				this.buckets.set(key, bucket);
+			}
+			bucket.inFlight += 1;
+		}
+		return null;
 	}
 
-	failed(keys: readonly string[], now: number): void {
+	finish(keys: readonly string[], now: number, failed: boolean, successfulAccountKey?: string): void {
 		this.prune(now);
 		for (const key of keys) {
-			const current = this.buckets.get(key);
-			if (!current && this.buckets.size >= LOGIN_BUCKET_LIMIT) return;
-			const bucket = current && current.resetAt > now
-				? current
-				: { count: 0, resetAt: now + LOGIN_WINDOW_MS };
-			bucket.count += 1;
-			this.buckets.set(key, bucket);
+			const bucket = this.buckets.get(key);
+			if (!bucket) continue;
+			bucket.inFlight = Math.max(0, bucket.inFlight - 1);
+			if (failed) bucket.failedAttempts += 1;
+			else if (key === successfulAccountKey) {
+				bucket.failedAttempts = 0;
+				bucket.resetAt = now + LOGIN_WINDOW_MS;
+			}
+			if (bucket.failedAttempts === 0 && bucket.inFlight === 0) this.buckets.delete(key);
 		}
-	}
-
-	clear(key: string): void {
-		this.buckets.delete(key);
 	}
 
 	private prune(now: number): void {
 		for (const [key, bucket] of this.buckets) {
-			if (bucket.resetAt <= now) this.buckets.delete(key);
+			if (bucket.resetAt > now) continue;
+			if (bucket.inFlight === 0) this.buckets.delete(key);
+			else {
+				bucket.failedAttempts = 0;
+				bucket.resetAt = now + LOGIN_WINDOW_MS;
+			}
 		}
 	}
 }
@@ -123,36 +141,42 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			const accountKey = `account:${username}`;
 			const limitKeys = [accountKey, `ip:${address}`];
 			const now = Date.now();
-			const retryAfterSeconds = limiter.retryAfterSeconds(limitKeys, now);
+			const retryAfterSeconds = limiter.reserve(limitKeys, now);
 			if (retryAfterSeconds !== null) {
 				set.status = 429;
 				set.headers['retry-after'] = String(retryAfterSeconds);
 				return { error: 'invalid_credentials' };
 			}
 
-			const identity = await findActiveLoginIdentity(database, username);
+			let reservationActive = true;
+			try {
+				const identity = await findActiveLoginIdentity(database, username);
+				const passwordMatches = await Bun.password.verify(body.password, identity?.passwordHash ?? await dummyPasswordHash);
+				if (!identity || !passwordMatches) {
+					limiter.finish(limitKeys, Date.now(), true);
+					reservationActive = false;
+					set.status = 401;
+					return { error: 'invalid_credentials' };
+				}
 
-			const passwordMatches = await Bun.password.verify(body.password, identity?.passwordHash ?? await dummyPasswordHash);
-			if (!identity || !passwordMatches) {
-				limiter.failed(limitKeys, now);
-				set.status = 401;
-				return { error: 'invalid_credentials' };
+				limiter.finish(limitKeys, Date.now(), false, accountKey);
+				reservationActive = false;
+				const token = randomBytes(32).toString('base64url');
+				const expiresAt = new Date(now + SESSION_TTL_MS);
+				await createSession(database, identity.id, hashSessionToken(token), expiresAt);
+
+				cookie[SESSION_COOKIE].set({
+					value: token,
+					path: '/',
+					secure: true,
+					httpOnly: true,
+					sameSite: 'lax',
+					maxAge: Math.floor(SESSION_TTL_MS / 1000)
+				});
+				return { user: { id: identity.id, username: identity.username, displayName: identity.displayName } };
+			} finally {
+				if (reservationActive) limiter.finish(limitKeys, Date.now(), false);
 			}
-
-			limiter.clear(accountKey);
-			const token = randomBytes(32).toString('base64url');
-			const expiresAt = new Date(now + SESSION_TTL_MS);
-			await createSession(database, identity.id, hashSessionToken(token), expiresAt);
-
-			cookie[SESSION_COOKIE].set({
-				value: token,
-				path: '/',
-				secure: true,
-				httpOnly: true,
-				sameSite: 'lax',
-				maxAge: Math.floor(SESSION_TTL_MS / 1000)
-			});
-			return { user: { id: identity.id, username: identity.username, displayName: identity.displayName } };
 		}, {
 			body: t.Object({
 				username: t.String({ minLength: 1, maxLength: 160 }),
@@ -175,6 +199,10 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 		})
 		.post('/auth/logout', async ({ cookie, request, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
+			if (!database) {
+				set.status = 503;
+				return { error: 'authentication_unavailable' as const };
+			}
 			if (!appOrigin || !isAllowedOrigin(request, appOrigin)) {
 				set.status = 403;
 				return { error: 'request_origin_rejected' };
@@ -184,7 +212,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 				return { error: 'csrf_rejected' };
 			}
 			const token = cookie[SESSION_COOKIE]?.value;
-			if (database && isSessionToken(token)) {
+			if (isSessionToken(token)) {
 				await revokeSession(database, hashSessionToken(token));
 			}
 			cookie[SESSION_COOKIE]?.set({
@@ -206,7 +234,8 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 				403: t.Union([
 					t.Object({ error: t.Literal('request_origin_rejected') }),
 					t.Object({ error: t.Literal('csrf_rejected') })
-				])
+				]),
+				503: t.Object({ error: t.Literal('authentication_unavailable') })
 			}
 		})
 		.get('/auth/me', async ({ cookie, set }) => {
