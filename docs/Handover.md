@@ -620,3 +620,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: perubahan belum diverifikasi lewat test/runtime; limiter tetap in-memory per proses dan reset saat restart sesuai ADR-008.
 - Rollback: kembalikan limiter ke boolean `blocked` dan header tetap 900 detik, lalu hapus ADR-013/entri handover ini; tidak ada rollback database.
 - Langkah berikutnya: validasi kasus bucket dengan sisa waktu parsial serta limiter penuh pada sesi pengujian terotorisasi; pertahankan blocker Phase 0C pada endpoint/report/migration yang memerlukan keputusan owner.
+
+## 2026-11-26 — CSRF malformed-token validation
+
+- Tindakan: memperketat validasi cookie/header CSRF sebelum constant-time comparison ke alfabet base64url exact 43 karakter, sesuai format output `randomBytes(32).toString('base64url')`.
+- File berubah: `apps/api/src/auth.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan runtime request atau test suite pada slice ini.
+- Keputusan teknis: token malformed ditolak sebagai CSRF invalid sebelum `timingSafeEqual`, mencegah input Unicode dengan panjang byte berbeda memicu exception/500. Token valid tidak berubah.
+- Risiko/blocker: perilaku 403 untuk input malformed belum diverifikasi lewat runtime/test; scope bisnis Phase 0C tetap terbuka.
+- Rollback: kembalikan pemeriksaan panjang saja dan hapus ADR-014/entri ini; tidak ada rollback database.
+- Langkah berikutnya: lanjutkan slice hardening independen; jalankan pengujian auth terisolasi saat diizinkan dan tersedia target DB sintetis/disposable.

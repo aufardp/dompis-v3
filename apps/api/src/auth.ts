@@ -71,7 +71,9 @@ function isAllowedOrigin(request: Request, appOrigin: string): boolean {
 
 function isValidCsrf(request: Request, csrfCookie: string | undefined): boolean {
 	const csrfHeader = request.headers.get('x-csrf-token');
-	if (!csrfCookie || !csrfHeader || csrfCookie.length !== 43 || csrfHeader.length !== 43) return false;
+	if (!csrfCookie || !csrfHeader || !/^[A-Za-z0-9_-]{43}$/.test(csrfCookie) || !/^[A-Za-z0-9_-]{43}$/.test(csrfHeader)) {
+		return false;
+	}
 	return timingSafeEqual(Buffer.from(csrfCookie), Buffer.from(csrfHeader));
 }
 

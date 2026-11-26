@@ -13,6 +13,8 @@
 | ADR-010 | Apply baseline anti-sniffing, anti-framing, and no-referrer headers to every API request | Implemented locally; deployment CSP/TLS controls remain separate | `apps/api/src/app.ts`; API typecheck passed |
 | ADR-011 | Normalize unhandled API errors and correlate them with opaque request IDs | Implemented locally | Context7 Elysia error-hook docs; API typecheck/build passed |
 | ADR-012 | Attach one server-generated request ID to every API response and related operational logs | Implemented locally | Loopback HTTP smoke checks; API typecheck/build passed |
+| ADR-013 | Compute login throttle `Retry-After` from limiter bucket expiry | Implemented locally | Static limiter review; API typecheck/build |
+| ADR-014 | Validate CSRF token base64url alphabet before constant-time comparison | Implemented locally | Malformed-token review; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -89,3 +91,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: rate limit policy and thresholds remain unchanged; clients receive a retry interval consistent with the limiter state. No dependency, database, schema, response body, or logging changes.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No automated test or runtime DB interaction was performed in this change.
 - Rollback: restore the fixed 900-second header calculation and boolean limiter check; no database or persistent state rollback is needed.
+
+## ADR-014 — CSRF token encoding validation (2026-11-26)
+
+- Status: implemented locally.
+- Context: the double-submit CSRF check verified JavaScript string length before calling `timingSafeEqual`. Equal character counts can encode to buffers with different byte lengths; Node throws on a length mismatch instead of returning a comparison result.
+- Evidence: the generated token is 32 random bytes encoded as unpadded base64url, exactly 43 ASCII characters from `[A-Za-z0-9_-]`; the previous guard accepted other same-character-length strings.
+- Decision: require both cookie and header to match the generated token alphabet and exact 43-character form before constant-time comparison. Malformed encodings fail closed as CSRF rejection.
+- Consequences: valid generated tokens retain identical behavior; malformed input no longer reaches a throwing comparison. No schema, dependency, response body, or business policy change.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime request or automated test was performed in this slice.
+- Rollback: restore the previous length-only guard; no database or persistent state rollback is needed.
