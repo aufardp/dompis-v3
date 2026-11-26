@@ -440,3 +440,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Kendala/risiko: `curl` dari sandbox tidak dapat membuka listener web; pengambilan halaman dilakukan pada izin localhost tereskalasi. Tidak menjalankan login dengan akun pengguna, tidak menguji logout terautentikasi dan belum ada E2E interaksi form; pemeriksaan visual hanya desktop. Port 3000 conflict tidak dihentikan atau diubah.
 - Rollback: revert `apps/web/vite.config.ts`, `docs/Getting-Started.md`, dan entri handover ini; tidak ada rollback database atau data.
 - Langkah berikutnya: setelah akun sintetis aman tersedia, uji login/logout interaktif dan viewport mobile. Lanjutkan endpoint ticket list hanya setelah filter/date/status contract dan permission code divalidasi; migration ETL tetap menunggu gate Phase 3A.
+
+## 2026-11-26 — Local run instructions correction
+
+- Tindakan: menyelaraskan README dan Getting Started dengan scripts dan proxy yang benar-benar tersedia; memisahkan perintah API/web ke terminal berbeda, menambahkan penanganan port alternatif, mencegah `cp` menimpa `.env` yang sudah ada, serta menjelaskan bahwa login memerlukan user yang diprovisikan.
+- File berubah: `README.md`, `docs/Getting-Started.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi atau perubahan database. `.env` tidak dibaca atau diubah.
+- Command tersanitasi: peninjauan `package.json`, `.env.example`, dan konfigurasi proxy; `git diff --check`.
+- Hasil aktual: dokumentasi menyebut API auth dan detail ticket yang sudah ada serta proxy `/auth`, `/tickets`, `/health`; tidak menjalankan typecheck/build karena hanya dokumentasi berubah. `git diff --check` lulus.
+- Keputusan teknis: gunakan `cp -n` agar langkah setup tidak menimpa konfigurasi lokal; dua proses dev dijalankan terpisah; jangan sarankan worker karena upstream worker belum diimplementasikan.
+- Risiko/blocker: akun lokal belum disediakan oleh bootstrap/admin UI. Template `.env.example` berisi placeholder database `dompis_dev:5433` sehingga harus disesuaikan bila pengguna memakai database lokal `dompis_v3` di port 5432.
+- Rollback: revert pembaruan README, Getting Started, dan entri ini melalui Git; tidak ada rollback runtime/database.
+- Langkah berikutnya: siapkan bootstrap akun lokal yang aman setelah jalur provisioning dan permission yang diizinkan ditentukan; terus tahan user management API sampai capability matrix disetujui.
