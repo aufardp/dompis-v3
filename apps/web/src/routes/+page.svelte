@@ -576,16 +576,16 @@
 		h1 { font-size: clamp(35px, 5vw, 48px); }
 	}
 	@media (max-width: 720px) {
-		.page-shell { min-height: 100svh; grid-template-columns: 1fr; }
-		.introduction { min-height: auto; padding: 22px 22px 0; }
-		.intro-copy { width: 100%; margin: 48px 0 0; padding: 0 0 25px; }
+		.page-shell { min-height: 100svh; grid-template-columns: minmax(0, 1fr); }
+		.introduction { min-width: 0; min-height: auto; padding: 22px 22px 0; }
+		.intro-copy { min-width: 0; width: 100%; margin: 48px 0 0; padding: 0 0 25px; }
 		h1 { max-width: 530px; margin: 17px 0 12px; font-size: clamp(34px, 9vw, 46px); }
 		.intro-description { font-size: 14px; }
 		.product-map { margin-top: 24px; }
 		.product-map li { min-height: 38px; }
 		.page-footer { display: none; }
-		.access-panel { min-height: auto; padding: 20px 18px 28px; align-items: stretch; }
-		.access-card { width: min(100%, 480px); margin: 0 auto; padding: 25px 22px; }
+		.access-panel { min-width: 0; min-height: auto; padding: 20px 18px 28px; align-items: stretch; }
+		.access-card { min-width: 0; width: min(100%, 480px); margin: 0 auto; padding: 25px 22px; }
 		.access-card-top { margin-bottom: 38px; }
 		.privacy-note { margin-right: auto; margin-left: auto; }
 	}

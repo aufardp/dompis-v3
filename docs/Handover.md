@@ -560,3 +560,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: C0C-01 closed/reopen fixture + authoritative OpenAPI; C0C-02 lifecycle/date/time/TTR policy; C0C-03 geography/Workzone crosswalk; C0C-04 role/action/global/activation parity; C0C-05 84-field disposition/PII retention; C0C-06 registered source snapshot/read role masih belum lengkap.
 - Rollback: dokumentasi saja berubah; revert entri ini melalui Git.
 - Langkah berikutnya: lanjutkan hanya slice teknis yang independen. Untuk membuka data/report/admin implementation, masukkan fixture dan keputusan pemilik ke dokumen Phase 0C/3A; jangan gunakan data produksi/live endpoint sebagai pengganti bukti yang disetujui.
+
+## 2026-11-26 — Mobile login layout overflow correction
+
+- Tindakan: mengambil screenshot halaman login pada viewport 390px dan menemukan konten terpotong di kanan; memeriksa DOM/browser viewport, memperbaiki grid mobile agar track dapat menyusut ke viewport, lalu memeriksa viewport 390px dan 320px serta state API unavailable.
+- File berubah: `apps/web/src/routes/+page.svelte`, `docs/Handover.md`.
+- Database target: tidak ada database atau akun digunakan. Vite dijalankan tanpa API; request session hanya menghasilkan proxy connection failure dan tidak mencapai DB.
+- Command tersanitasi: web dev server lokal port 5173; Chrome/agent-browser viewport 390×844 dan 320×720; evaluasi `clientWidth`, `scrollWidth`, card width, form presence, dan fallback message; `bun run typecheck:web`; `bun run build:web`; `git diff --check`.
+- Hasil aktual: sebelum fix screenshot menunjukkan clipping; sesudah fix browser melaporkan `clientWidth=390`, `scrollWidth=390`, form terlihat dan fallback API-unavailable terlihat. Pada 320px, `clientWidth=320`, `scrollWidth=320`, card width=296 dan form terlihat. Typecheck Svelte 0 error/0 warning; build web dan diff check lulus. Build hanya memberi warning environment `NO_COLOR`/`FORCE_COLOR`.
+- Keputusan teknis: breakpoint mobile memakai `grid-template-columns: minmax(0, 1fr)` dan memberi `min-width: 0` pada panel/isi grid untuk mencegah intrinsic min-content memaksa overflow.
+- Risiko/blocker: API tidak dijalankan sehingga autentikasi/ref request ID tidak diuji end-to-end; layar hanya diuji pada viewport 320/390, bukan tablet/desktop dalam sesi ini. Perintah penutupan sesi agent-browser tidak selesai dalam timeout dan wrapper dihentikan; web dev server telah dihentikan.
+- Rollback: revert CSS mobile dan entri handover; tidak ada database/data rollback.
+- Langkah berikutnya: cek sesi browser terisolasi bila proses masih hidup, lalu lakukan UI E2E ketika API port dapat dijalankan; lanjutkan feature ticket setelah data/permission gates terpenuhi.
