@@ -656,3 +656,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: header `Set-Cookie` aktual belum diperiksa lewat runtime/browser; logout E2E sebelumnya menguji revokasi DB, bukan penerimaan penghapusan cookie browser.
 - Rollback: kembalikan pemanggilan `.remove()` dan hapus ADR-016/entri ini; tidak ada rollback database.
 - Langkah berikutnya: cek header logout dalam runtime auth QA ketika target sintetis dan pemeriksaan browser tersedia; business contracts Phase 0C tetap menjadi gate bagi endpoint/report/migration.
+
+## 2026-11-26 — Shared session token format guard
+
+- Tindakan: menambahkan type guard base64url 43 karakter yang dipakai konsisten oleh `/auth/me`, logout, dan permission guard sebelum hash atau akses database sesi.
+- File berubah: `apps/api/src/auth.ts`, `apps/api/src/permission-guard.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: inspeksi source Elysia/route guard; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan runtime request atau test suite.
+- Keputusan teknis: format pemeriksaan mengikuti output token terbitan `randomBytes(32).toString('base64url')`; token malformed ditolak sebelum query atau revocation.
+- Risiko/blocker: perilaku 401/no-DB untuk malformed cookie belum diuji lewat runtime; tidak mengubah sesi valid atau akses bisnis.
+- Rollback: hapus type guard bersama lalu kembalikan pemeriksaan lokal sebelumnya; tidak ada rollback database.
+- Langkah berikutnya: validasi kasus sesi malformed pada fixture auth terisolasi ketika test/DB target QA tersedia; endpoint produk dan migrasi tetap menunggu kontrak Phase 0C.

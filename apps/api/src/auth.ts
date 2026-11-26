@@ -9,6 +9,7 @@ const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_LIMIT = 10;
 const LOGIN_BUCKET_LIMIT = 10_000;
+const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 type AuthDatabase = NonNullable<typeof database>;
 
 interface LoginBucket {
@@ -63,6 +64,10 @@ class LoginLimiter {
 
 export function hashSessionToken(token: string): Uint8Array {
 	return createHash('sha256').update(token).digest();
+}
+
+export function isSessionToken(value: unknown): value is string {
+	return typeof value === 'string' && SESSION_TOKEN_PATTERN.test(value);
 }
 
 function isAllowedOrigin(request: Request, appOrigin: string): boolean {
@@ -179,7 +184,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 				return { error: 'csrf_rejected' };
 			}
 			const token = cookie[SESSION_COOKIE]?.value;
-			if (database && typeof token === 'string' && token.length === 43) {
+			if (database && isSessionToken(token)) {
 				await revokeSession(database, hashSessionToken(token));
 			}
 			cookie[SESSION_COOKIE]?.set({
@@ -211,7 +216,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 				return { error: 'authentication_unavailable' };
 			}
 			const token = cookie[SESSION_COOKIE]?.value;
-			if (typeof token !== 'string' || token.length !== 43) {
+			if (!isSessionToken(token)) {
 				set.status = 401;
 				return { error: 'unauthenticated' };
 			}

@@ -1,7 +1,7 @@
 import { Elysia, status, t } from 'elysia';
 import { loadAuthorizationContext } from '@dompis/db';
 import { database } from '@dompis/db';
-import { hashSessionToken } from './auth';
+import { hashSessionToken, isSessionToken } from './auth';
 
 const SESSION_COOKIE = '__Host-dompis_session';
 type AuthDatabase = NonNullable<typeof database>;
@@ -18,7 +18,7 @@ export function createPermissionGuard(database: AuthDatabase | undefined) {
 				set.headers['cache-control'] = 'private, no-store';
 				if (!database) return status(503, { error: 'authorization_unavailable' as const });
 				const token = cookie[SESSION_COOKIE]?.value;
-				if (typeof token !== 'string' || token.length !== 43) {
+				if (!isSessionToken(token)) {
 					return status(401, { error: 'unauthenticated' as const });
 				}
 				const authorization = await loadAuthorizationContext(database, hashSessionToken(token));

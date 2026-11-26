@@ -17,6 +17,7 @@
 | ADR-014 | Validate CSRF token base64url alphabet before constant-time comparison | Implemented locally | Malformed-token review; API typecheck/build |
 | ADR-015 | Propagate password verifier failures to sanitized API error handling | Implemented locally | Static error-path review; API typecheck/build |
 | ADR-016 | Expire session cookie using the same `__Host-` attributes as issuance | Implemented locally | Elysia 1.4.32 cookie implementation and API typecheck/build |
+| ADR-017 | Validate opaque session token format consistently before hashing or lookup | Implemented locally | Shared auth guard review; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -123,3 +124,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: makes deletion target the same host/path/security cookie as issuance, including `__Host-` prefix requirements. Session revocation remains unchanged.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime cookie response or automated test was performed in this slice.
 - Rollback: restore `cookie[SESSION_COOKIE]?.remove()`; no database or persistent state rollback is needed.
+
+## ADR-017 — Consistent opaque session token validation (2026-11-26)
+
+- Status: implemented locally.
+- Context: `/auth/me`, logout, and the permission macro checked only that a cookie had 43 characters, while issued tokens are 32 random bytes encoded as base64url.
+- Evidence: source inspection found three separate length-only guards; malformed 43-character values could reach token hashing and unnecessary session database lookups.
+- Decision: add one shared type guard for the 43-character base64url session token format and use it before session lookup/revocation in all three paths.
+- Consequences: valid issued tokens behave unchanged; malformed cookies fail closed without a DB operation, and token format cannot drift between auth and protected routes. No schema, dependency, or business policy change.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No automated test or runtime request was performed in this slice.
+- Rollback: restore the three local length/type checks and remove the shared type guard/ADR-017; no database or persistent state rollback is needed.
