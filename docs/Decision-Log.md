@@ -320,6 +320,34 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Rollback: revert this ADR and corresponding approval entries in `Authorization-Capability-Discovery.md`, `Legacy-Role-Discovery.md`, `Phase-2-Organization-Auth.md`, and `Handover.md`; no application/database rollback is needed.
 - Owner approval: current conversation, 2026-11-26 (superadmin full control, superadmin-only user management, three-role equivalence, helpdesk/teknisi deferred).
 
+## ADR-037 — Seed only owner-approved superadmin capabilities (2026-11-26)
+
+- Status: additive migration prepared; local application blocked by database transport; no migration rows or grants changed.
+- Context: ADR-036 approved superadmin full control, while other role capabilities remain deferred. Protected routes currently deny all users because the permission catalog and grants are empty.
+- Evidence: Drizzle reports no schema changes are required. Local PostgreSQL preflight through the verified `dompis_v3` socket showed one `superadmin` role, zero target permissions/grants, and zero users. The configured Bun migration URL resolves to `127.0.0.1:5432`, where TCP connection is refused; a later psql socket attempt was denied by the sandbox.
+- Decision: add an idempotent data-only Drizzle migration that inserts the ten in-scope permission catalog entries and grants them only to role code `superadmin`. Do not change any user's `global_scope`, active status, password, or scope; do not assign permission to other roles. Use `ON CONFLICT DO NOTHING` so reruns do not duplicate or overwrite permission descriptions/grants.
+- Consequences: once applied, future superadmin sessions resolve the approved capabilities; current zero-user database gains no user access, and non-superadmin roles remain denied. Migration is not applied until the configured DB transport is available and target is reverified.
+- Validation: `bun run db:generate` reported 19 tables and no schema drift; workspace `bun run typecheck` and `bun run build` passed; `git diff --check` passed. `bun run db:migrate` failed before executing SQL with `ERR_POSTGRES_CONNECTION_REFUSED`; no DML occurred. No migration-specific database test could run because database connectivity was unavailable.
+- Rollback: because migration has not run, remove its SQL file and Drizzle journal/snapshot entries. After a future apply, roll back only the ten corresponding superadmin role-permission rows and permission catalog entries after confirming none are referenced; never revoke via broad permission deletion if other roles/users have adopted them.
+- Owner approval: ADR-036, current conversation, 2026-11-26.
+
+### ADR-037 execution update — 2026-11-26
+
+- The initial Bun migrator attempt failed before SQL execution because configured TCP `127.0.0.1:5432` refused connections. The reviewed migration was then applied transactionally to verified local PostgreSQL 18.7 `dompis_v3` using psql over the local socket, after explicit sandbox escalation.
+- Actual affected rows: 10 permission catalog rows, 10 superadmin role grants, and 1 Drizzle migration ledger row. Post-apply verification: 10 target permissions, 10 superadmin grants, 0 grants to other roles, 0 users. No account/global-scope/user-scope data changed.
+- The SQL and Drizzle journal checksum matched (`92e5ffbc951f6d530f7cc824117b0ef60c15a032aa72ede11cc8e6fb26b9f8c3`). Re-running the SQL is idempotent. The normal Bun migrator must be connectivity-verified before it is relied on for future migrations.
+- Rollback: on this local development database, remove only role-permission rows for the ten ADR-037 permission codes, then remove those permission rows and the corresponding Drizzle ledger row in one reviewed transaction; no users or references existed at application time.
+
+## ADR-038 — Bootstrap the first account as global superadmin (2026-11-26)
+
+- Status: implemented locally; bootstrap command not executed and no account created.
+- Context: ADR-036 grants superadmin full application control and global data scope, and ADR-037 has seeded its ten capabilities. The existing bootstrap would reject any non-empty permission catalog and create a first account without grants or scope, leaving no usable way to enter User Management.
+- Decision: restrict the one-time local bootstrap to the `superadmin` role; require exactly the ten approved permission catalog entries/grants, all grants assigned to superadmin, zero users, and no prior bootstrap audit event. Create the initial account with `global_scope=true` and record only role code/global-scope boolean in its audit metadata. Password remains hidden and Argon2id-hashed; retain loopback PG18 database guards and one-transaction user/audit creation.
+- Consequences: running `bun run auth:bootstrap` on the guarded local dev database provisions a usable initial administrator; it does not create defaults, migrate legacy accounts, or provide subsequent account management. No legacy data or credentials are read.
+- Validation: strict standalone TypeScript check for `scripts/bootstrap-first-user.ts`, workspace typecheck/build and `git diff --check` passed. Bootstrap was not executed; no user was created. Database permission/grant preflight was verified separately under ADR-037.
+- Rollback: restore ADR-028 bootstrap behavior and the earlier zero-capability account policy in `scripts/bootstrap-first-user.ts`, `docs/Getting-Started.md` and `docs/Security.md`; no database rollback because bootstrap was not run.
+- Owner approval: ADR-036, current conversation, 2026-11-26.
+
 ## ADR-035 — Add scoped ticket list with signed keyset cursors (2026-11-26)
 
 - Status: implemented locally; `tickets.read` remains an unseeded candidate pending owner approval.

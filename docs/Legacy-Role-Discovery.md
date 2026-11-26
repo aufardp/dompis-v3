@@ -34,7 +34,7 @@ The legacy role normalizer also accepts spelling aliases: `super_admin` and `sup
 
 - It does not establish that all six rows exist in the current/production legacy database, or which users currently have each role.
 - It does not establish the complete effective permission matrix. Authorization also depends on route guards, user scope paths and feature-specific checks; the legacy source has role-specific exceptions.
-- It does not authorize copying role IDs, names, permissions, or user assignments into v3. V3 roles and permissions remain unseeded and protected routes remain deny-by-default until the owner validates role/action/global-scope/account-activation parity.
+- It does not authorize copying legacy role IDs, permissions, or user assignments into v3. Owner-approved role names and the explicit superadmin capability set are now seeded locally; other roles remain without grants, and protected routes still require an active session plus the corresponding permission and data scope. No account activation or legacy scope migration has occurred.
 - `teknisi` is recorded here only as a legacy role; technician assignment is outside the current v3 product scope.
 
 ## Read-only evidence inspected

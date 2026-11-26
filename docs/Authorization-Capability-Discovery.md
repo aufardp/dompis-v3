@@ -69,7 +69,7 @@ The source has additional guards on out-of-scope routes (technician, attendance,
 5. Approve audit metadata visibility/retention; protect credentials, tokens, customer PII, and raw upstream payloads.
 6. Approve account activation and per-user migration parity separately; no legacy account or grant activates automatically.
 
-The approved superadmin grants are policy only and have not been seeded; the role catalog remains labels only and `role_permissions` remains empty. Other role grants remain denied. Static legacy evidence cannot resolve remaining decisions because legacy route checks conflict and some are explicitly unsafe.
+The approved superadmin permission catalog and role grants are seeded in local development by migration `0003_seed_superadmin_capabilities.sql`: ten permissions, ten grants to `superadmin`, zero grants to other roles. No user was provisioned and no user's global scope was changed. Other role grants remain denied. Static legacy evidence cannot resolve remaining decisions because legacy route checks conflict and some are explicitly unsafe.
 
 ## Approval worksheet
 

@@ -3,16 +3,8 @@ import { createInterface } from 'node:readline';
 import { StringDecoder } from 'node:string_decoder';
 import { SQL } from 'bun';
 
-const roleOptions = [
-	{ code: 'superadmin', name: 'Superadmin' },
-	{ code: 'team_leader', name: 'Team Leader' },
-	{ code: 'helpdesk', name: 'Helpdesk' },
-	{ code: 'teknisi', name: 'Teknisi' },
-	{ code: 'senior_leader', name: 'Senior Leader' },
-	{ code: 'officer', name: 'Officer' }
-] as const;
-
-type RoleCode = (typeof roleOptions)[number]['code'];
+const BOOTSTRAP_ROLE = 'superadmin';
+const APPROVED_PERMISSION_COUNT = 10;
 
 interface IdentityRow {
 	database_name: string;
@@ -33,7 +25,10 @@ interface RoleRow {
 interface BootstrapStateRow {
 	user_count: number;
 	permission_count: number;
+	approved_permission_count: number;
 	grant_count: number;
+	superadmin_grant_count: number;
+	non_superadmin_grant_count: number;
 	bootstrap_count: number;
 }
 
@@ -171,7 +166,7 @@ async function main(): Promise<void> {
 				.filter((role) => role.active === true)
 				.map((role) => String(role.code))
 		);
-		if (!roleOptions.every((role) => activeRoleCodes.has(role.code))) {
+		if (!activeRoleCodes.has(BOOTSTRAP_ROLE)) {
 			throw new BootstrapFailure('approved_role_catalog_incomplete');
 		}
 
@@ -181,13 +176,7 @@ async function main(): Promise<void> {
 			throw new BootstrapFailure('bootstrap_input_invalid');
 		}
 
-		console.info('Role tersedia:');
-		for (const role of roleOptions) console.info(`- ${role.code} (${role.name})`);
-		const requestedRole = (await readLine('Role akun pertama: ')).trim();
-		if (!roleOptions.some((role) => role.code === requestedRole)) {
-			throw new BootstrapFailure('bootstrap_role_invalid');
-		}
-		const roleCode = requestedRole as RoleCode;
+		console.info('Akun pertama akan dibuat sebagai superadmin dengan cakupan global.');
 
 		let password = await readHidden('Password (minimal 12 karakter): ');
 		let confirmation = await readHidden('Ulangi password: ');
@@ -210,28 +199,47 @@ async function main(): Promise<void> {
 				SELECT
 					(SELECT count(*)::int FROM users) AS user_count,
 					(SELECT count(*)::int FROM permissions) AS permission_count,
+					(SELECT count(*)::int FROM permissions WHERE code IN (
+						'tickets.read', 'reports.semesta.read', 'reports.workorder.read',
+						'reports.wo_hi.read', 'sync.monitor', 'organization.read',
+						'organization.manage', 'users.read', 'users.manage', 'audit.read'
+					)) AS approved_permission_count,
 					(SELECT count(*)::int FROM role_permissions) AS grant_count,
+					(SELECT count(*)::int FROM role_permissions rp
+						JOIN roles r ON r.id = rp.role_id
+						JOIN permissions p ON p.id = rp.permission_id
+						WHERE r.code = 'superadmin' AND p.code IN (
+							'tickets.read', 'reports.semesta.read', 'reports.workorder.read',
+							'reports.wo_hi.read', 'sync.monitor', 'organization.read',
+							'organization.manage', 'users.read', 'users.manage', 'audit.read'
+						)) AS superadmin_grant_count,
+					(SELECT count(*)::int FROM role_permissions rp
+						JOIN roles r ON r.id = rp.role_id WHERE r.code <> 'superadmin'
+					) AS non_superadmin_grant_count,
 					(SELECT count(*)::int FROM audit_events WHERE action = 'auth.bootstrap_user') AS bootstrap_count
 			`;
 			const state = stateRows[0];
 			if (
 				Number(state?.user_count) !== 0 ||
-				Number(state.permission_count) !== 0 ||
-				Number(state.grant_count) !== 0 ||
+				Number(state.permission_count) !== APPROVED_PERMISSION_COUNT ||
+				Number(state.approved_permission_count) !== APPROVED_PERMISSION_COUNT ||
+				Number(state.grant_count) !== APPROVED_PERMISSION_COUNT ||
+				Number(state.superadmin_grant_count) !== APPROVED_PERMISSION_COUNT ||
+				Number(state.non_superadmin_grant_count) !== 0 ||
 				Number(state.bootstrap_count) !== 0
 			) {
 				throw new BootstrapFailure('bootstrap_state_not_empty');
 			}
 
 			const activeRoles = await transaction<RoleIdRow[]>`
-				SELECT id::text AS id FROM roles WHERE code = ${roleCode} AND active = true LIMIT 1
+				SELECT id::text AS id FROM roles WHERE code = ${BOOTSTRAP_ROLE} AND active = true LIMIT 1
 			`;
 			const roleId = activeRoles[0]?.id;
 			if (typeof roleId !== 'string') throw new BootstrapFailure('bootstrap_role_unavailable');
 
 			const insertedUsers = await transaction<UserIdRow[]>`
 				INSERT INTO users (username, display_name, password_hash, role_id, global_scope, active)
-				VALUES (${username}, ${displayName}, ${passwordHash}, ${roleId}::uuid, false, true)
+				VALUES (${username}, ${displayName}, ${passwordHash}, ${roleId}::uuid, true, true)
 				RETURNING id::text AS id
 			`;
 			createdUserId = insertedUsers[0]?.id;
@@ -239,11 +247,11 @@ async function main(): Promise<void> {
 
 			await transaction`
 				INSERT INTO audit_events (actor_id, action, target_id, request_id, metadata)
-				VALUES (NULL, 'auth.bootstrap_user', ${createdUserId}::uuid, ${requestId}, ${JSON.stringify({ roleCode })}::jsonb)
+				VALUES (NULL, 'auth.bootstrap_user', ${createdUserId}::uuid, ${requestId}, ${JSON.stringify({ roleCode: BOOTSTRAP_ROLE, globalScope: true })}::jsonb)
 			`;
 		});
 
-		console.info('Akun awal dibuat. Permission dan scope tidak diberikan; role hanya menentukan katalog akun.');
+		console.info('Akun superadmin awal dibuat dengan permission aplikasi dan cakupan data global.');
 	} finally {
 		await client.close();
 	}
