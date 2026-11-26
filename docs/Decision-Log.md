@@ -53,4 +53,5 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Decision: set `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: no-referrer` in a global `onRequest` hook before route registration.
 - Consequences: all API responses receive these baseline headers without changing payloads, auth decisions, cookies, or schemas. CSP and HSTS remain deployment-layer controls; do not enable HSTS until TLS is validated.
 - Validation: `bun run typecheck:api` and `git diff --check` passed. No HTTP response assertion was run in this slice.
+- Follow-up validation: local API on `127.0.0.1:39871` returned the three headers on both `GET /health/live` (200) and an unknown route (404); process stopped after the check.
 - Rollback: remove the global hook and this ADR entry; no DB or persistent state changes.

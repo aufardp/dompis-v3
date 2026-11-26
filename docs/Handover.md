@@ -476,3 +476,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: bukti runtime header belum diverifikasi melalui response HTTP; security headers tidak menggantikan CSP, TLS, authorization atau review deployment.
 - Rollback: hapus hook serta pembaruan Security/ADR/Handover; tidak ada rollback database.
 - Langkah berikutnya: validasi response headers pada smoke check API saat server lokal tersedia; kemudian lanjutkan kebutuhan yang tidak memerlukan lifecycle/role/business sign-off.
+
+## 2026-11-26 — API security header smoke verification
+
+- Tindakan: menjalankan API lokal pada loopback port alternatif dan memeriksa respons health serta unknown route untuk memastikan hook global mengirim header pada respons sukses dan 404; proses dihentikan setelah pemeriksaan.
+- File berubah: `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database query atau perubahan data; `GET /health/live` tidak memerlukan PostgreSQL.
+- Command tersanitasi: `API_PORT=39871 bun run dev:api`; GET `/health/live`; GET `/not-a-route`; proses API dihentikan.
+- Hasil aktual: health menghasilkan HTTP 200 dan unknown route HTTP 404; kedua respons memuat `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, dan `Referrer-Policy: no-referrer`. Tidak ada test suite atau build dijalankan.
+- Keputusan teknis: verifikasi mencakup route terdaftar dan tidak dikenal, sesuai posisi hook sebelum routing.
+- Risiko/blocker: security header lain dan production TLS/CSP belum diverifikasi; route data tetap memerlukan auth/scope/business gates masing-masing.
+- Rollback: dokumentasi hasil verifikasi dapat dibalik melalui Git; tidak ada runtime/database state tersisa.
+- Langkah berikutnya: lanjutkan ke pekerjaan produk berikut yang dapat dilakukan tanpa keputusan owner; ticket list/user administration/migrasi tetap menunggu input kontrak dan akses yang tercatat.
