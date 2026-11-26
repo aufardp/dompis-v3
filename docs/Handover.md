@@ -1004,3 +1004,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: pilihan tema baru diterapkan setelah hydration sehingga mode terang dapat mengalami kilatan dark saat initial render. QA memastikan aksesibilitas semantik dan interaksi, tetapi belum mengukur rasio kontras atau memeriksa tampilan desktop/mobile secara visual. Tema halaman produk belum ada karena shell produk belum dibangun. `/favicon.ico` 404 masih menjadi masalah terpisah.
 - Rollback: revert perubahan tema pada `+page.svelte` dan catatan Design System/Handover; tidak ada rollback database.
 - Langkah berikutnya: lakukan visual/keyboard QA tema pada login; ketika app shell dibuat, pindahkan token dan preferensi tema ke shell bersama agar seluruh menu mengikuti pilihan yang sama. Phase 2 authorization tetap menunggu persetujuan capability matrix sebelum grants/admin API.
+
+## 2026-11-26 — Serve the conventional favicon path
+
+- Tindakan: menambahkan `apps/web/static/favicon.ico`, ikon 32×32 RGBA bergaya mark DOMPIS, agar permintaan konvensional browser tidak lagi jatuh ke 404. Favicon SVG yang ditautkan di layout tetap menjadi sumber ikon scalable.
+- File berubah: `apps/web/static/favicon.ico`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `file apps/web/static/favicon.ico`; `curl -sS -I http://127.0.0.1:4173/favicon.ico`; `bun run typecheck`; `bun run build`; `git diff --check`.
+- Hasil pengujian aktual: file dikenali sebagai ICO 32×32 32-bit; dev server mengembalikan HTTP 200 dan `Content-Type: image/x-icon`; workspace typecheck lulus (Svelte 0 error/0 warning; API/worker lulus); build web/API lulus; diff check lulus. Build mencetak warning lingkungan `NO_COLOR`/`FORCE_COLOR`.
+- Keputusan teknis: aset statis tanpa route server atau dependency baru, sehingga kompatibel dengan adapter static.
+- Risiko/kendala: ikon diuji pada format dan HTTP response, belum melalui pemeriksaan visual lintas browser.
+- Rollback: hapus `apps/web/static/favicon.ico` dan entri handover ini; tidak ada rollback database.
+- Langkah berikutnya: lanjutkan Phase 2 pada pekerjaan yang tidak membutuhkan capability bisnis; user/org mutation dan pemberian izin tetap menunggu persetujuan owner.
