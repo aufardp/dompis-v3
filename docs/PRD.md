@@ -1,6 +1,6 @@
 # DOMPIS — Product Requirements Document
 
-**Versi:** 1.0 | **Tanggal:** 25 November 2026 | **Status:** Blueprint untuk review, bukan aplikasi siap produksi
+**Versi:** 1.1 — Migration Ready | **Tanggal:** 26 November 2026 | **Status:** Blueprint untuk review, bukan aplikasi siap produksi
 
 ## 1. Tujuan
 Bangun ulang DOMPIS sebagai pusat monitoring ticket berbasis NOSSA. Prioritas: data benar, cepat dibaca, near-real-time sesuai batas upstream, aman, dan mudah dipelihara. Pertahankan kebutuhan operasional, bukan kompleksitas implementasi lama. Stack wajib: Svelte (SvelteKit untuk routing/build, adapter-static SPA internal), Bun, ElysiaJS, TypeScript strict, Drizzle ORM, PostgreSQL. Tidak ada MySQL/piloting ticket sebagai sumber ticket runtime. Frontend dan API satu origin. Rekomendasi awal PostgreSQL 18 dengan UUIDv7 native; jika versi lain dipilih gunakan UUIDv7 di aplikasi atau UUIDv4 native secara konsisten.
@@ -17,7 +17,7 @@ Superadmin: administrasi user, scope, status sync, audit; admin/Helpdesk: ticket
 | F04 | Detail WO HI | Daftar operasional hari ini, incident, status, workzone, usia, reported/booking/resolve/closed, jenis dan Max TTR; export sesuai scope | P1 |
 | F05 | Login & settings | Login username, sesi aman, user dan workzone scope, monitoring sync, audit | P0 |
 
-F01 harus bisa dipakai mandiri sebelum menu P1. Detail drawer membaca payload detail dari DB lokal, bukan memanggil upstream otomatis. Tidak ada assign/pickup, auto assign, attendance, tracking teknisi, clustering, war map/KML, evidence, dispatch webhook, spreadsheet sync, push notification, integrasi piloting, manual import ticket. SQM Update dan pending DOMPIS adalah data lokal potensial: tidak diasumsikan tersedia di endpoint; tampilkan hanya dari field terverifikasi atau fitur annotation lokal setelah persetujuan. Default MVP read-only ticket. Jangan membuat status upstream palsu dari catatan lokal.
+F01 harus bisa dipakai mandiri sebelum menu P1. Detail drawer membaca payload detail dari DB lokal, bukan memanggil upstream otomatis. Tidak ada assign/pickup, auto assign, attendance, tracking teknisi, clustering, war map/KML, evidence, dispatch webhook, spreadsheet sync, push notification, integrasi piloting, manual import ticket oleh pengguna. Migrasi historis satu kali oleh operator merupakan requirement terpisah. SQM Update dan pending DOMPIS adalah data lokal potensial: tidak diasumsikan tersedia di endpoint; tampilkan hanya dari field terverifikasi atau fitur annotation lokal setelah persetujuan. Default MVP read-only ticket. Jangan membuat status upstream palsu dari catatan lokal.
 
 ## 4. User stories dan acceptance criteria
 - AC01: user login dengan username/password, role dan scope dibaca server; akses incident di luar scope menghasilkan 404, laporan tidak membocorkan count luar scope; session logout dicabut.
@@ -53,3 +53,10 @@ Dokumentasi API dan 100 baris sampel /nossa tersedia; sampel /nossa-closed aktua
 
 ## v1.0 contract acceptance gate
 All 100 supplied NOSSA rows must be parsed via sanitized equivalent fixtures; preserve source numeric TTR without asserting unit. Closed sample, lifecycle and KPI sign-off remain release blockers. Date filters upstream are Status_Date, not Last_Update_Ticket or Reported_Date. See Data-Contract.md and Sync-Engine.md. No use of /ticket-by-service in MVP.
+
+## 9. Requirement migrasi historis (wajib v1.1)
+- MIG01: seluruh baris tabel `ticket` MySQL pada snapshot yang disetujui harus tercatat sebagai imported/merged/quarantined/excluded; tidak ada kehilangan tanpa alasan. Canonical tickets mencakup seluruh incident historis eligible, termasuk sebelum 2026, bukan hanya archive. Manual tickets ditinjau, bukan dihapus diam-diam; excluded tetap tercatat sesuai retensi.
+- MIG02: UUID stabil antar rerun dan sync; old ID mapping cold archive; legacy-only tidak diberi source_endpoint/hash palsu. Legacy bukan sumber runtime; setelah cutover hanya /nossa dan /nossa-closed memperbarui fakta upstream.
+- MIG03: validasi semua scalar legacy, tanggal UTC/WIB, generated bucket, status_update, klasifikasi, SLA, field lokal dan scope; nilai KPI historis asli tetap tersedia untuk rekonsiliasi; angka baru hanya dari definisi disetujui. Tidak mengasumsikan manual/legacy metrics setara dengan NOSSA. Unknown/coverage gap ditampilkan.
+- MIG04: snapshot restore verified, checkpoint idempotent, delta/freeze final, shadow reporting, backup, rollback dan sign-off sebelum switch. Data lama tetap aman read-only untuk masa rollback. Tidak ada query cross-DB runtime.
+- MIG05: explicit allowlist field archive dan access; tidak ada payload pelanggan asli/credential dalam repo. Semua mapping, exclusion dan perubahan KPI harus disetujui pemilik bisnis. Lihat Legacy-Field-Mapping.md, Migration.md, Migration-Validation.md.

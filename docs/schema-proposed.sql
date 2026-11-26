@@ -1,4 +1,4 @@
--- FINAL BLUEPRINT v1.0 — IMPLEMENTATION CANDIDATE; PostgreSQL 18; not executed or production validated.
+-- FINAL BLUEPRINT v1.1 — IMPLEMENTATION CANDIDATE; PostgreSQL 18; not executed or production validated.
 CREATE TABLE regions (
  id uuid PRIMARY KEY DEFAULT uuidv7(), code text NOT NULL UNIQUE, name text NOT NULL
 );
@@ -32,10 +32,12 @@ CREATE TABLE sessions (
 );
 CREATE TABLE tickets (
  id uuid PRIMARY KEY DEFAULT uuidv7(),
- incident text NOT NULL UNIQUE CHECK(incident=upper(btrim(incident)) AND incident ~ '^[A-Z0-9_-]{1,32}$'),
+ incident text NOT NULL UNIQUE CHECK(incident=upper(btrim(incident)) AND incident ~ '^[A-Z0-9_-]{1,100}$'),
  workzone_id uuid REFERENCES workzones(id), source_workzone text, source_witel text, source_region text,
  status text NOT NULL, lifecycle text NOT NULL CHECK(lifecycle IN ('open','closed','unknown')),
- source_endpoint text NOT NULL CHECK(source_endpoint IN ('nossa','nossa_closed')),
+ data_origin text NOT NULL CHECK(data_origin IN ('legacy','nossa','nossa_closed')),
+ migrated_at timestamptz, first_source_seen_at timestamptz,
+ source_endpoint text CHECK(source_endpoint IN ('nossa','nossa_closed')),
  reported_at timestamptz, status_at timestamptz, booking_at timestamptz,
  resolved_at timestamptz, closed_at timestamptz, source_updated_at timestamptz,
  source_ticket text, channel text, source_segment smallint, service_id text, classification_id text, classification_flag text, classification_path text,
@@ -55,10 +57,13 @@ CREATE TABLE tickets (
  ttr_deadline_at timestamptz, ttr_comply_status text CHECK(ttr_comply_status IN ('comply','not_comply')),
  rule_version text NOT NULL, quality_flags text[] NOT NULL DEFAULT '{}',
  detail jsonb NOT NULL DEFAULT '{}'::jsonb CHECK(jsonb_typeof(detail)='object'),
- source_hash bytea NOT NULL CHECK(octet_length(source_hash)=32),
+ source_hash bytea CHECK(octet_length(source_hash)=32),
  version bigint NOT NULL DEFAULT 1 CHECK(version>0),
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
- CHECK(lifecycle<>'open' OR closed_at IS NULL)
+ CHECK(lifecycle<>'open' OR closed_at IS NULL),
+ CHECK((data_origin='legacy' AND migrated_at IS NOT NULL) OR (data_origin<>'legacy' AND migrated_at IS NULL)),
+ CHECK((source_endpoint IS NULL AND source_hash IS NULL AND first_source_seen_at IS NULL AND data_origin='legacy') OR
+       (source_endpoint IS NOT NULL AND source_hash IS NOT NULL AND first_source_seen_at IS NOT NULL))
 );
 CREATE TABLE ticket_status_events (
  id uuid PRIMARY KEY DEFAULT uuidv7(), ticket_id uuid NOT NULL REFERENCES tickets(id),
@@ -69,7 +74,7 @@ CREATE TABLE ticket_status_events (
  UNIQUE(ticket_id,ticket_version)
 );
 CREATE TABLE sync_runs (
- id uuid PRIMARY KEY DEFAULT uuidv7(), stream text NOT NULL CHECK(stream IN ('open','closed','backfill','lookup')),
+ id uuid PRIMARY KEY DEFAULT uuidv7(), stream text NOT NULL CHECK(stream IN ('open','closed','backfill','lookup','legacy_migration')),
  status text NOT NULL CHECK(status IN ('running','succeeded','partial','failed')),
  window_from timestamptz, window_to timestamptz,
  started_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz,
@@ -79,6 +84,23 @@ CREATE TABLE sync_runs (
  rejected bigint NOT NULL DEFAULT 0, error_code text,
  CHECK(window_to IS NULL OR window_from<window_to)
 );
+-- Cold archive / ID mapping for a single approved MySQL ticket dataset.
+-- One source row per legacy ID, including unresolved rows; never queried by normal lists.
+CREATE TABLE ticket_legacy_archive (
+ id uuid PRIMARY KEY DEFAULT uuidv7(),
+ legacy_ticket_id bigint NOT NULL UNIQUE,
+ ticket_id uuid REFERENCES tickets(id),
+ run_id uuid NOT NULL REFERENCES sync_runs(id),
+ legacy_payload jsonb NOT NULL CHECK(jsonb_typeof(legacy_payload)='object'),
+ disposition text NOT NULL CHECK(disposition IN ('imported','merged','quarantined','excluded')),
+ reason_code text,
+ row_hash bytea NOT NULL CHECK(octet_length(row_hash)=32),
+ migrated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK((disposition IN ('imported','merged') AND ticket_id IS NOT NULL) OR
+       (disposition IN ('quarantined','excluded') AND ticket_id IS NULL)),
+ CHECK(disposition='imported' OR reason_code IS NOT NULL)
+);
+CREATE INDEX ticket_legacy_archive_ticket ON ticket_legacy_archive(ticket_id) WHERE ticket_id IS NOT NULL;
 CREATE TABLE sync_checkpoints (
  id uuid PRIMARY KEY DEFAULT uuidv7(), stream text NOT NULL UNIQUE,
  covered_until timestamptz, last_success_at timestamptz, last_attempt_at timestamptz,

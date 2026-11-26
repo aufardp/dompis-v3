@@ -47,3 +47,6 @@ Sidebar: Ticket Management (Overview + bucket), Semesta, Rekap Workorder, Detail
 
 ## QA visual
 Desktop 1440/1280, tablet 768, mobile 390; 200% zoom; keyboard only; screen reader labels; contrast; long incident/summary; null field, 401/403/503, offline, slow network, stale data, scope changed mid-request. Test Svelte escape and CSP, no `{@html}` untrusted. Dark theme optional post-MVP, no parallel design work until P0 complete.
+
+## v1.1 historical provenance
+Ticket detail may display `Data historis (migrasi)` for unverified legacy record and `Terverifikasi NOSSA` only after accepted source observation. Coverage gaps/unknown timestamp explicitly shown; do not hide old tickets solely because they lack live verification. Historical vs live filter optional if approved; not a default extra query. No raw legacy payload dump in UI; scoped allowlisted details only. Reports distinguish unavailable SLA and unexplained/approved reconciliation deltas during pilot.

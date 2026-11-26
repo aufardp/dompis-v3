@@ -1,10 +1,13 @@
 # Architecture — DOMPIS Rewrite
 
 ## 1. Arsitektur target
-Modular monolith, satu repository, dua proses Bun (API dan sync worker), satu PostgreSQL; static SvelteKit SPA dilayani reverse proxy. Jangan menambah Redis, BullMQ, microservice, event broker atau cache query global pada MVP. Tambah hanya setelah profiling dan ADR. PostgreSQL adalah authoritative store; endpoint NOSSA authoritative untuk fakta ticket.
+Modular monolith, satu repository, dua proses Bun (API dan sync worker), satu PostgreSQL; static SvelteKit SPA dilayani reverse proxy. Jangan menambah Redis, BullMQ, microservice, event broker atau cache query global pada MVP. Tambah hanya setelah profiling dan ADR. PostgreSQL adalah authoritative store; endpoint NOSSA authoritative untuk fakta ticket baru/terverifikasi; baseline historis dari migrasi sekali jalan MySQL.
 
 ```mermaid
 flowchart LR
+  L[MySQL snapshot read-only] --> M[One-time ETL / validate]
+  M --> P
+  M --> H[(Restricted legacy archive)]
   N[GET /nossa] --> W[Sync worker Bun]
   C[GET /nossa-closed] --> W
   W --> V[Validate + normalize + classify]
@@ -34,7 +37,7 @@ Bun workspaces, lockfile committed; Drizzle migrations generated/reviewed, raw S
 ## 3. Sync pipeline detail
 Existing source contract in `lib/external-db/qosmic-bridge/{nossa,types,window-planner,client}.ts`: endpoints /nossa and /nossa-closed; offset+limit max page 1000, offset ceiling 5000, closed date window max 31 days; internal default window 7 days; second precision supported per code; no batch incident endpoint; response meta.count is page count NOT total. Validate resource, ok, array, metadata and date filter behavior against fixtures. Field list dynamic. No guessed updated_since/cursor API. Use base URL allowlist and server secret bearer/token according to verified legacy client.
 
-Single scheduler (one worker instance) owns ALL upstream requests, including optional manual incident lookups. Documented upstream cap 50/min per key (configurable); local conservative cap initial 20/min per key; use rolling window with reserved live 14/backfill <=6, lower if operator config; retry attempts also consume budget. Persist rate tokens or conservatively wait 60s on restart; no other clients sharing key without common budget. Single in-flight fetch default; priority live > manual > backfill, fairness closed vs open; request deadline 15s, Retry-After and jittered exponential backoff 429/502/503/504/52x/network; 401/422 pause/config error, no retry storm. No external call while transaction held. Stop graceful on SIGTERM, abort network, rollback or finish batch. PG advisory lock on dedicated session for worker singleton; fail-stop when session lost; do not force-clear locks. Transaction row lock serializes writer; only worker DB role writes canonical data.
+Single scheduler (one worker instance) owns ALL upstream requests, including optional manual incident lookups. Documented upstream cap 50/min per key (configurable); local conservative cap initial 20/min per key; use rolling window with reserved live 14/backfill <=6, lower if operator config; retry attempts also consume budget. Persist rate tokens or conservatively wait 60s on restart; no other clients sharing key without common budget. Single in-flight fetch default; priority live > manual > backfill, fairness closed vs open; request deadline 15s, Retry-After and jittered exponential backoff 429/502/503/504/52x/network; 401/422 pause/config error, no retry storm. No external call while transaction held. Stop graceful on SIGTERM, abort network, rollback or finish batch. PG advisory lock on dedicated session for worker singleton; fail-stop when session lost; do not force-clear locks. Transaction row lock serializes writer; only worker DB role writes canonical data during runtime; approved ETL migrator may write during isolated migration mode, never concurrently without explicit locking protocol.
 
 ```mermaid
 flowchart TD
@@ -57,7 +60,7 @@ Open stream (not an open-status guarantee) scans all statuses (no hard-coded sta
 Run records status running/succeeded/partial/failed; only mark complete after all pages processed and row rejects durably recorded; any rejected required row marks partial until corrected or explicitly acknowledged by operator, not silently skipped. Persist page progress for audit; restart unfinished mutable window from offset 0 (not resume stale offset). Closed historical checkpoint advances only contiguous verified windows; live uses overlap not a fake update cursor. Quarantine bounded payload, retention, replay after fix via same writer.
 
 ## 4. Conflict policy and canonical writes
-Identity = trimmed uppercase incident (validate actual format); UNIQUE incident. `source_endpoint` indicates winning observation, not identity. Normalize alias mapping from old `normalizer.ts` (Source, Regional, RK, Induk_Gamas, Last_Update_Ticket, C_RESOLVE_DATE, C_BOOKING_DATE, etc). Date offset provided -> honor; no offset -> Asia/Jakarta only after verified. Booking string YYYY-MM-DD HH:mm:ss.S must use strict parser, never runtime timezone defaults. Explicit null distinct from missing; absent field never erases known field; explicit null clears only documented authoritative field. Hash deterministic canonical business fields excluding fetch time, keys ordered, null normalization; do not hash raw JSON order. `source_updated_at` uses verified Last_Update_Ticket; status_date for status evidence only, generated_at/fetch time not source modification. Preserve original status and canonical lifecycle. Rules:
+Identity = trimmed uppercase incident (validate actual format); UNIQUE incident. `source_endpoint` indicates winning observation, not identity. Normalize alias mapping from old `normalizer.ts` (Source, Regional, RK, Induk_Gamas, Last_Update_Ticket, C_RESOLVE_DATE, C_BOOKING_DATE, etc). Date offset provided -> honor; no offset -> Asia/Jakarta only after verified. Booking string YYYY-MM-DD HH:mm:ss.S must use strict parser, never runtime timezone defaults. Explicit null distinct from missing; absent field never erases known field; explicit null clears only documented authoritative field. Hash deterministic accepted upstream facts excluding legacy-only fields and fetch time, keys ordered, null normalization; compare canonical state separately; do not hash raw JSON order. `source_updated_at` uses verified Last_Update_Ticket; status_date for status evidence only, generated_at/fetch time not source modification. Preserve original status and canonical lifecycle. Rules:
 
 | Incoming evidence | Action |
 |---|---|
@@ -98,3 +101,6 @@ Reverse proxy TLS same origin `/api/` to Bun Elysia (SSE buffering off); static 
 
 ## v1.0 authoritative sync supplement
 Read Sync-Engine.md for concrete algorithm, coverage and tie handling; Data-Contract.md overrides earlier assumptions. /nossa sample contains CLOSED, MEDIACARE, FINALCHECK and RESOLVED. Endpoint identity cannot decide lifecycle.
+
+## 10. One-time migration lane (v1.1)
+`scripts/migration/{extract-legacy,transform-ticket,migrate-workzones,import-tickets,validate-migration,reconcile-tickets}.ts` is a CLI tool, not a third permanent worker. Read a verified MySQL restore/snapshot using read-only credentials; stream keyset batches by id_ticket. Shared domain functions validate target; a distinct legacy adapter preserves provenance rather than fabricating source fields. Acquire same singleton writer advisory lock as sync; worker paused for bulk import/final delta; no HTTP while transaction holds locks. Each commit includes canonical tickets, cold archive ID mapping and durable checkpoint; failed row handling and idempotency per Migration.md. Reconcile via approved NOSSA windows after import. Runtime does not import legacy adapter or connect to MySQL; production migration credentials revoked after cutover. Do not create historical events from one current snapshot.

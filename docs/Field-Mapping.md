@@ -111,7 +111,7 @@ Each row is mapped explicitly. `detail.<key>` denotes allowlisted normalized met
 *Non-null counts are raw JSON non-null, including literal null strings; not population quality rates.
 
 ## Derived/local fields
-`id` UUIDv7 local; `workzone_id` approved dimension mapping via region/witel/workzone (TIF district separate); `lifecycle` rule-derived, not endpoint-derived; `closed_at` NULL until closure timestamp rule verified; `operational_bucket`, `kpi_seg`, `jenis_tiket_1/2`, `classification_flag/path`, `flagging_manja/datin`, `sqm_update_reason`, `needs_validation`, `validation_reason`, `sla_seconds`, `ttr_deadline_at`, `ttr_comply_status` derived only from approved ported rules. If unavailable -> unknown/NULL or validation flag, not fabricated. `source_endpoint` records winning stream; hash covers normalized persisted source facts (including authorized detail) and compare rule version separately. `version`, `created_at`, `updated_at` local only.
+`id` UUIDv7 local; `workzone_id` approved dimension mapping via region/witel/workzone (TIF district separate); `lifecycle` rule-derived, not endpoint-derived; `closed_at` NULL until closure timestamp rule verified; `operational_bucket`, `kpi_seg`, `jenis_tiket_1/2`, `classification_flag/path`, `flagging_manja/datin`, `sqm_update_reason`, `needs_validation`, `validation_reason`, `sla_seconds`, `ttr_deadline_at`, `ttr_comply_status` derived only from approved ported rules. If unavailable -> unknown/NULL or validation flag, not fabricated. `source_endpoint` records winning stream; hash covers normalized accepted upstream facts (including authorized source detail), excluding legacy-only data; compare canonical state and rule version separately. `version`, `created_at`, `updated_at` local only.
 
 ## Normalization requirements
 - Exact incident trim uppercase, regex; never substitute parent or source UUID.
@@ -120,3 +120,6 @@ Each row is mapped explicitly. `detail.<key>` denotes allowlisted normalized met
 - Zero numeric is not missing; boolean flags accept approved 0/1 encodings only. GAUL semantics verify before KPI.
 - Preserve raw TTR units; do not convert or equate resolution vs closure before sign-off.
 - Customer text, names, contact information, internal hosts can be sensitive even embedded in summary/logs. Redact API based on permissions, avoid storing unnecessary fields; use synthetic fixtures.
+
+## v1.1 distinction
+This mapping is for upstream only. Legacy MySQL field mapping is separate in Legacy-Field-Mapping.md. `source_endpoint`/`source_hash` are nullable for unverified legacy rows; first accepted source sets both and first_source_seen_at. Never treat legacy synced_at or generated_at as NOSSA version. Legacy archive unchanged by runtime ingestion. Local-only legacy values must survive missing fields; no implicit fallback that changes KPI meaning. Rule version/quality flags distinguish pending verification.

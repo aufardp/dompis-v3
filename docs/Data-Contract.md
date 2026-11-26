@@ -28,3 +28,6 @@ TTR fields contain decimals, strings (including .085), zero and null. Preserve e
 
 ## Release gates
 Obtain sanitized actual closed response (including CLOSED, reopened incident if available), confirm resource field, closure timestamp mapping, status taxonomy, TTR units, historical completeness, timezone for offsetless dates, stable window ordering and behavior of GAMAS lookup. Test multiple pages and dense same-second timestamps. No inferred values for absent fields. Do not publish unverified KPI as zero or compliant. Original samples contain customer identifiers and free text; deliberately excluded from distributable blueprint.
+
+## v1.1 historical coverage
+API bulk history floor is not a data retention floor for local PostgreSQL. Existing pre-2026 data must be migrated from MySQL if eligible; do not delete it or label it verified by NOSSA. Legacy incident VARCHAR(100) may exceed upstream lookup limit; do not call endpoint for incompatible identifiers. Actual closed fixture and timestamp/SLA semantics still release gates.

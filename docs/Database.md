@@ -1,6 +1,6 @@
 # Database — PostgreSQL canonical model
 
-Status: proposal v1.0. SQL below is a migration blueprint, not executed. All entity PK and FK UUID native; ticket incident is unique natural key, never PK. PostgreSQL 18 `uuidv7()` default recommended for locality; UUIDv7 is not an authorization mechanism. For PG <18 choose app UUIDv7 or `gen_random_uuid()` and revise all defaults. No time-partitioning tickets initially (global uniqueness of incident is critical); consider history partition only at measured volume. Avoid converting every legacy varchar/index blindly. Preserve unknown as null, not invented values. No `ticket_raw` duplicate, no source snapshot per ticket, no projection request queue.
+Status: proposal v1.1. SQL below is a migration blueprint, not executed. All entity PK and FK UUID native; ticket incident is unique natural key, never PK. PostgreSQL 18 `uuidv7()` default recommended for locality; UUIDv7 is not an authorization mechanism. For PG <18 choose app UUIDv7 or `gen_random_uuid()` and revise all defaults. No time-partitioning tickets initially (global uniqueness of incident is critical); consider history partition only at measured volume. Avoid converting every legacy varchar/index blindly. Preserve unknown as null, not invented values. No permanent `ticket_raw` duplicate, no live source snapshot per ticket, no projection request queue. One restricted legacy archive is permitted for migration fidelity and ID mapping.
 
 ## 1. ERD
 ```mermaid
@@ -12,6 +12,8 @@ erDiagram
  WORKZONE ||--o{ USER_WORKZONES : limits
  USERS ||--o{ SESSIONS : authenticates
  TICKETS ||--o{ TICKET_STATUS_EVENTS : changes
+ TICKETS o|--o{ TICKET_LEGACY_ARCHIVE : maps
+ SYNC_RUNS ||--o{ TICKET_LEGACY_ARCHIVE : imports
  SYNC_RUNS ||--o{ SYNC_QUARANTINE : rejects
  USERS ||--o{ AUDIT_EVENTS : acts
 ```
@@ -19,7 +21,7 @@ Region/branch/SA/workzone mapping is a locally approved dimension, not a second 
 
 ## 2. DDL candidate
 ```sql
--- FINAL BLUEPRINT v1.0 — IMPLEMENTATION CANDIDATE; PostgreSQL 18; not executed or production validated.
+-- FINAL BLUEPRINT v1.1 — IMPLEMENTATION CANDIDATE; PostgreSQL 18; not executed or production validated.
 CREATE TABLE regions (
  id uuid PRIMARY KEY DEFAULT uuidv7(), code text NOT NULL UNIQUE, name text NOT NULL
 );
@@ -53,10 +55,12 @@ CREATE TABLE sessions (
 );
 CREATE TABLE tickets (
  id uuid PRIMARY KEY DEFAULT uuidv7(),
- incident text NOT NULL UNIQUE CHECK(incident=upper(btrim(incident)) AND incident ~ '^[A-Z0-9_-]{1,32}$'),
+ incident text NOT NULL UNIQUE CHECK(incident=upper(btrim(incident)) AND incident ~ '^[A-Z0-9_-]{1,100}$'),
  workzone_id uuid REFERENCES workzones(id), source_workzone text, source_witel text, source_region text,
  status text NOT NULL, lifecycle text NOT NULL CHECK(lifecycle IN ('open','closed','unknown')),
- source_endpoint text NOT NULL CHECK(source_endpoint IN ('nossa','nossa_closed')),
+ data_origin text NOT NULL CHECK(data_origin IN ('legacy','nossa','nossa_closed')),
+ migrated_at timestamptz, first_source_seen_at timestamptz,
+ source_endpoint text CHECK(source_endpoint IN ('nossa','nossa_closed')),
  reported_at timestamptz, status_at timestamptz, booking_at timestamptz,
  resolved_at timestamptz, closed_at timestamptz, source_updated_at timestamptz,
  source_ticket text, channel text, source_segment smallint, service_id text, classification_id text, classification_flag text, classification_path text,
@@ -76,10 +80,13 @@ CREATE TABLE tickets (
  ttr_deadline_at timestamptz, ttr_comply_status text CHECK(ttr_comply_status IN ('comply','not_comply')),
  rule_version text NOT NULL, quality_flags text[] NOT NULL DEFAULT '{}',
  detail jsonb NOT NULL DEFAULT '{}'::jsonb CHECK(jsonb_typeof(detail)='object'),
- source_hash bytea NOT NULL CHECK(octet_length(source_hash)=32),
+ source_hash bytea CHECK(octet_length(source_hash)=32),
  version bigint NOT NULL DEFAULT 1 CHECK(version>0),
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
- CHECK(lifecycle<>'open' OR closed_at IS NULL)
+ CHECK(lifecycle<>'open' OR closed_at IS NULL),
+ CHECK((data_origin='legacy' AND migrated_at IS NOT NULL) OR (data_origin<>'legacy' AND migrated_at IS NULL)),
+ CHECK((source_endpoint IS NULL AND source_hash IS NULL AND first_source_seen_at IS NULL AND data_origin='legacy') OR
+       (source_endpoint IS NOT NULL AND source_hash IS NOT NULL AND first_source_seen_at IS NOT NULL))
 );
 CREATE TABLE ticket_status_events (
  id uuid PRIMARY KEY DEFAULT uuidv7(), ticket_id uuid NOT NULL REFERENCES tickets(id),
@@ -90,7 +97,7 @@ CREATE TABLE ticket_status_events (
  UNIQUE(ticket_id,ticket_version)
 );
 CREATE TABLE sync_runs (
- id uuid PRIMARY KEY DEFAULT uuidv7(), stream text NOT NULL CHECK(stream IN ('open','closed','backfill','lookup')),
+ id uuid PRIMARY KEY DEFAULT uuidv7(), stream text NOT NULL CHECK(stream IN ('open','closed','backfill','lookup','legacy_migration')),
  status text NOT NULL CHECK(status IN ('running','succeeded','partial','failed')),
  window_from timestamptz, window_to timestamptz,
  started_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz,
@@ -100,6 +107,23 @@ CREATE TABLE sync_runs (
  rejected bigint NOT NULL DEFAULT 0, error_code text,
  CHECK(window_to IS NULL OR window_from<window_to)
 );
+-- Cold archive / ID mapping for a single approved MySQL ticket dataset.
+-- One source row per legacy ID, including unresolved rows; never queried by normal lists.
+CREATE TABLE ticket_legacy_archive (
+ id uuid PRIMARY KEY DEFAULT uuidv7(),
+ legacy_ticket_id bigint NOT NULL UNIQUE,
+ ticket_id uuid REFERENCES tickets(id),
+ run_id uuid NOT NULL REFERENCES sync_runs(id),
+ legacy_payload jsonb NOT NULL CHECK(jsonb_typeof(legacy_payload)='object'),
+ disposition text NOT NULL CHECK(disposition IN ('imported','merged','quarantined','excluded')),
+ reason_code text,
+ row_hash bytea NOT NULL CHECK(octet_length(row_hash)=32),
+ migrated_at timestamptz NOT NULL DEFAULT now(),
+ CHECK((disposition IN ('imported','merged') AND ticket_id IS NOT NULL) OR
+       (disposition IN ('quarantined','excluded') AND ticket_id IS NULL)),
+ CHECK(disposition='imported' OR reason_code IS NOT NULL)
+);
+CREATE INDEX ticket_legacy_archive_ticket ON ticket_legacy_archive(ticket_id) WHERE ticket_id IS NOT NULL;
 CREATE TABLE sync_checkpoints (
  id uuid PRIMARY KEY DEFAULT uuidv7(), stream text NOT NULL UNIQUE,
  covered_until timestamptz, last_success_at timestamptz, last_attempt_at timestamptz,
@@ -143,7 +167,6 @@ CREATE INDEX user_workzones_reverse ON user_workzones(workzone_id);
 CREATE INDEX sync_runs_stream_started ON sync_runs(stream,started_at DESC);
 CREATE INDEX sync_quarantine_pending ON sync_quarantine(created_at) WHERE resolved_at IS NULL;
 CREATE INDEX audit_events_date ON audit_events(created_at DESC,id DESC);
-
 ```
 `detail` is an explicit allowlist (e.g. contact, customer name/address, worklog, device, RCA, solution, ONT, realm, TSC/SCC, source TTR raw); don't store full upstream JSON unless needed for a time-limited forensic process. PII access masked by permission; no JSONB GIN by default. Promote a detail key to typed column only when report/filter actually needs it (GAUL/recurring may need verified numeric fields). Reported/closed missing -> data quality flags; no artificial timestamp. `updated_at` written explicitly when business facts change, not a heartbeat; source hash excludes rule version, rule change explicitly recomputes derived data. `ticket_version` increments on each meaningful update including rule change; status events only transition. `sync_checkpoints.state` may hold last verified window, pending split queue, partial status; persist child windows so backfill coverage remains auditable. For historical coverage with multiple workers/windows add dedicated coverage table only if needed; MVP sequential contiguous backfill.
 
@@ -193,3 +216,11 @@ Use UTC DB sessions and timestamptz, WIB business date conversion in domain. Def
 
 ## v1.0 additions
 See Data-Contract.md and Field-Mapping.md for authoritative mapping. Raw TTR numeric values deliberately retain source units until confirmed. `source_segment` is not `kpi_seg`. `is_obsolete` is source flag, not a lifecycle. Added global open partial index as a candidate for global operators; benchmark all seven secondary indexes and drop redundant ones only after evidence. Do not assume closed_at = C_RESOLVE_DATE.
+
+## v1.1 — Migration-ready invariants (supersedes v1.0 migration assumptions)
+- 14 tables including the new `ticket_legacy_archive`. `tickets` stores historical and live records together; seven operational secondary indexes remain unchanged. No extra legacy ID index in the hot table: the archive's unique `legacy_ticket_id` maps old IDs to canonical UUID; its ticket FK supports privileged reverse lookup (one canonical ticket may have several old IDs if approved collision merges occur). No GIN index on archive.
+- `data_origin` immutable at creation; `migrated_at` only for records first inserted by migration; `first_source_seen_at` set upon first accepted upstream reconciliation. Existing live ticket matched by migration keeps original origin and metadata; archive records its legacy import. Null source_endpoint/hash means legacy-only, never fake NOSSA evidence. `source_hash` hashes accepted source facts, not legacy payload or timestamps. Legacy hash separate in archive; compute over canonical approved extract with restricted manifests; do not conflate with upstream version. Status events record real observed upstream transitions only; initial migration does not invent history.
+- Legacy incident field is VARCHAR(100), not API limit 32. DB permits canonical ASCII uppercase letters/digits/_/- up to 100; upstream adapter enforces 32. Longer valid legacy identifiers stay local; other invalid values or case/trim collisions require explicit quarantine/adjudication. Never truncate, regenerate incident or silently merge. Missing status becomes explicit `UNKNOWN` and lifecycle unknown, with original value archived. Legacy reported/closed dates may be valid without live provenance; preserve after audit. Reopen clears current closure only with verified evidence.
+- Archive is a restricted cold mapping/payload table, not another source of operational ticket state. Archive approved historical scalar values (including prior classifier output) as original typed/serialized values; omit disallowed PII from online storage under approved retention policy; encrypted source backup remains full fidelity. A field required for a report must be promoted to a typed column or approved derived rule before release, not extracted from JSONB for every list query.
+- Existing v1.0 draft is not an applied migration. Generate fresh Drizzle migrations from this v1.1 candidate in empty staging; if v1.0 was actually deployed, inspect real schema and create reviewed additive ALTER migration instead. DDL not executed here.
+- Reuse `sync_runs` stream `legacy_migration` and `sync_checkpoints` key `legacy_migration:<snapshot-id>` for ETL only; state includes manifest identity, last committed legacy ID and counters. Never advance live covered_until from legacy. Migration role writes archive; normal API/worker denied archive access except explicitly authorized audited historical endpoint using separate restricted read privileges. All constraints and permissions tested in staging.

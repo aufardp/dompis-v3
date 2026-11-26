@@ -13,3 +13,6 @@ Threat model: stolen session, horizontal access by incident UUID, report/export 
 
 ## Release tests
 Unauthorized list/detail/report/export/SSE denied; cross-workzone/empty scope; role downgrade/session revocation; expired token; CSRF origin mismatch; login brute force; malicious sort/filter/CSV/cursor; upstream invalid JSON/oversize and redirect; logging redaction; DB privileges; concurrent export and ingestion limits; backup access/restore. No production deploy if critical/high unresolved. Use security review and dependency scanning, do not claim security proven by static design.
+
+## Migration-specific controls (v1.1)
+Read-only MySQL restore access; never open a public DB listener. Dedicated temporary ETL PG role, no superuser; revoke after cutover. Encrypt dump, transfer, manifest and archive at rest, restrict access and retention; full backup may contain sensitive legacy fields, never include in Git, agent context, logs or synthetic fixtures. Hashes and IDs not anonymous; restrict them too. Archive not exposed by generic SELECT/API; historical detail only if approved scoped endpoint and field allowlist, audit reads/exports. Reject unmatched scope by default. Verify backups before extraction, do not repair/delete corrupt source as part of import. Do not execute production migration on agent startup. Check credentials for leakage and rotate if exposed.

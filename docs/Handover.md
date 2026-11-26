@@ -38,3 +38,12 @@ Purpose: record the end of every AI agent change, including docs-only, migration
 - Decision: upstream documented 50/min, local initial 20/min; no third endpoint; preserve numeric source TTR unit unknown, closure date not inferred. No original customer payload bundled.
 - Validation: parsed JSON and checked field inventory, packaging; SQL and app not executed, no live calls. No production changes. Rollback: use prior v0.1 package as reference only.
 - Next: Phase 0 contract validation, actual sanitized closed response, business status/KPI and timezone approval, then scaffold.
+
+## 2026-11-26 — Blueprint v1.1 Migration Ready
+- Agent: ChatGPT; branch/commit unavailable (uploaded files).
+- Action: reopened v1.0 docs/DDL and legacy Prisma ticket model; mapped all 84 scalar fields; updated 15 prior MD docs, added Legacy-Field-Mapping, Migration-Validation and Agent-Prompts; updated SQL with cold archive, nullable unverified source metadata, origin and migration checkpoints.
+- Decision: retain eligible legacy rows in canonical tickets; cold archive maps old ID rather than redundant index on tickets; one archive row per old ID including approved merges, rejects and exclusions; keep full source backup under retention policy. Ongoing sources remain NOSSA only.
+- Validation: static scalar coverage checked by script, SQL/Database embedded DDL consistency and ZIP integrity checked during packaging. No SQL execution, runtime tests, source endpoint calls, live schema inspection or production changes.
+- Blockers: actual deployed MySQL DDL/data profile, old ticket manual/local fields and KPI eligibility, timezone, closed sample, TTR units, closure rules, actual migration benchmark, authorization/retention.
+- Rollback: use v1.0 as historical reference only; no database changes to revert.
+- Next: Phase 0, verify actual schema with approved read-only snapshot and sign off mapping; then scaffold.
