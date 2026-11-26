@@ -452,3 +452,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: akun lokal belum disediakan oleh bootstrap/admin UI. Template `.env.example` berisi placeholder database `dompis_dev:5433` sehingga harus disesuaikan bila pengguna memakai database lokal `dompis_v3` di port 5432.
 - Rollback: revert pembaruan README, Getting Started, dan entri ini melalui Git; tidak ada rollback runtime/database.
 - Langkah berikutnya: siapkan bootstrap akun lokal yang aman setelah jalur provisioning dan permission yang diizinkan ditentukan; terus tahan user management API sampai capability matrix disetujui.
+
+## 2026-11-26 — Proxy decision and README reference correction
+
+- Tindakan: mencatat keputusan development proxy berbasis `API_PORT` sebagai ADR-009; memperbaiki README yang mengarah ke `Phase-0-Discovery.md` yang tidak ada, dengan daftar file laporan Phase 0 aktual.
+- File berubah: `README.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada akses database.
+- Command tersanitasi: `rg --files docs` dan pencarian referensi nama Phase 0; `git diff --check`.
+- Hasil aktual: empat laporan Phase 0 yang ditautkan README tersedia; tidak ada test/build karena dokumentasi saja berubah; diff check lulus.
+- Keputusan teknis: ADR-009 merekam konteks port 3000, evidence localhost, dampak, validasi, dan rollback proxy development; tidak mengubah kontrak runtime.
+- Risiko/blocker: role/action matrix, lifecycle/closed fixture, data retention, dan source snapshot tetap belum tervalidasi; endpoint/administrasi/migrasi yang bergantung padanya tidak boleh dibuat berdasarkan asumsi.
+- Rollback: revert README, Decision Log, dan entri handover ini melalui Git.
+- Langkah berikutnya: lanjutkan pada slice yang tidak bergantung pada keputusan tertahan; validasi C0C-01–06 yang relevan sebelum ticket list, user administration, atau migrasi.

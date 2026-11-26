@@ -48,4 +48,4 @@ No default account is seeded, so login requires a provisioned local user. `SYNC_
 - `packages/contracts`: shared response types.
 - `packages/db`: Drizzle schema, Bun SQL migration runner, and local PostgreSQL 18 migration history. Current organization/auth schema is candidate and not approved for production rollout.
 
-See `docs/Implementation-Plan.md`, `docs/Phase-0-Discovery.md`, `docs/Phase-2-Organization-Auth.md`, and `docs/Handover.md` for phase gates and unresolved evidence.
+See `docs/Implementation-Plan.md`, the Phase 0 reports (`Phase-0A-Discovery.md`, `Phase-0B-Discovery.md`, `Phase-0C-Contract-Access-Discovery.md`, and `Phase-0D-Design-Readiness.md`), `docs/Phase-2-Organization-Auth.md`, and `docs/Handover.md` for phase gates and unresolved evidence.

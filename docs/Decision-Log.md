@@ -9,6 +9,7 @@
 | ADR-006 | Current hierarchy for historical reports | Proposed | owner must validate reparenting semantics |
 | ADR-007 | Phase 2 organization/auth schema: five master levels, generic role/permission catalog, typed `user_scopes` with exactly-one target and NULLS NOT DISTINCT uniqueness; supersedes ADR-004's 17-table count | Implemented candidate on local `dompis_v3`; production approval pending | Owner hierarchy/multi-scope requirements; `docs/Phase-2-Organization-Auth.md`; PG18 constraint checks |
 | ADR-008 | Basic HTTP auth uses opaque DB-backed sessions, strict Origin + double-submit CSRF, Argon2id, bounded in-process login throttling, and a per-route permission macro | Implemented locally; production/session operations review pending | `apps/api/src/auth.ts`, `apps/api/src/permission-guard.ts`; synthetic PostgreSQL integration tests; limiter is single-process only |
+| ADR-009 | Vite development proxy target follows `API_PORT` with a default of 3000 | Implemented locally | Local port 3000 collision; proxy smoke check succeeded with API on 39871 |
 
 ## ADR-007 details — 2026-11-26
 
@@ -30,3 +31,14 @@
 - Follow-up: `createPermissionGuard` adds Elysia's `requirePermission` macro; a protected route receives the fresh authorization context only after session+permission checks. It sets `Cache-Control: private, no-store`. Integration coverage includes missing-session 401, authorized 200, missing-permission 403, and no-store. This remains a reusable extension; no business route exists or is protected yet.
 
 Append ID/date/status/context/evidence/alternatives/decision/consequences/test/rollback/owner approval if required. Supersede rather than erase decisions. Update schema, docs and Handover in same change.
+
+## ADR-009 — Configurable local API proxy (2026-11-26)
+
+- Status: implemented locally; development-only.
+- Context: local login uses same-origin Vite proxies for `/auth`, `/tickets`, and `/health`. API port 3000 was occupied by an unrelated/unidentifiable listener during local verification.
+- Evidence: API and web started on loopback ports 39871 and 5173; proxied `GET /auth/csrf` returned 200 and proxied `GET /auth/me` returned the expected 401 for anonymous access. No login credentials or DB writes were used.
+- Alternatives: stop the listener on 3000 (not safe because its owner was not identified); keep a fixed proxy and leave local login unavailable while the port is occupied.
+- Decision: derive Vite proxy target from `process.env.API_PORT`, with 3000 as the default; both local processes receive the same override.
+- Consequences: local development can avoid the port conflict without changing browser origin, CSRF validation, cookies, or production deployment. No dependency or runtime API changes.
+- Validation: `bun run typecheck:web`, `bun run build:web`, desktop Chrome render, proxied CSRF/session smoke checks, and `git diff --check` passed. Interactive login/logout with a provisioned synthetic user remains unverified.
+- Rollback: restore the fixed `http://127.0.0.1:3000` proxy target and remove the local setup note. No database rollback.
