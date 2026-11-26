@@ -51,7 +51,7 @@ class LoginLimiter {
 	}
 }
 
-function tokenDigest(token: string): Uint8Array {
+export function hashSessionToken(token: string): Uint8Array {
 	return createHash('sha256').update(token).digest();
 }
 
@@ -70,7 +70,8 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 	const dummyPasswordHash = Bun.password.hash('dompis-invalid-login-placeholder', { algorithm: 'argon2id' });
 
 	return new Elysia({ name: 'dompis-auth' })
-		.get('/auth/csrf', ({ cookie }) => {
+		.get('/auth/csrf', ({ cookie, set }) => {
+			set.headers['cache-control'] = 'private, no-store';
 			const token = randomBytes(32).toString('base64url');
 			cookie[CSRF_COOKIE].set({
 				value: token,
@@ -86,6 +87,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			response: t.Object({ csrfToken: t.String() })
 		})
 		.post('/auth/login', async ({ body, cookie, request, server, set }) => {
+			set.headers['cache-control'] = 'private, no-store';
 			if (!database || !appOrigin) {
 				set.status = 503;
 				return { error: 'authentication_unavailable' };
@@ -127,7 +129,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			limiter.clear(accountKey);
 			const token = randomBytes(32).toString('base64url');
 			const expiresAt = new Date(now + SESSION_TTL_MS);
-			await createSession(database, identity.id, tokenDigest(token), expiresAt);
+			await createSession(database, identity.id, hashSessionToken(token), expiresAt);
 
 			cookie[SESSION_COOKIE].set({
 				value: token,
@@ -159,6 +161,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			}
 		})
 		.post('/auth/logout', async ({ cookie, request, set }) => {
+			set.headers['cache-control'] = 'private, no-store';
 			if (!appOrigin || !isAllowedOrigin(request, appOrigin)) {
 				set.status = 403;
 				return { error: 'request_origin_rejected' };
@@ -169,7 +172,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			}
 			const token = cookie[SESSION_COOKIE]?.value;
 			if (database && typeof token === 'string' && token.length === 43) {
-				await revokeSession(database, tokenDigest(token));
+				await revokeSession(database, hashSessionToken(token));
 			}
 			cookie[SESSION_COOKIE]?.remove();
 			return { status: 'signed_out' as const };
@@ -187,6 +190,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			}
 		})
 		.get('/auth/me', async ({ cookie, set }) => {
+			set.headers['cache-control'] = 'private, no-store';
 			if (!database) {
 				set.status = 503;
 				return { error: 'authentication_unavailable' };
@@ -196,7 +200,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 				set.status = 401;
 				return { error: 'unauthenticated' };
 			}
-			const context = await loadAuthorizationContext(database, tokenDigest(token));
+			const context = await loadAuthorizationContext(database, hashSessionToken(token));
 			if (!context) {
 				set.status = 401;
 				return { error: 'unauthenticated' };

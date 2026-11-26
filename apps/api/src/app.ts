@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { closeDatabase, database, pingDatabase } from '@dompis/db';
 import type { ReadinessState } from '@dompis/contracts';
 import { createAuthRoutes } from './auth';
+import { createTicketRoutes } from './tickets';
 
 export function createApp() {
 	return new Elysia()
@@ -25,6 +26,7 @@ export function createApp() {
 			}
 		})
 		.use(createAuthRoutes(database, Bun.env.APP_ORIGIN))
+		.use(createTicketRoutes(database))
 		.onStop(async () => {
 			await closeDatabase();
 		});

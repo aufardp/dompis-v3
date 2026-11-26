@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { Elysia } from 'elysia';
 import { closeDatabase, database, schema } from '@dompis/db';
 import { createAuthRoutes } from './auth';
+import { createPermissionGuard } from './permission-guard';
+import { createTicketRoutes, TICKET_READ_PERMISSION } from './tickets';
 
 const databaseUrl = Bun.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('auth_test_database_url_missing');
@@ -28,12 +30,53 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 				code: `auth-test-${suffix}`,
 				name: 'Synthetic authentication role'
 			}).returning({ id: schema.roles.id }), 'role');
+			const permissionCode = TICKET_READ_PERMISSION;
+			const permission = firstInserted(await tx.insert(schema.permissions).values({
+				code: permissionCode,
+				description: 'Synthetic protected route permission'
+			}).returning({ id: schema.permissions.id }), 'permission');
+			await tx.insert(schema.rolePermissions).values({ roleId: role.id, permissionId: permission.id });
 			const user = firstInserted(await tx.insert(schema.users).values({
 				username: `auth-${suffix}`,
 				displayName: 'Synthetic auth user',
 				passwordHash: await Bun.password.hash('synthetic-password', { algorithm: 'argon2id' }),
 				roleId: role.id
 			}).returning({ id: schema.users.id, username: schema.users.username }), 'user');
+			const area = firstInserted(await tx.insert(schema.areas).values({
+				code: `AREA-${suffix}`, name: 'Synthetic ticket area'
+			}).returning({ id: schema.areas.id }), 'area');
+			const region = firstInserted(await tx.insert(schema.regions).values({
+				areaId: area.id, code: `REG-${suffix}`, name: 'Synthetic ticket region'
+			}).returning({ id: schema.regions.id }), 'region');
+			const branch = firstInserted(await tx.insert(schema.branches).values({
+				regionId: region.id, code: `BR-${suffix}`, name: 'Synthetic ticket branch'
+			}).returning({ id: schema.branches.id }), 'branch');
+			const serviceArea = firstInserted(await tx.insert(schema.serviceAreas).values({
+				branchId: branch.id, code: `SA-${suffix}`, name: 'Synthetic ticket service area'
+			}).returning({ id: schema.serviceAreas.id }), 'service_area');
+			const allowedWorkzoneCode = `WZ-A-${suffix}`;
+			const allowedWorkzone = firstInserted(await tx.insert(schema.workzones).values({
+				serviceAreaId: serviceArea.id, code: allowedWorkzoneCode, name: 'Synthetic allowed workzone'
+			}).returning({ id: schema.workzones.id }), 'workzone');
+			const deniedWorkzoneCode = `WZ-B-${suffix}`;
+			const deniedWorkzone = firstInserted(await tx.insert(schema.workzones).values({
+				serviceAreaId: serviceArea.id, code: deniedWorkzoneCode, name: 'Synthetic sibling workzone'
+			}).returning({ id: schema.workzones.id }), 'workzone');
+			await tx.insert(schema.userScopes).values({ userId: user.id, workzoneId: allowedWorkzone.id });
+			const allowedIncident = `AUTH-ALLOWED-${suffix}`.toUpperCase();
+			const deniedIncident = `AUTH-DENIED-${suffix}`.toUpperCase();
+			await tx.insert(schema.tickets).values([
+				{
+					incident: allowedIncident, workzoneId: allowedWorkzone.id, sourceWorkzone: allowedWorkzoneCode,
+					status: 'OPEN', lifecycle: 'open', dataOrigin: 'legacy', migratedAt: new Date(),
+					operationalBucket: 'unknown', kpiSeg: 'unknown', ruleVersion: 'auth-test'
+				},
+				{
+					incident: deniedIncident, workzoneId: deniedWorkzone.id, sourceWorkzone: deniedWorkzoneCode,
+					status: 'OPEN', lifecycle: 'open', dataOrigin: 'legacy', migratedAt: new Date(),
+					operationalBucket: 'unknown', kpiSeg: 'unknown', ruleVersion: 'auth-test'
+				}
+			]);
 			const app = new Elysia().use(createAuthRoutes(tx, 'https://dompis.example.test'));
 			const csrfResponse = await app.handle(new Request('http://localhost/auth/csrf'));
 			expect(csrfResponse.status).toBe(200);
@@ -88,6 +131,40 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 				headers: { cookie: `__Host-dompis_session=${token}` }
 			}));
 			expect(me.status).toBe(200);
+
+			const guardedApp = new Elysia()
+				.use(createPermissionGuard(tx))
+				.get('/protected', ({ authorization }) => ({ userId: authorization.userId }), {
+					requirePermission: permissionCode
+				})
+				.get('/forbidden', () => ({ reachedHandler: true }), {
+					requirePermission: 'permission.not.granted'
+				});
+			const unauthenticated = await guardedApp.handle(new Request('http://localhost/protected'));
+			expect(unauthenticated.status).toBe(401);
+			const authorized = await guardedApp.handle(new Request('http://localhost/protected', {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(authorized.status).toBe(200);
+			expect(authorized.headers.get('cache-control')).toBe('private, no-store');
+			const missingPermission = await guardedApp.handle(new Request('http://localhost/forbidden', {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(missingPermission.status).toBe(403);
+
+			const ticketApp = new Elysia().use(createTicketRoutes(tx));
+			const ticketResponse = await ticketApp.handle(new Request(`http://localhost/tickets/${allowedIncident.toLowerCase()}`, {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(ticketResponse.status).toBe(200);
+			const ticketDto = await ticketResponse.json() as Record<string, unknown>;
+			expect(ticketDto.incident).toBe(allowedIncident);
+			expect(ticketDto).not.toHaveProperty('serviceNo');
+			expect(ticketDto).not.toHaveProperty('detail');
+			const outOfScopeTicket = await ticketApp.handle(new Request(`http://localhost/tickets/${deniedIncident}`, {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(outOfScopeTicket.status).toBe(404);
 
 			const logout = await app.handle(new Request('http://localhost/auth/logout', {
 				method: 'POST',
