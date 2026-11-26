@@ -572,3 +572,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: API tidak dijalankan sehingga autentikasi/ref request ID tidak diuji end-to-end; layar hanya diuji pada viewport 320/390, bukan tablet/desktop dalam sesi ini. Perintah penutupan sesi agent-browser tidak selesai dalam timeout dan wrapper dihentikan; web dev server telah dihentikan.
 - Rollback: revert CSS mobile dan entri handover; tidak ada database/data rollback.
 - Langkah berikutnya: cek sesi browser terisolasi bila proses masih hidup, lalu lakukan UI E2E ketika API port dapat dijalankan; lanjutkan feature ticket setelah data/permission gates terpenuhi.
+
+## 2026-11-26 — Synthetic API internal-error sanitization check
+
+- Tindakan: menutup blocker 500 dari ADR-011 dengan membuat API Elysia in-process, mengonfigurasi PostgreSQL ke loopback port 1 yang tidak aktif, lalu mengirim POST login sintetis dengan Origin dan CSRF yang valid. Tidak ada HTTP listener.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada server/database yang tersambung; DSN sintetis menunjuk `127.0.0.1:1/dompis_error_smoke`, koneksi gagal sebelum query data atau autentikasi; client ditutup eksplisit.
+- Command tersanitasi: `DATABASE_URL` loopback port 1; `APP_ORIGIN` localhost; Elysia `app.handle` GET `/auth/csrf`, POST `/auth/login` dengan user/password sintetis; `closeDatabase()`; `git diff --check`. Invocation pertama dari root gagal hanya karena workspace import `@dompis/db` tidak resolve dari root eval; tidak memulai koneksi atau mengubah data. Rerun dari `apps/api` berhasil.
+- Hasil aktual: API mengembalikan HTTP 500 dengan body tepat berisi `error=internal_error` dan `requestId`; `X-Request-ID` ada dan cocok dengan body. Output server hanya memuat event, UUID, `errorCode=UNKNOWN`, dan `errorType=Error`; tidak ada message, stack, SQL, payload, atau credential.
+- Keputusan teknis: error sanitizer mengatasi unexpected DB connection failure sesuai status 500 dan tetap memberikan correlation ID; no code change diperlukan.
+- Risiko/blocker: satu synthetic connection error diuji; ini bukan exhaustive exception matrix atau test suite. Login interaktif/browser masih belum diverifikasi dengan user account.
+- Rollback: dokumentasi saja berubah; tidak ada data/db rollback.
+- Langkah berikutnya: gunakan hasil ini untuk menutup item internal 500 sanitization; lanjutkan fitur produk yang tidak bergantung pada owner-gated contracts, atau tunggu fixtures/decisions untuk ticket/report/admin/migration.
