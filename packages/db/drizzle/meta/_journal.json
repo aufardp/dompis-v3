@@ -15,6 +15,13 @@
       "when": 1795676748128,
       "tag": "0001_wild_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795701316000,
+      "tag": "0002_seed_owner_approved_role_catalog",
+      "breakpoints": true
     }
   ]
 }

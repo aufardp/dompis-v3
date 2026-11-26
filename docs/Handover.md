@@ -824,3 +824,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Kendala/risiko: migration/schema runtime v3 menggunakan relasi `roles` generik sehingga belum ada enum runtime yang perlu diganti; permission matrix dan jalur provisioning akun masih menunggu validasi. Schema SQL candidate disesuaikan, bukan diaplikasikan ke database.
 - Rollback: revert hanya perubahan dokumentasi pada file yang disebut di atas; tidak ada rollback database.
 - Langkah berikutnya: validasi capability matrix dan proses provisioning akun awal; setelah disetujui, implementasikan role catalog/grants tanpa mengubah nama atau memberi hak tambahan di luar keputusan.
+
+## 2026-11-26 — Seed owner-approved role catalog
+
+- Tindakan: menambahkan migration Drizzle idempoten yang memasukkan enam code/display name role target dengan `ON CONFLICT (code) DO NOTHING`; menerapkan migration ke database development lokal.
+- File berubah: `packages/db/drizzle/0002_seed_owner_approved_role_catalog.sql`, `packages/db/drizzle/meta/_journal.json`, `docs/Phase-2-Organization-Auth.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: PostgreSQL 18.7 lokal Homebrew `dompis_v3`; current role `pakbreng`; target URI dicek secara tersanitasi sebagai `127.0.0.1:5432/dompis_v3`. Bukan production.
+- Command/SQL tersanitasi: periksa URI target tanpa menampilkan credential; SELECT identity dan counts sebelum write; `bun run db:migrate`; SELECT enam role catalog dan counts sesudah write. Percobaan pertama dari sandbox gagal koneksi sebelum DB tersentuh; rerun pada izin akses lokal berhasil.
+- Hasil aktual: sebelum migration `roles=0`, `permissions=0`, `role_permissions=0`, `users=0`; sesudahnya enam role aktif dengan code `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leader`, `officer`; tabel permission/grant/user tetap 0; Drizzle migration ledger berisi 3 entri. `git diff --check` lulus. Tidak menjalankan typecheck, build, atau test karena perubahan SQL/data katalog dan dokumentasi saja.
+- Keputusan teknis: role rows tidak membawa capability; tidak ada permission, user, password, atau scope yang dibuat. Conflict berdasarkan unique `code` tidak mengubah row existing. Login tetap tidak dapat dipakai tanpa user account dan kebijakan provisioning.
+- Kendala/risiko: `teknisi` terdaftar hanya sebagai nama role; assignment teknisi tetap di luar scope. Akun login nyata masih tertahan oleh capability matrix, role/scope parity, dan prosedur provisioning awal.
+- Rollback: pada database disposable, hapus hanya keenam code setelah memastikan tidak ada referensi di `users`/`role_permissions`, lalu hapus migration ledger entry hanya bila rollback migration disengaja dan tercatat. Tidak melakukan rollback pada database production tanpa runbook/backup.
+- Langkah berikutnya: minta persetujuan capability matrix dan alur pembuatan akun pertama; sesudah disahkan, buat akun melalui endpoint/admin flow ber-audit dengan password hashing dan scope terverifikasi, lalu lakukan end-to-end login QA.
