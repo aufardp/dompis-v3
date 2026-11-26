@@ -596,3 +596,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: interaksi show/hide belum diverifikasi di browser pada slice ini; tidak ada perubahan auth atau data.
 - Rollback: revert markup/state/CSS kontrol password dan entri handover ini; tidak ada database rollback.
 - Langkah berikutnya: validasi interaksi keyboard/touch pada browser saat sesi UI berikutnya tersedia; lanjutkan hanya pekerjaan produk yang tidak membutuhkan owner-gated business/data contract.
+
+## 2026-11-26 — Password visibility browser QA attempt
+
+- Tindakan: mencoba validasi browser lokal untuk kontrol tampil/sembunyikan password. `agent-browser` tidak tersedia (`command not found`); web dev server Vite berhasil berjalan sementara di `127.0.0.1:8765`, tetapi Chrome headless berhenti dengan exit code 134 sebelum screenshot/interaksi. Server Vite kemudian dihentikan.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada database atau API yang diakses; tidak ada kredensial yang dikirim.
+- Command tersanitasi: `agent-browser skills get core` (tidak tersedia); `bun run dev:web -- --host 127.0.0.1 --port 8765` (server ready lalu dihentikan); Chrome headless lokal ke halaman login (exit 134); `git diff --check`.
+- Hasil aktual: browser QA tidak menghasilkan screenshot atau interaksi; typecheck/build sebelumnya pada perubahan kontrol tetap lulus. Tidak ada file aplikasi atau data yang berubah dari percobaan QA.
+- Keputusan teknis: tidak menambah dependency browser baru hanya untuk satu pemeriksaan; status interaksi keyboard/touch tetap belum tervalidasi.
+- Risiko/blocker: browser automation executable tidak terpasang dan Chrome headless crash pada environment ini; kontrol tetap memerlukan pemeriksaan interaktif di sesi browser yang berfungsi.
+- Rollback: entri dokumentasi ini dapat direvert; tidak ada perubahan database. Dev server sudah dihentikan.
+- Langkah berikutnya: lanjutkan browser QA saat `agent-browser` atau Chrome headless berjalan normal; jangan menyatakan interaksi sudah teruji sebelum itu.
