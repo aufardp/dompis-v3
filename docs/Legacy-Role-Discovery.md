@@ -45,3 +45,5 @@ The legacy role normalizer also accepts spelling aliases: `super_admin` and `sup
 - `dompis_v2/app/libs/services/users.service.ts`: examples of role-aware user administration checks; not treated as a complete authorization specification.
 
 No credential/configuration files, database records, or customer data were read by this static audit.
+
+Follow-up static guard analysis, candidate v3 capabilities, discrepancies, and owner decisions are recorded in `Authorization-Capability-Discovery.md`. Those candidates do not approve or seed permissions.

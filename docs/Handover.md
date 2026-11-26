@@ -980,3 +980,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: bootstrap CLI interaktif dan akun operator nyata belum diuji. Request browser `/favicon.ico` 404 tetap observasi terpisah.
 - Rollback: tidak ada code/database state tersisa; API dan web QA server dihentikan. Tidak ada schema change.
 - Langkah berikutnya: lanjutkan audit/admin Phase 2 setelah capability matrix disetujui; untuk login, sisa verifikasi adalah bootstrap operator dan policy akses produk.
+
+## 2026-11-26 — Extract legacy authorization evidence for owner review
+
+- Tindakan: membaca secara statis dan read-only guard role, menu, user management, role assignment, area mutation, audit access, login redirects, dan scope helper pada checkout legacy; menyusun capability candidates untuk menu v3 dan daftar kontradiksi/keputusan owner. Tidak menyalin implementasi lama.
+- File berubah: `docs/Authorization-Capability-Discovery.md`, `docs/Legacy-Role-Discovery.md`, `docs/Phase-2-Organization-Auth.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses. Hanya source checkout lama dibaca; tidak ada file legacy diubah.
+- Command tersanitasi: `rg` dan `sed` hanya pada `app/` serta `prisma/migrations/` legacy yang relevan; tidak membaca config/credential, record database, atau payload pelanggan. `git diff --check`.
+- Hasil pengujian aktual: review statis; tidak ada code/test/database mutation. `git diff --check` lulus.
+- Keputusan teknis: role names yang disetujui tidak menyetujui capabilities. Jangan menyalin inheritance `senior_leader`/`admin_branch`, role ID, menu visibility, password reset legacy, atau assignment role. Tetap deny-by-default; semua candidate role/capability cell dan global scope belum disetujui.
+- Risiko/kendala: guard legacy saling berbeda (strict dan inherited), user-management checks terpisah dan role assignment helper terlalu permisif untuk sebagian target. Bukti static source tidak menggantikan effective user-scope parity dari migration snapshot; capability/global/account activation tetap owner-gated.
+- Rollback: pulihkan empat file dokumentasi yang berubah; tidak ada rollback runtime/database.
+- Langkah berikutnya: pemilik meninjau `Authorization-Capability-Discovery.md`; setelah role/action/global-scope dan account-management rules disetujui, implementasikan audited admin workflows, lalu verifikasi deny-by-default dan per-user effective-scope parity. Fitur produk lain dapat berlanjut hanya pada capability yang telah disahkan.
