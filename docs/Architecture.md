@@ -1,5 +1,9 @@
 # Architecture — DOMPIS Rewrite
 
+## Kebijakan v1.3 (berlaku atas seluruh dokumen)
+Pemilik mengizinkan agent lokal mengakses MySQL dan PostgreSQL, read dan write. Akses aktual bergantung pada credential, jaringan, privilege dan sandbox agent; jangan mengakali kontrol. Gunakan Database-Access.md sebagai kebijakan otoritatif. Read produksi yang ringan dan write rutin terukur dalam target yang telah didaftarkan tidak memerlukan konfirmasi per query. Operasi produksi berisiko tinggi, perubahan schema produksi, bulk correction, freeze/cutover dan tindakan irreversible memerlukan persetujuan runbook khusus. Source legacy tetap read-only; database bukan source code. Discovery tidak mengubah data bisnis produksi. Semua rancangan teknis termasuk DDL, jumlah tabel/index dan alias adalah kandidat, bukan kontrak tetap. Direct matching Workzone diutamakan; buktikan keunikan global setelah normalisasi, jika ambigu gunakan pembeda yang terverifikasi, jangan menebak. Alias hanya bila terbukti diperlukan. Requirement bisnis, integritas historis, keamanan dan stack tetap wajib. Lihat Discovery-Protocol.md dan Decision-Log.md.
+
+
 ## 1. Arsitektur target
 Modular monolith, satu repository, dua proses Bun (API dan sync worker), satu PostgreSQL; static SvelteKit SPA dilayani reverse proxy. Jangan menambah Redis, BullMQ, microservice, event broker atau cache query global pada MVP. Tambah hanya setelah profiling dan ADR. PostgreSQL adalah authoritative store; endpoint NOSSA authoritative untuk fakta ticket baru/terverifikasi; baseline historis dari migrasi sekali jalan MySQL.
 
@@ -83,7 +87,7 @@ API `GET /api/v1/sync/status` and `GET /api/v1/events` SSE. Dedicated LISTEN con
 | Method/path (prefix /api/v1) | Contract |
 |---|---|
 | POST /auth/login, POST /auth/logout, GET /auth/me | cookie session, CSRF protections; no password in logs |
-| GET /tickets | mode=daily/history, from/to, bucket, dept, workzone, branch, status, incident/serviceNo, limit, cursor, sort whitelist |
+| GET /tickets | mode=daily/history, from/to, bucket, dept, areaId, regionId, branchId, serviceAreaId, workzoneIds, status, incident/serviceNo, limit, cursor, sort whitelist |
 | GET /tickets/:uuid | scoped detail + status history, local notes if enabled |
 | GET /tickets/overview | same daily predicate, counts by bucket/segment/flags |
 | GET /reports/semesta | same historical predicates, counts/trends |
@@ -92,7 +96,8 @@ API `GET /api/v1/sync/status` and `GET /api/v1/events` SSE. Dedicated LISTEN con
 | GET /reports/wo-hi | same daily predicate with dedicated DTO |
 | GET /exports/tickets | bounded CSV scoped stream |
 | GET /sync/status, GET /events | freshness metadata and revision |
-| /admin/users, /admin/scopes | privileged management; audit |
+| /admin/users, /admin/users/:id/scopes | privileged management; audit |
+| /organization/{areas,regions,branches,service-areas,workzones} | authorized cascading options |
 
 Response `{data, meta:{requestId,asOf,revision,nextCursor?,freshness}}`; errors `{error:{code,message},requestId}`. 400 invalid filter, 401 unauthenticated, 403 forbidden operation, 404 inaccessible record, 429 rate limit, 503 timeout/degraded with Retry-After. No raw SQL/stack. Request ID generated server; reject invalid untrusted forwarded headers.
 
@@ -102,5 +107,8 @@ Reverse proxy TLS same origin `/api/` to Bun Elysia (SSE buffering off); static 
 ## v1.0 authoritative sync supplement
 Read Sync-Engine.md for concrete algorithm, coverage and tie handling; Data-Contract.md overrides earlier assumptions. /nossa sample contains CLOSED, MEDIACARE, FINALCHECK and RESOLVED. Endpoint identity cannot decide lifecycle.
 
-## 10. One-time migration lane (v1.1)
-`scripts/migration/{extract-legacy,transform-ticket,migrate-workzones,import-tickets,validate-migration,reconcile-tickets}.ts` is a CLI tool, not a third permanent worker. Read a verified MySQL restore/snapshot using read-only credentials; stream keyset batches by id_ticket. Shared domain functions validate target; a distinct legacy adapter preserves provenance rather than fabricating source fields. Acquire same singleton writer advisory lock as sync; worker paused for bulk import/final delta; no HTTP while transaction holds locks. Each commit includes canonical tickets, cold archive ID mapping and durable checkpoint; failed row handling and idempotency per Migration.md. Reconcile via approved NOSSA windows after import. Runtime does not import legacy adapter or connect to MySQL; production migration credentials revoked after cutover. Do not create historical events from one current snapshot.
+## 10. One-time migration lane (v1.3)
+`scripts/migration/{extract-legacy,transform-ticket,migrate-masters,migrate-users-scopes,migrate-aliases,validate-scope,import-tickets,validate-migration,reconcile-tickets}.ts` is a CLI tool, not a third permanent worker. Read a verified MySQL restore/snapshot using read-only credentials; stream keyset batches by id_ticket. Shared domain functions validate target; a distinct legacy adapter preserves provenance rather than fabricating source fields. Acquire same singleton writer advisory lock as sync; worker paused for bulk import/final delta; no HTTP while transaction holds locks. Each commit includes canonical tickets, cold archive ID mapping and durable checkpoint; failed row handling and idempotency per Migration.md. Reconcile via approved NOSSA windows after import. Runtime does not import legacy adapter or connect to MySQL; production migration credentials revoked after cutover. Do not create historical events from one current snapshot.
+
+## v1.3 organization, access and greenfield boundaries
+`area → region → branch → service_area → workzone → tickets`; users grant at any of the five levels via `user_scopes`. Server resolves allowed workzone IDs as a relational subquery, then uses shared mandatory scoped predicate for every operational route. No large ticket-table joins to grant rows that duplicate counts, no hard-coded region/branch lists. Master API `/api/v1/organization/{areas,regions,branches,service-areas,workzones}` returns scoped choices; privileged admin mutations and `/api/v1/admin/users/:id/scopes` require explicit permission + audit. Resolve exact NOSSA triplet with approved `workzone_source_aliases` per batch, not per-ticket query. Unknown scope remains NULL; no guessed assignment. Shared `packages/domain/src/scope`, `packages/db/src/repositories/organization` and `apps/api/src/modules/admin/organization` own these boundaries. Migration CLI adds `migrate-masters`, `migrate-users-scopes`, `validate-scope`, `migrate-aliases`; no runtime dependency on legacy. See Organization-Scope.md and Master-Data-Migration.md. Scope changes and hierarchy moves invalidate sessions' effective access, SSE and cursor scope fingerprint. Do not keep old permissions in client JWT or URL. No separate authorization service, closure table or denormalized ancestor keys at MVP. Legacy path `/Users/pakbreng/Projects/dompis_v2` is only read-only source for Phase 0; new project separately located. Query and code implementations must be newly designed per Query-Standards.md.

@@ -1,4 +1,4 @@
-# Legacy Field Mapping — MySQL ticket → PostgreSQL v1.1
+# Legacy Field Mapping — MySQL ticket → PostgreSQL v1.3
 
 Sumber: `prisma.zip` → `prisma/schema.prisma`, model `ticket`. Terdapat **84 scalar fields** (relation navigation excluded). Ini bukan SHOW CREATE TABLE production. Verify actual deployed columns, generated expressions, collation, data profile and migration revisions before using mapping. Every row below is a proposed disposition; business approval required for semantic transforms and retention.
 
@@ -100,3 +100,6 @@ Sumber: `prisma.zip` → `prisma/schema.prisma`, model `ticket`. Terdapat **84 s
 - Verify status/closed date consistency. If lifecycle=open but old closed_at populated, preserve old closure in archive; do not discard or clear before documented reconciliation. If ambiguity persists use unknown/quarantine rather than violating constraint.
 - Long legacy IDs up to 100 characters allowed only if canonical format valid; upstream exact lookup restricted to 32. Manual record eligibility separate, cannot pretend it is live.
 - If actual schema adds columns, extend this matrix; dry-run fails closed for unknown columns until disposition reviewed.
+
+## v1.3 master data crosswalk
+The ticket scalar mapping above is retained. `workzone_id` now references singular `workzone` migrated from old `service_area`, under new `service_area` (old `area`). `witel` and source region are raw facts, not equivalent to the internal branch/region without approved crosswalk. See Master-Data-Migration.md for actual legacy Prisma master and user fields; verify deployed DDL drift. Old numeric IDs namespaced by source table in manifest.

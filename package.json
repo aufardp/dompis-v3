@@ -1,0 +1,28 @@
+{
+  "name": "dompis-v3",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.4.5",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "bun run --cwd apps/web dev",
+    "dev:api": "bun --watch apps/api/src/index.ts",
+    "dev:worker": "bun apps/worker/src/index.ts",
+    "typecheck": "bun run typecheck:web && bun run typecheck:api && bun run typecheck:worker",
+    "typecheck:web": "bun run --cwd apps/web typecheck",
+    "typecheck:api": "bun run --cwd apps/api typecheck",
+    "typecheck:worker": "bun run --cwd apps/worker typecheck",
+    "build": "bun run build:web && bun run build:api",
+    "build:web": "bun run --cwd apps/web build",
+    "build:api": "bun build apps/api/src/index.ts --target bun --outdir apps/api/dist",
+    "db:generate": "bunx drizzle-kit generate --config=packages/db/drizzle.config.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "drizzle-kit": "0.31.11",
+    "typescript": "6.0.3"
+  }
+}

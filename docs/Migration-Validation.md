@@ -1,4 +1,4 @@
-# Migration Validation — acceptance gate v1.1
+# Migration Validation — acceptance gate v1.3
 
 ## 1. Row accounting
 Fixed snapshot manifest and same scope, asOf and business timezone for both systems. Use aggregate output and synthetic examples; no real incident/PII in logs. Every old ID exactly once in archive. Counts: source rows = imported + merged + quarantined + excluded. Count target canonical incident distinct for imported/merged groups; duplicate source IDs = 0, duplicate canonical incidents = 0, orphan mapped rows = 0. Merged groups need signed winner/reason; excluded/quarantine reasons and counts reviewed; unresolved data losses block release unless explicit business sign-off on an exception and user-visible coverage. Target count need not equal old row count if collisions or exclusions or new live tickets; reconcile exact differences. Validate by old ID and normalized incident, not counts only. Compare typed values and hashes against expected transformed sample/full deterministic checks. Keep encrypted manifest and validation evidence.
@@ -41,3 +41,14 @@ Use synthetic fixtures: legacy integer id, duplicate normalized incidents, blank
 
 ## 5. Sign-off record
 Snapshot ID/schema hash: ___; source/target counts: ___; exception counts and decision IDs: ___; rules version: ___; asOf/timezone: ___; tests/results: ___; performance: ___; rollback/restore proof: ___; business owner: ___; DBA: ___; security: ___; release decision: GO / NO-GO. Record actual outcome in Handover; never fill with assumed success.
+
+## v1.3 additional master and authorization acceptance gates
+| Gate | Required evidence |
+|---|---|
+| ORG-M01 | every eligible old region/branch/area/service_area ID accounted for in target or approved exception; new top area mapping owner-approved |
+| ORG-M02 | zero orphan active masters; exact parent chain and parent-scoped uniqueness; no ambiguous alias accepted |
+| ORG-M03 | every eligible user mapped; username collisions handled; password rehash/reset and role disposition approved; sessions not migrated |
+| ORG-M04 | each old direct/junction grant accounted for, duplicate/null/orphan/conflict recorded; per-user old vs new effective workzone set difference approved; zero unapproved privilege expansions |
+| ORG-M05 | per-level rollups reconcile (current hierarchy), distinct ticket counts across overlapping grants, unknown scope separately counted by privileged operator |
+| ORG-M06 | revoke and reparent tests invalidate cursor/SSE/export; no out-of-scope access across all endpoints; rollback rehearsal with master mapping preserved |
+Do not count an unmapped legacy row as successfully scoped. Compare source/target by fixed snapshot and approved old→new ID mapping, record accepted exclusions separately.

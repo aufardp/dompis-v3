@@ -1,21 +1,25 @@
 # DOMPIS — Product Requirements Document
 
-**Versi:** 1.1 — Migration Ready | **Tanggal:** 26 November 2026 | **Status:** Blueprint untuk review, bukan aplikasi siap produksi
+## Kebijakan v1.3 (berlaku atas seluruh dokumen)
+Pemilik mengizinkan agent lokal mengakses MySQL dan PostgreSQL, read dan write. Akses aktual bergantung pada credential, jaringan, privilege dan sandbox agent; jangan mengakali kontrol. Gunakan Database-Access.md sebagai kebijakan otoritatif. Read produksi yang ringan dan write rutin terukur dalam target yang telah didaftarkan tidak memerlukan konfirmasi per query. Operasi produksi berisiko tinggi, perubahan schema produksi, bulk correction, freeze/cutover dan tindakan irreversible memerlukan persetujuan runbook khusus. Source legacy tetap read-only; database bukan source code. Discovery tidak mengubah data bisnis produksi. Semua rancangan teknis termasuk DDL, jumlah tabel/index dan alias adalah kandidat, bukan kontrak tetap. Direct matching Workzone diutamakan; buktikan keunikan global setelah normalisasi, jika ambigu gunakan pembeda yang terverifikasi, jangan menebak. Alias hanya bila terbukti diperlukan. Requirement bisnis, integritas historis, keamanan dan stack tetap wajib. Lihat Discovery-Protocol.md dan Decision-Log.md.
+
+
+**Versi:** 1.3 — Adaptive Greenfield | **Tanggal:** 26 November 2026 | **Status:** Blueprint untuk review, bukan aplikasi siap produksi
 
 ## 1. Tujuan
 Bangun ulang DOMPIS sebagai pusat monitoring ticket berbasis NOSSA. Prioritas: data benar, cepat dibaca, near-real-time sesuai batas upstream, aman, dan mudah dipelihara. Pertahankan kebutuhan operasional, bukan kompleksitas implementasi lama. Stack wajib: Svelte (SvelteKit untuk routing/build, adapter-static SPA internal), Bun, ElysiaJS, TypeScript strict, Drizzle ORM, PostgreSQL. Tidak ada MySQL/piloting ticket sebagai sumber ticket runtime. Frontend dan API satu origin. Rekomendasi awal PostgreSQL 18 dengan UUIDv7 native; jika versi lain dipilih gunakan UUIDv7 di aplikasi atau UUIDv4 native secara konsisten.
 
 ## 2. Pengguna dan scope
-Superadmin: administrasi user, scope, status sync, audit; admin/Helpdesk: ticket dan laporan sesuai izin; senior leader/admin branch: read-only sesuai scope (mapping role perlu disetujui). Tidak ada role teknisi aktif. Scope workzone adalah unit otorisasi terkecil; region/branch hanya membantu pemilihan scope. Global access eksplisit, bukan berarti daftar scope kosong. Tidak ada akses publik.
+Superadmin: administrasi user, scope, status sync, audit; admin/Helpdesk: ticket dan laporan sesuai izin; senior leader/admin branch: read-only sesuai scope (mapping role perlu disetujui). Tidak ada role teknisi aktif. Scope dapat diberikan di area, region, branch, service area atau satu/beberapa workzone. Grant parent mencakup keturunan yang aktif; grant jamak merupakan union dan filter UI hanya mempersempit. Global access eksplisit, bukan berarti daftar scope kosong. Tidak ada akses publik.
 
 ## 3. Ruang lingkup produk
 | ID | Menu | Kebutuhan utama | Prioritas |
 |---|---|---|---|
-| F01 | Ticket Management | Overview; Customer, Proactive, Unspec, Non Technical, SQM Update, Obsolete; anomaly Unknown/Unspec/Blank; daftar active dan closed hari ini, filter area/branch/workzone/dept/jenis/status/flag; detail incident, status freshness, SLA/aging, pencarian exact incident/service no | P0 |
+| F01 | Ticket Management | Overview; Customer, Proactive, Unspec, Non Technical, SQM Update, Obsolete; anomaly Unknown/Unspec/Blank; daftar active dan closed hari ini, filter area/region/branch/service area/workzone/dept/jenis/status/flag; detail incident, status freshness, SLA/aging, pencarian exact incident/service no | P0 |
 | F02 | Semesta | Daftar historis, rentang tanggal reported, kartu summary, breakdown B2C/B2B/netral, trend jenis, workzone, recurring/GAUL hanya jika field tersedia; export scoped | P1 |
 | F03 | Rekap Workorder | Matrix per workzone/SA/branch, bucket, open/close, detail sel, hourly close; hilangkan metrik jumlah teknisi/assignment | P1 |
 | F04 | Detail WO HI | Daftar operasional hari ini, incident, status, workzone, usia, reported/booking/resolve/closed, jenis dan Max TTR; export sesuai scope | P1 |
-| F05 | Login & settings | Login username, sesi aman, user dan workzone scope, monitoring sync, audit | P0 |
+| F05 | Login & settings | Login username, sesi aman, user dan hierarchical scope, monitoring sync, audit | P0 |
 
 F01 harus bisa dipakai mandiri sebelum menu P1. Detail drawer membaca payload detail dari DB lokal, bukan memanggil upstream otomatis. Tidak ada assign/pickup, auto assign, attendance, tracking teknisi, clustering, war map/KML, evidence, dispatch webhook, spreadsheet sync, push notification, integrasi piloting, manual import ticket oleh pengguna. Migrasi historis satu kali oleh operator merupakan requirement terpisah. SQM Update dan pending DOMPIS adalah data lokal potensial: tidak diasumsikan tersedia di endpoint; tampilkan hanya dari field terverifikasi atau fitur annotation lokal setelah persetujuan. Default MVP read-only ticket. Jangan membuat status upstream palsu dari catatan lokal.
 
@@ -54,9 +58,17 @@ Dokumentasi API dan 100 baris sampel /nossa tersedia; sampel /nossa-closed aktua
 ## v1.0 contract acceptance gate
 All 100 supplied NOSSA rows must be parsed via sanitized equivalent fixtures; preserve source numeric TTR without asserting unit. Closed sample, lifecycle and KPI sign-off remain release blockers. Date filters upstream are Status_Date, not Last_Update_Ticket or Reported_Date. See Data-Contract.md and Sync-Engine.md. No use of /ticket-by-service in MVP.
 
-## 9. Requirement migrasi historis (wajib v1.1)
+## 9. Requirement migrasi historis (wajib v1.3)
 - MIG01: seluruh baris tabel `ticket` MySQL pada snapshot yang disetujui harus tercatat sebagai imported/merged/quarantined/excluded; tidak ada kehilangan tanpa alasan. Canonical tickets mencakup seluruh incident historis eligible, termasuk sebelum 2026, bukan hanya archive. Manual tickets ditinjau, bukan dihapus diam-diam; excluded tetap tercatat sesuai retensi.
 - MIG02: UUID stabil antar rerun dan sync; old ID mapping cold archive; legacy-only tidak diberi source_endpoint/hash palsu. Legacy bukan sumber runtime; setelah cutover hanya /nossa dan /nossa-closed memperbarui fakta upstream.
 - MIG03: validasi semua scalar legacy, tanggal UTC/WIB, generated bucket, status_update, klasifikasi, SLA, field lokal dan scope; nilai KPI historis asli tetap tersedia untuk rekonsiliasi; angka baru hanya dari definisi disetujui. Tidak mengasumsikan manual/legacy metrics setara dengan NOSSA. Unknown/coverage gap ditampilkan.
 - MIG04: snapshot restore verified, checkpoint idempotent, delta/freeze final, shadow reporting, backup, rollback dan sign-off sebelum switch. Data lama tetap aman read-only untuk masa rollback. Tidak ada query cross-DB runtime.
 - MIG05: explicit allowlist field archive dan access; tidak ada payload pelanggan asli/credential dalam repo. Semua mapping, exclusion dan perubahan KPI harus disetujui pemilik bisnis. Lihat Legacy-Field-Mapping.md, Migration.md, Migration-Validation.md.
+
+## 10. Organisasi dan greenfield (v1.3, wajib)
+- ORG01: master lima tingkat dengan parent wajib, UUID, kode dan nama; filter bertingkat hanya menampilkan cabang yang diizinkan. Nama tabel sesuai Organization-Scope.md. Master admin termasuk preview impact dan audit; tidak ada hard delete dari UI.
+- ORG02: user bisa memegang satu area, region, branch, service area, beberapa workzone atau kombinasi grant yang disetujui. RBAC action terpisah dari scope. Grant parent berlaku ke workzone turunannya; overlap dihitung sekali. User tanpa grant dan tanpa global eksplisit tidak melihat data. Global tidak berarti boleh mengelola master atau akses PII tanpa permission.
+- ORG03: migrasi master, alias dan user/scope lebih dahulu; ticket lama mengikuti pemetaan master baru. Semua orphan/konflik/akses melebar diblokir sampai disetujui. Jangan grant seluruh area karena data legacy tidak lengkap.
+- ORG04: revocation dan perubahan hierarchy tidak boleh bocor via API, export, SSE atau filter. Revalidasi scope server; historical reports current hierarchy dengan label jelas. Unknown mapping tidak masuk normal report; tampilkan kualitas data tanpa bocor scope.
+- ENG01: greenfield implementation wajib; legacy read-only hanya sebagai evidence business semantics, field, UX kebutuhan dan migration. Tidak menyalin query, struktur, worker, security, UI implementation atau dependency lama. Business-Rules.md adalah registry kandidat; sign-off sebelum publish KPI. Query-Standards.md adalah acceptance gate.
+- ENG02: performance diukur, bukan dijanjikan; benchmark scope sempit/luas, multi-grant, sync paralel, rekonsiliasi master, stale data, akses setelah revoke. Penambahan infra/index berdasarkan evidence dan ADR. Sumber lokal `/Users/pakbreng/Projects/dompis_v2` digunakan oleh agent lokal dengan akses baca; tidak tersedia di lingkungan penyusunan blueprint ini.

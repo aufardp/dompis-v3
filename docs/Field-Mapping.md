@@ -1,5 +1,9 @@
 # Field Mapping — NOSSA (103 observed keys)
 
+## Kebijakan v1.3 (berlaku atas seluruh dokumen)
+Pemilik mengizinkan agent lokal mengakses MySQL dan PostgreSQL, read dan write. Akses aktual bergantung pada credential, jaringan, privilege dan sandbox agent; jangan mengakali kontrol. Gunakan Database-Access.md sebagai kebijakan otoritatif. Read produksi yang ringan dan write rutin terukur dalam target yang telah didaftarkan tidak memerlukan konfirmasi per query. Operasi produksi berisiko tinggi, perubahan schema produksi, bulk correction, freeze/cutover dan tindakan irreversible memerlukan persetujuan runbook khusus. Source legacy tetap read-only; database bukan source code. Discovery tidak mengubah data bisnis produksi. Semua rancangan teknis termasuk DDL, jumlah tabel/index dan alias adalah kandidat, bukan kontrak tetap. Direct matching Workzone diutamakan; buktikan keunikan global setelah normalisasi, jika ambigu gunakan pembeda yang terverifikasi, jangan menebak. Alias hanya bila terbukti diperlukan. Requirement bisnis, integritas historis, keamanan dan stack tetap wajib. Lihat Discovery-Protocol.md dan Decision-Log.md.
+
+
 Each row is mapped explicitly. `detail.<key>` denotes allowlisted normalized metadata, not full raw duplicate; restricted values require a business purpose and permission, otherwise omit. All fields default nullable unless DDL requires identity/status. Never put PII in list DTO, logs, SSE or fixtures. Source field aliases are case-aware; conflicting aliases quarantine. `Witel`/`witel` and `Service_No`/`service_no` are documented variants. Preserve leading zeros. Numeric fields parse strict finite decimal, not JS parseFloat on malformed input.
 
 | Source key | Target | Handling | Non-null sample rows* |
@@ -121,5 +125,8 @@ Each row is mapped explicitly. `detail.<key>` denotes allowlisted normalized met
 - Preserve raw TTR units; do not convert or equate resolution vs closure before sign-off.
 - Customer text, names, contact information, internal hosts can be sensitive even embedded in summary/logs. Redact API based on permissions, avoid storing unnecessary fields; use synthetic fixtures.
 
-## v1.1 distinction
+## v1.3 distinction
 This mapping is for upstream only. Legacy MySQL field mapping is separate in Legacy-Field-Mapping.md. `source_endpoint`/`source_hash` are nullable for unverified legacy rows; first accepted source sets both and first_source_seen_at. Never treat legacy synced_at or generated_at as NOSSA version. Legacy archive unchanged by runtime ingestion. Local-only legacy values must survive missing fields; no implicit fallback that changes KPI meaning. Rule version/quality flags distinguish pending verification.
+
+## v1.3 geographic resolution
+`Regional` + `witel` + `Workzone` are source attributes; prefer verified direct Workzone matching; fallback to normalized exact tuple in `workzone_source_aliases` if needed. `C_AREA_TIF`, `C_DISTRICT_TIF`, `C_REGIONAL_TIF` are alternative source organizational facts, not direct parent FK. No fuzzy name match or auto-create masters/grants. Alias table explicitly approved after resolving region/branch/SA/workzone mapping. Unknown remains NULL + quality flag and privileged review; preserve source values. Resolve mapping for whole batch (single bounded query or loaded small master snapshot with version invalidation), not N+1. Never clear a known mapping because a partial payload omits an alias component; conflicting new complete mapping needs approved resolution.

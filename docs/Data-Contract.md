@@ -1,5 +1,9 @@
 # Data Contract — QOSMIC Metabase Bridge v1.0
 
+## Kebijakan v1.3 (berlaku atas seluruh dokumen)
+Pemilik mengizinkan agent lokal mengakses MySQL dan PostgreSQL, read dan write. Akses aktual bergantung pada credential, jaringan, privilege dan sandbox agent; jangan mengakali kontrol. Gunakan Database-Access.md sebagai kebijakan otoritatif. Read produksi yang ringan dan write rutin terukur dalam target yang telah didaftarkan tidak memerlukan konfirmasi per query. Operasi produksi berisiko tinggi, perubahan schema produksi, bulk correction, freeze/cutover dan tindakan irreversible memerlukan persetujuan runbook khusus. Source legacy tetap read-only; database bukan source code. Discovery tidak mengubah data bisnis produksi. Semua rancangan teknis termasuk DDL, jumlah tabel/index dan alias adalah kandidat, bukan kontrak tetap. Direct matching Workzone diutamakan; buktikan keunikan global setelah normalisasi, jika ambigu gunakan pembeda yang terverifikasi, jangan menebak. Alias hanya bila terbukti diperlukan. Requirement bisnis, integritas historis, keamanan dan stack tetap wajib. Lihat Discovery-Protocol.md dan Decision-Log.md.
+
+
 Source: supplied Metabase Bridge API OAS 3.0 documentation, 25 Nov 2026; supplied 100-row NOSSA response and single incident example. No live network calls were performed. This is a documented upstream contract, not an assertion of live availability.
 
 ## Endpoints
@@ -29,5 +33,8 @@ TTR fields contain decimals, strings (including .085), zero and null. Preserve e
 ## Release gates
 Obtain sanitized actual closed response (including CLOSED, reopened incident if available), confirm resource field, closure timestamp mapping, status taxonomy, TTR units, historical completeness, timezone for offsetless dates, stable window ordering and behavior of GAMAS lookup. Test multiple pages and dense same-second timestamps. No inferred values for absent fields. Do not publish unverified KPI as zero or compliant. Original samples contain customer identifiers and free text; deliberately excluded from distributable blueprint.
 
-## v1.1 historical coverage
+## v1.3 historical coverage
 API bulk history floor is not a data retention floor for local PostgreSQL. Existing pre-2026 data must be migrated from MySQL if eligible; do not delete it or label it verified by NOSSA. Legacy incident VARCHAR(100) may exceed upstream lookup limit; do not call endpoint for incompatible identifiers. Actual closed fixture and timestamp/SLA semantics still release gates.
+
+## v1.3 boundary
+New top-level area/region hierarchy is internal master data; upstream remains fixed REG-4/REG-5 and no additional endpoint. `Regional`, `witel`, `Workzone`, TIF fields do not define trusted application authorization. Verify aliases with owner; do not send internal area IDs to upstream or assume organization name maps automatically.

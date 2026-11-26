@@ -1,15 +1,39 @@
--- FINAL BLUEPRINT v1.1 — IMPLEMENTATION CANDIDATE; PostgreSQL 18; not executed or production validated.
-CREATE TABLE regions (
- id uuid PRIMARY KEY DEFAULT uuidv7(), code text NOT NULL UNIQUE, name text NOT NULL
+-- Candidate only: direct Workzone matching preferred; retain alias table only if discovery proves need.
+-- Never execute against production without approved migration runbook.
+-- FINAL BLUEPRINT v1.3 — IMPLEMENTATION CANDIDATE; PostgreSQL 18; not executed or production validated.
+-- Master hierarchy; singular names intentionally match the approved terminology.
+CREATE TABLE area (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), code text NOT NULL UNIQUE, name text NOT NULL,
+ is_active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), CHECK(code=upper(btrim(code)) AND code<>'')
 );
-CREATE TABLE branches (
- id uuid PRIMARY KEY DEFAULT uuidv7(), region_id uuid NOT NULL REFERENCES regions(id),
- code text NOT NULL, name text NOT NULL, UNIQUE(region_id,code)
+CREATE TABLE region (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), area_id uuid NOT NULL REFERENCES area(id),
+ code text NOT NULL, name text NOT NULL, is_active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(area_id,code), CHECK(code=upper(btrim(code)) AND code<>'')
 );
-CREATE TABLE workzones (
- id uuid PRIMARY KEY DEFAULT uuidv7(), branch_id uuid NOT NULL REFERENCES branches(id),
- code text NOT NULL, name text NOT NULL, service_area text,
- UNIQUE(branch_id,code)
+CREATE TABLE branch (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), region_id uuid NOT NULL REFERENCES region(id),
+ code text NOT NULL, name text NOT NULL, is_active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(region_id,code), CHECK(code=upper(btrim(code)) AND code<>'')
+);
+CREATE TABLE service_area (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), branch_id uuid NOT NULL REFERENCES branch(id),
+ code text NOT NULL, name text NOT NULL, is_active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(branch_id,code), CHECK(code=upper(btrim(code)) AND code<>'')
+);
+CREATE TABLE workzone (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), service_area_id uuid NOT NULL REFERENCES service_area(id),
+ code text NOT NULL, name text NOT NULL, is_active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(service_area_id,code), CHECK(code=upper(btrim(code)) AND code<>'')
+);
+-- Approved aliases only; do not equate NOSSA Regional/Witel with internal labels automatically.
+CREATE TABLE workzone_source_aliases (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), workzone_id uuid NOT NULL REFERENCES workzone(id),
+ source_region text NOT NULL, source_witel text NOT NULL, source_workzone text NOT NULL,
+ UNIQUE(source_region,source_witel,source_workzone),
+ CHECK(source_region IN ('REG-4','REG-5')),
+ CHECK(source_witel=upper(btrim(source_witel)) AND source_witel<>''),
+ CHECK(source_workzone=upper(btrim(source_workzone)) AND source_workzone<>'')
 );
 CREATE TABLE users (
  id uuid PRIMARY KEY DEFAULT uuidv7(), username text NOT NULL UNIQUE,
@@ -20,9 +44,14 @@ CREATE TABLE users (
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
  CHECK(username=lower(btrim(username)))
 );
-CREATE TABLE user_workzones (
+-- A grant refers to exactly one level, with real FKs (no polymorphic orphan IDs).
+CREATE TABLE user_scopes (
  id uuid PRIMARY KEY DEFAULT uuidv7(), user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- workzone_id uuid NOT NULL REFERENCES workzones(id), UNIQUE(user_id,workzone_id)
+ area_id uuid REFERENCES area(id), region_id uuid REFERENCES region(id),
+ branch_id uuid REFERENCES branch(id), service_area_id uuid REFERENCES service_area(id),
+ workzone_id uuid REFERENCES workzone(id), created_at timestamptz NOT NULL DEFAULT now(),
+ CHECK(num_nonnulls(area_id,region_id,branch_id,service_area_id,workzone_id)=1),
+ UNIQUE NULLS NOT DISTINCT (user_id,area_id,region_id,branch_id,service_area_id,workzone_id)
 );
 CREATE TABLE sessions (
  id uuid PRIMARY KEY DEFAULT uuidv7(), user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -33,7 +62,7 @@ CREATE TABLE sessions (
 CREATE TABLE tickets (
  id uuid PRIMARY KEY DEFAULT uuidv7(),
  incident text NOT NULL UNIQUE CHECK(incident=upper(btrim(incident)) AND incident ~ '^[A-Z0-9_-]{1,100}$'),
- workzone_id uuid REFERENCES workzones(id), source_workzone text, source_witel text, source_region text,
+ workzone_id uuid REFERENCES workzone(id), source_workzone text, source_witel text, source_region text,
  status text NOT NULL, lifecycle text NOT NULL CHECK(lifecycle IN ('open','closed','unknown')),
  data_origin text NOT NULL CHECK(data_origin IN ('legacy','nossa','nossa_closed')),
  migrated_at timestamptz, first_source_seen_at timestamptz,
@@ -140,7 +169,9 @@ CREATE INDEX tickets_service_reported ON tickets(service_no,reported_at DESC,id 
  WHERE service_no IS NOT NULL;
 CREATE INDEX sessions_user ON sessions(user_id);
 CREATE INDEX sessions_expiry ON sessions(expires_at);
-CREATE INDEX user_workzones_reverse ON user_workzones(workzone_id);
+-- user_scopes unique index starts with user_id; dimension unique indexes start with parent FK.
+-- Hard deletion of hierarchy is not normal operation; profile reverse FK lookups before adding indexes.
+CREATE INDEX workzone_source_aliases_workzone ON workzone_source_aliases(workzone_id);
 CREATE INDEX sync_runs_stream_started ON sync_runs(stream,started_at DESC);
 CREATE INDEX sync_quarantine_pending ON sync_quarantine(created_at) WHERE resolved_at IS NULL;
 CREATE INDEX audit_events_date ON audit_events(created_at DESC,id DESC);

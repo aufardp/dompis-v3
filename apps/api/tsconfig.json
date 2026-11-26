@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    "paths": {
+      "@dompis/contracts": ["../../packages/contracts/src/index.ts"],
+      "@dompis/db": ["../../packages/db/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "../../packages/contracts/src/**/*.ts", "../../packages/db/src/**/*.ts"]
+}

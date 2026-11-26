@@ -1,0 +1,18 @@
+# Legacy Reference Policy — greenfield, not porting
+
+## Kebijakan v1.3 (berlaku atas seluruh dokumen)
+Pemilik mengizinkan agent lokal mengakses MySQL dan PostgreSQL, read dan write. Akses aktual bergantung pada credential, jaringan, privilege dan sandbox agent; jangan mengakali kontrol. Gunakan Database-Access.md sebagai kebijakan otoritatif. Read produksi yang ringan dan write rutin terukur dalam target yang telah didaftarkan tidak memerlukan konfirmasi per query. Operasi produksi berisiko tinggi, perubahan schema produksi, bulk correction, freeze/cutover dan tindakan irreversible memerlukan persetujuan runbook khusus. Source legacy tetap read-only; database bukan source code. Discovery tidak mengubah data bisnis produksi. Semua rancangan teknis termasuk DDL, jumlah tabel/index dan alias adalah kandidat, bukan kontrak tetap. Direct matching Workzone diutamakan; buktikan keunikan global setelah normalisasi, jika ambigu gunakan pembeda yang terverifikasi, jangan menebak. Alias hanya bila terbukti diperlukan. Requirement bisnis, integritas historis, keamanan dan stack tetap wajib. Lihat Discovery-Protocol.md dan Decision-Log.md.
+
+Legacy local path: `/Users/pakbreng/Projects/dompis_v2`. Proposed new repo sibling `/Users/pakbreng/Projects/dompis-v3`. Agent starts in new repo, requests read-only access to legacy where supported. No symlink/dependency from runtime, no modification/reset/checkout in old repo. Read connection settings only as needed without displaying secrets; avoid real dumps/customer logs and unnecessary .env access, node_modules, generated builds, graphify cache unless safe evidence needed. Capture git HEAD/dirty state without writing; log paths and line numbers of evidence, not proprietary payloads. If source unavailable report exact blocker. Blueprint author accessed uploaded archives only, not actual Mac filesystem.
+
+| Evidence to inspect | What to extract, not copy |
+|---|---|
+| prisma/schema.prisma and relevant migration SQL | actual field types, relations, generated-column meanings; drift vs live DDL |
+| app/config/operational-buckets.ts | menu categories, candidates and priority conflicts |
+| app/libs/services/daily-ticket-where.ts, daily-ticket-helpers.ts, kpi-bucket-sql.ts | membership, date, local flag semantics; never copy WHERE builder |
+| app/libs/tickets/scope.ts; app/api/workzone/route.ts; app/helpers/ticket.helpers.ts | old effective scope, potential gaps; redesign authorization |
+| lib/rekap/rekap-classify.ts and report routes identified in Source-Audit.md | KPI/report semantics and drilldown parity |
+| lib/external-db/qosmic-bridge and worker entrypoints | endpoint contract, pagination, backoff failure cases; not old pipeline |
+| app/libs/tickets/ttr-comply.ts, app/libs/priority/ttr.ts, app/libs/tickets/mttr.ts | time units, exclusions, thresholds; verify business owner |
+
+Extract evidence into Business-Rules.md with rule ID, path/line, plain-language intent, inputs, exceptions, expected result fixture, conflict and owner approval. Legacy behavior may be wrong; do not encode a bug as golden truth. Separate approved rule tests from historical comparison. Where facts conflict, owner requirement controls scope, API contract controls available facts, approved business rule controls KPI; log discrepancy and stop affected rule until adjudicated. Greenfield means new schema, SQL/ORM query, auth, frontend, ingestion, tests and code structure; no mechanical framework translation. Preserve data and verified semantic outcomes, not source implementation. DB access authorized under Database-Access.md; live endpoint calls require approved budget. Handover after each action.
