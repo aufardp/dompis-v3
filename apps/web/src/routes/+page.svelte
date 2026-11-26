@@ -33,12 +33,40 @@
 	let currentUser = $state<string | null>(null);
 	let checkingSession = $state(true);
 	let submitting = $state(false);
+	let retryAfterSeconds = $state(0);
 	let message = $state('');
 	let messageKind = $state<'error' | 'success' | 'info'>('info');
+	let retryTimer: ReturnType<typeof setInterval> | undefined;
 
 	onMount(() => {
 		void checkSession();
+		return () => clearRetryTimer();
 	});
+
+	function clearRetryTimer(): void {
+		if (retryTimer !== undefined) clearInterval(retryTimer);
+		retryTimer = undefined;
+	}
+
+	function startRetryCountdown(response: Response): void {
+		const retryAfter = Number(response.headers.get('retry-after'));
+		if (!Number.isInteger(retryAfter) || retryAfter < 1) return;
+
+		clearRetryTimer();
+		retryAfterSeconds = Math.min(retryAfter, 900);
+		message = 'Terlalu banyak percobaan masuk. Tunggu sebelum mencoba kembali.';
+		messageKind = 'error';
+		retryTimer = setInterval(() => {
+			if (retryAfterSeconds <= 1) {
+				clearRetryTimer();
+				retryAfterSeconds = 0;
+				message = 'Waktu tunggu selesai. Anda dapat mencoba kembali.';
+				messageKind = 'info';
+				return;
+			}
+			retryAfterSeconds -= 1;
+		}, 1000);
+	}
 
 	async function checkSession(): Promise<void> {
 		try {
@@ -82,7 +110,7 @@
 
 	async function submitLogin(event: SubmitEvent): Promise<void> {
 		event.preventDefault();
-		if (submitting) return;
+		if (submitting || retryAfterSeconds > 0) return;
 
 		submitting = true;
 		message = '';
@@ -112,8 +140,11 @@
 				return;
 			}
 			if (response.status === 429) {
-				messageKind = 'error';
-				message = 'Terlalu banyak percobaan masuk. Tunggu beberapa saat sebelum mencoba lagi.';
+				startRetryCountdown(response);
+				if (retryAfterSeconds === 0) {
+					messageKind = 'error';
+					message = 'Terlalu banyak percobaan masuk. Tunggu beberapa saat sebelum mencoba lagi.';
+				}
 				return;
 			}
 			if (!response.ok) throw new Error('login_unavailable');
@@ -291,10 +322,12 @@
 					</div>
 
 					{#if message}
-						<p class="notice" class:notice-error={messageKind === 'error'} class:notice-success={messageKind === 'success'} role={messageKind === 'error' ? 'alert' : 'status'}>{message}</p>
+						<p class="notice" class:notice-error={messageKind === 'error'} class:notice-success={messageKind === 'success'} role={messageKind === 'error' ? 'alert' : 'status'}>
+							{message}{#if retryAfterSeconds > 0}<span aria-hidden="true"> {retryAfterSeconds} detik</span>{/if}
+						</p>
 					{/if}
 
-					<button class="primary-button" type="submit" disabled={submitting || checkingSession || !username || !password}>
+				<button class="primary-button" type="submit" disabled={submitting || checkingSession || retryAfterSeconds > 0 || !username || !password}>
 						{#if checkingSession}Memeriksa sesi…{:else if submitting}Memverifikasi…{:else}Masuk ke ruang kerja{/if}
 						<span aria-hidden="true">↗</span>
 					</button>

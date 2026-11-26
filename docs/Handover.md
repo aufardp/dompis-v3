@@ -884,3 +884,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: DTO `/auth/me` berubah additive; consumer selain login UI harus menerima dua field tambahan. Belum dilakukan request runtime/browser atau test suite.
 - Rollback: hapus field username/display name dari DB auth context dan route schema/response, lalu kembalikan label generik UI; tidak ada rollback DB.
 - Langkah berikutnya: saat akun bootstrap lokal tersedia, QA login, refresh session, logout, expiry/revocation, dan memastikan status 503 tidak menghapus cookie.
+
+## 2026-11-26 — Honor login throttle countdown
+
+- Tindakan: menyambungkan response header `Retry-After` 429 ke countdown UI; tombol submit dinonaktifkan selama cooldown, timer dibersihkan saat route unmount, dan jika header tidak valid tetap tampil pesan throttle generik. Isi alert dijaga stabil agar pembaca layar tidak mengumumkan ulang angka tiap detik.
+- File berubah: `apps/web/src/routes/+page.svelte`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck`; `bun run build`; `git diff --check`.
+- Hasil aktual: Svelte/API/worker typecheck lulus; build web/API lulus; Svelte diagnostics 0 error/0 warning; diff check lulus. Warning `NO_COLOR`/`FORCE_COLOR` muncul pada build. Tidak menjalankan test suite atau HTTP runtime request.
+- Keputusan teknis: UI menerima hanya integer detik positif dari server, meng-caps countdown di 900 detik dan tetap mengandalkan server sebagai enforcement final.
+- Risiko/kendala: countdown visual belum diverifikasi di browser; setiap tab/session tetap dibatasi oleh API, sedangkan timer hanya membantu UX.
+- Rollback: hapus helper/state/countdown dan submit guard serta entri ADR-032; tidak ada rollback DB.
+- Langkah berikutnya: runtime QA login/throttle/logout saat akun lokal tersedia; akses produk tetap menunggu permission/scope approval.

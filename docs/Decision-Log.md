@@ -279,3 +279,12 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: session UI is consistent before and after reload. No additional profile endpoint, permission, scope, or user data access was added.
 - Validation: API/DB/web typecheck and workspace build passed; no test suite or database access in this slice.
 - Rollback: remove the two identity fields from authorization context/API response and restore the generic label in Svelte; no DB rollback is needed.
+
+## ADR-032 — Honor login throttle Retry-After in the form (2026-11-26)
+
+- Status: implemented locally.
+- Context: API login throttling returned a `Retry-After` value, but the UI showed a vague wait message and left submit enabled, allowing repeated requests during the lockout interval.
+- Decision: display a countdown from a valid positive integer `Retry-After`, disable submit until it expires, cap the client timer at the server's 15-minute policy maximum, and clear the timer when the page unmounts. Keep the alert text stable; expose the changing second count visually without repeated screen-reader announcements.
+- Consequences: the UI communicates the server wait and avoids retries that cannot succeed. Server throttling remains authoritative; malformed/missing header keeps the generic error path.
+- Validation: Svelte typecheck/build and `git diff --check` passed; no automated test or HTTP runtime request was performed.
+- Rollback: remove the countdown state/helper, onMount cleanup, and submit-disable condition; no server/database rollback.
