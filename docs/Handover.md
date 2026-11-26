@@ -932,3 +932,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: terdapat discrepancy yang perlu diuji: Security.md menyatakan gangguan database di `/auth/me` menghasilkan 503 dan mempertahankan cookie, sedangkan exception query yang tidak tertangani pada route berpotensi masuk global error handler sebagai 500. Belum mensimulasikan kegagalan dependency dan belum mengubah implementasi.
 - Rollback: tidak ada perubahan runtime atau database; bila catatan review keliru, koreksi atau append klarifikasi pada Handover tanpa menghapus riwayat.
 - Langkah berikutnya: tambahkan regression test untuk database outage `/auth/me`, pastikan 503 tidak menghapus cookie, lalu perbaiki route jika kegagalan tersebut terbukti. Lanjutkan Phase 2 sesuai dependency owner-approved capability matrix dan kebutuhan audit sebelum mutation API.
+
+## 2026-11-26 — Preserve login session during database outage
+
+- Tindakan: menambahkan regression coverage untuk `/auth/me` ketika session store tidak tersedia dan ketika query gagal walau probe koneksi berhasil; route kini melakukan probe PostgreSQL hanya setelah lookup/revocation melempar error. DB outage menghasilkan 503 `authentication_unavailable` tanpa menghapus cookie; query/application fault saat DB probe sehat tetap dilempar ke global handler sebagai 500.
+- File berubah: `apps/api/src/auth.ts`, `apps/api/src/auth.test.ts`, `docs/Phase-2-Organization-Auth.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: PostgreSQL lokal development `dompis_v3` pada loopback; tidak ada data bisnis dipakai. Test menulis hanya fixture sintetis dalam transaksi rollback.
+- Command tersanitasi: `bun --env-file=.env test apps/api/src/auth.test.ts`; `bun run typecheck`; `bun run build`; `git diff --check`. Percobaan test pertama dari sandbox ditolak koneksinya; `pg_isready` memastikan server menerima koneksi, lalu test dijalankan dengan izin lokal yang disetujui. Red test mereproduksi 500 sebelum fix.
+- Hasil pengujian aktual: auth integration lulus 1 test / 38 expectations; workspace typecheck lulus (Svelte 0 error/0 warning, API dan worker lulus); build web/API lulus; diff check lulus. Build menampilkan warning lingkungan `NO_COLOR` diabaikan ketika `FORCE_COLOR` aktif. Seluruh fixture rollback; tidak ada akun nyata dibuat.
+- Keputusan teknis: klasifikasikan outage dengan probe `pingDatabase` hanya setelah operasi auth gagal; jika probe sehat, exception asli tetap menjadi 500 dan tidak disamarkan sebagai outage. Log outage memuat event tetap dan request ID saja.
+- Risiko/kendala: outage response path dibuktikan memakai DB sintetis yang gagal, bukan dengan mematikan PostgreSQL aktif. Browser login end-to-end dan penggunaan akun operator tetap belum dilakukan.
+- Rollback: revert perubahan route/test dan hapus ADR-033 serta pembaruan dokumentasi fase/handover; tidak ada migrasi atau rollback DB.
+- Langkah berikutnya: lanjutkan Phase 2 dengan audit event/workflow sebelum mutation administrasi; login end-to-end masih menunggu bootstrap akun yang dipilih operator dan verifikasi di browser.

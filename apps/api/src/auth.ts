@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Elysia, t } from 'elysia';
-import { createSession, findActiveLoginIdentity, loadAuthorizationContext, revokeSession } from '@dompis/db';
+import { createSession, findActiveLoginIdentity, loadAuthorizationContext, pingDatabase, revokeSession } from '@dompis/db';
 import { database } from '@dompis/db';
 
 const SESSION_COOKIE = '__Host-dompis_session';
@@ -262,9 +262,25 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 				set.status = 401;
 				return { error: 'unauthenticated' };
 			}
-			const context = await loadAuthorizationContext(database, hashSessionToken(token));
+			let context: Awaited<ReturnType<typeof loadAuthorizationContext>>;
+			try {
+				context = await loadAuthorizationContext(database, hashSessionToken(token));
+				if (!context) await revokeSession(database, hashSessionToken(token));
+			} catch (error: unknown) {
+				try {
+					await pingDatabase(database);
+				} catch {
+					const requestId = set.headers['x-request-id'];
+					console.error({
+						event: 'auth_session_store_unavailable',
+						requestId: typeof requestId === 'string' ? requestId : 'unknown'
+					});
+					set.status = 503;
+					return { error: 'authentication_unavailable' };
+				}
+				throw error;
+			}
 			if (!context) {
-				await revokeSession(database, hashSessionToken(token));
 				cookie[SESSION_COOKIE]?.set(expiredSessionCookie);
 				set.status = 401;
 				return { error: 'unauthenticated' };

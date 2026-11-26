@@ -288,3 +288,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: the UI communicates the server wait and avoids retries that cannot succeed. Server throttling remains authoritative; malformed/missing header keeps the generic error path.
 - Validation: Svelte typecheck/build and `git diff --check` passed; no automated test or HTTP runtime request was performed.
 - Rollback: remove the countdown state/helper, onMount cleanup, and submit-disable condition; no server/database rollback.
+
+## ADR-033 — Preserve sessions during authentication-store outages (2026-11-26)
+
+- Status: implemented locally.
+- Context: `/auth/me` documentation promises 503 with the existing browser cookie preserved when PostgreSQL is unavailable, but a thrown lookup/revocation error was passed to the global error handler and became 500.
+- Evidence: the regression test first reproduced HTTP 500 using a synthetic unavailable DB. After the change, the test observed HTTP 503 and no session-cookie expiry; a separate synthetic query failure with a successful connectivity probe still returns 500.
+- Decision: on a failed session lookup or stale-session revocation, probe PostgreSQL once. If the probe also fails, log only a fixed event and request ID, return 503 `authentication_unavailable`, and do not mutate the cookie. If PostgreSQL responds, rethrow the original error so application/query faults retain generic 500 handling.
+- Consequences: transient store failure no longer appears as a valid anonymous session and does not clear client state. The extra DB probe occurs only on an exceptional auth lookup/revocation path.
+- Validation: auth integration test passed with 38 expectations on local PostgreSQL using rollback-only synthetic fixtures; workspace typecheck/build and `git diff --check` passed. No live account or production database was used.
+- Rollback: restore direct lookup/revocation behavior in `/auth/me` and remove the regression cases and this ADR; no schema or database rollback is required.

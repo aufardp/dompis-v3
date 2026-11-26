@@ -132,6 +132,39 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 			}));
 			expect(me.status).toBe(200);
 
+			const unavailableDatabase = {
+				select: () => { throw new Error('synthetic_database_connection_failure'); },
+				execute: async () => { throw new Error('synthetic_database_connection_failure'); }
+			} as unknown as typeof db;
+			const outageApp = new Elysia()
+				.onError(({ set }) => {
+					set.status = 500;
+					return { error: 'internal_error' };
+				})
+				.use(createAuthRoutes(unavailableDatabase, 'https://dompis.example.test'));
+			const duringOutage = await outageApp.handle(new Request('http://localhost/auth/me', {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(duringOutage.status).toBe(503);
+			expect(await duringOutage.json()).toEqual({ error: 'authentication_unavailable' });
+			expect(duringOutage.headers.get('set-cookie') ?? '').not.toContain('__Host-dompis_session=;');
+
+			const failingQueryDatabase = {
+				select: () => { throw new Error('synthetic_query_failure'); },
+				execute: async () => []
+			} as unknown as typeof db;
+			const queryFailureApp = new Elysia()
+				.onError(({ set }) => {
+					set.status = 500;
+					return { error: 'internal_error' };
+				})
+				.use(createAuthRoutes(failingQueryDatabase, 'https://dompis.example.test'));
+			const queryFailure = await queryFailureApp.handle(new Request('http://localhost/auth/me', {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(queryFailure.status).toBe(500);
+			expect(await queryFailure.json()).toEqual({ error: 'internal_error' });
+
 			const guardedApp = new Elysia()
 				.use(createPermissionGuard(tx))
 				.get('/protected', ({ authorization }) => ({ userId: authorization.userId }), {
