@@ -524,3 +524,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: tidak menjalankan browser interaction test; belum ada akun sintetis untuk menguji tampilan error 5xx secara end-to-end. Error transport sebelum response tidak punya request ID.
 - Rollback: revert perubahan helper/penanganan login/logout UI dan entri ini; tidak ada database rollback.
 - Langkah berikutnya: uji alur interaktif memakai synthetic account ketika jalur provisioning aman tersedia; lanjutkan endpoint produk setelah permission/business contract disetujui.
+
+## 2026-11-26 — Login service-unavailable reference check
+
+- Tindakan: memeriksa respons login saat DB sengaja tidak dikonfigurasi melalui `createApp().handle`, tanpa membuka listener atau menyambung ke database; mencoba menyiapkan browser E2E dan mendapati API port tidak bisa di-bind di sandbox.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada koneksi database; `DATABASE_URL` kosong hanya untuk proses smoke terisolasi.
+- Command tersanitasi: Elysia in-process `POST /auth/login` dengan akun/password sintetis yang tidak pernah dicatat; pemeriksaan `lsof` pada port alternatif; tidak ada login ke akun nyata.
+- Hasil aktual: API mengembalikan 503 `authentication_unavailable` dan menyertakan `X-Request-ID`. Browser E2E tidak berjalan: API bind pada 39871, 39872, dan 45731 menghasilkan EADDRINUSE, sedangkan pemeriksaan listener yang diizinkan tidak menemukan proses pada port tersebut. Watcher percobaan dihentikan; tidak ada listener aplikasi yang tersisa.
+- Keputusan teknis: pertahankan pesan 503 generik pada API; halaman membaca request ID dari header untuk menampilkan referensi. Tidak memakai test user/database hanya demi UI verification.
+- Risiko/blocker: tampilan request ID pada browser belum dikonfirmasi secara interaktif; keterbatasan lokal port/network perlu diselesaikan sebelum UI E2E.
+- Rollback: dokumentasi saja berubah; tidak ada database atau persistent application state yang berubah.
+- Langkah berikutnya: ulangi UI E2E ketika port lokal dapat di-bind dan akun sintetis aman tersedia; jangan mengubah/mematikan listener yang pemiliknya tidak diketahui.
