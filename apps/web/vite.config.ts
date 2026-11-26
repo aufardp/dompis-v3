@@ -2,19 +2,21 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+const apiTarget = `http://127.0.0.1:${process.env.API_PORT ?? '3000'}`;
+
 export default defineConfig({
 	server: {
 		proxy: {
 			'/auth': {
-			target: 'http://127.0.0.1:3000',
+			target: apiTarget,
 				changeOrigin: false
 			},
 			'/tickets': {
-				target: 'http://127.0.0.1:3000',
+				target: apiTarget,
 				changeOrigin: false
 			},
 			'/health': {
-				target: 'http://127.0.0.1:3000',
+				target: apiTarget,
 				changeOrigin: false
 			}
 		}
