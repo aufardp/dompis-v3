@@ -1,12 +1,28 @@
 {
   "version": 2,
   "skills": {
+    "Collision-Zone Thinking": {
+      "source": "obra/superpowers-skills",
+      "commit": "cdcd624ad3fd8026deb692e565351854569798dd",
+      "sourceType": "github",
+      "skillPath": "skills/problem-solving/collision-zone-thinking/SKILL.md",
+      "computedHash": "754a5dc6a51b8379549276bf12feb7d66778aad07f7d1dd8a8b1276a43e835ce",
+      "installMode": "copy"
+    },
     "agent-browser": {
       "source": "vercel-labs/agent-browser",
       "commit": "a67ba089fec5fbfec07346aebad11666463d9799",
       "sourceType": "github",
       "skillPath": "skills/agent-browser/SKILL.md",
       "computedHash": "a0dfac7503f69bcf529b2660fc79964064c4f179eb65695904ddc45fc0d99d20",
+      "installMode": "copy"
+    },
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/brainstorming/SKILL.md",
+      "computedHash": "a7424777b7f81e3eb9b4556d29fe233553736d8255780d3e1feea190fef61fef",
       "installMode": "copy"
     },
     "caveman": {
@@ -41,6 +57,22 @@
       "computedHash": "b10eab0a9684cd09cf34c31ef04a3bf530a5f4404422f9c520d42372d670c7fc",
       "installMode": "copy"
     },
+    "diagnosing-superpowers": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/diagnosing-superpowers/SKILL.md",
+      "computedHash": "44d0295c3d59d6418f80c96e40d8e7b7ece99513ab6e63e5d04b1cf87cc5bbab",
+      "installMode": "copy"
+    },
+    "dispatching-parallel-agents": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/dispatching-parallel-agents/SKILL.md",
+      "computedHash": "d799e464fdfb0edc80b3b7ad7cce03e64ee07fc5db231c988688a81438503659",
+      "installMode": "copy"
+    },
     "drizzle": {
       "source": "lobehub/lobehub",
       "commit": "726db63e011289106ae3d877f3b6367594278f4c",
@@ -57,12 +89,36 @@
       "computedHash": "a6c0405d2b902e2fe6227d612812d376f5ebb568ea55ec28634f92abf16485c4",
       "installMode": "copy"
     },
+    "executing-plans": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/executing-plans/SKILL.md",
+      "computedHash": "58b364f6e3f64602c7cfd0b34ceaad9de95d41fe7e4b46b274843ba19fc01ccc",
+      "installMode": "copy"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "commit": "57217cf86ba38148a57af9e90d14a4c049558330",
       "sourceType": "github",
       "skillPath": "skills/find-skills/SKILL.md",
       "computedHash": "7bc223e2aafbdbf6e50ea243ba6ef67fe432bb069ab439fea0390795dac0bf7f",
+      "installMode": "copy"
+    },
+    "finding-duplicate-functions": {
+      "source": "obra/superpowers-lab",
+      "commit": "51111f74f24058117752d9aa917cb19859f8ec86",
+      "sourceType": "github",
+      "skillPath": "skills/finding-duplicate-functions/SKILL.md",
+      "computedHash": "12a5d53290babe15f57897d6d3334f9ff1af6a585b454a4ec9107281117c054c",
+      "installMode": "copy"
+    },
+    "finishing-a-development-branch": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/finishing-a-development-branch/SKILL.md",
+      "computedHash": "7e24d821d45b8f10773edd9f1a4be2fac90eedae4f8fc8e70e34e27e44d3f3c0",
       "installMode": "copy"
     },
     "frontend-design": {
@@ -137,6 +193,30 @@
       "computedHash": "c2d9f4b5037b4320be0cc2489eeb287d3147477ae1f48b33f5f897e2c562ed06",
       "installMode": "copy"
     },
+    "receiving-code-review": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/receiving-code-review/SKILL.md",
+      "computedHash": "528d336858d6f7d22cfcb887a249409ce682cb7d37a939cb15a82f2576a35876",
+      "installMode": "copy"
+    },
+    "remembering-conversations": {
+      "source": "obra/episodic-memory",
+      "commit": "a432bcbfa6ee38023d71e8f9bd5d23fa14454f19",
+      "sourceType": "github",
+      "skillPath": "skills/remembering-conversations/SKILL.md",
+      "computedHash": "7838fbbe60f45852ea9c1569d9a13b47dc4203602902a358eb3d92d3ef71c829",
+      "installMode": "copy"
+    },
+    "requesting-code-review": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/requesting-code-review/SKILL.md",
+      "computedHash": "32bcc25e8c3315d0150f646ee0067c9d4bfbc7719c34012db9c202e17cce8a14",
+      "installMode": "copy"
+    },
     "shadcn": {
       "source": "shadcn-ui/ui",
       "commit": "0e5b2e621a9ee4cf6a604bbe6c5c0d5b70561eb4",
@@ -153,12 +233,28 @@
       "computedHash": "5c555d6eb63b54cad64ee864a3684853c305729b9102ec366671f9c45fa91736",
       "installMode": "copy"
     },
+    "subagent-driven-development": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/subagent-driven-development/SKILL.md",
+      "computedHash": "da0ad5e635b6ff70c2b6dbf25e51ae6ca1cad6beebfc61a791195675468c492e",
+      "installMode": "copy"
+    },
     "svelte": {
       "source": "vercel-labs/json-render",
       "commit": "372ae4f487d02bd2f591e94a84527de40f3938df",
       "sourceType": "github",
       "skillPath": "skills/svelte/SKILL.md",
       "computedHash": "6b3ce1e2954c2cb61e2ec2f387ba022c60e11063bc5eb371a7994887d8f1ff74",
+      "installMode": "copy"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/systematic-debugging/SKILL.md",
+      "computedHash": "79ff0583175346e39431b0dc713b223edd1bd7a7ea2b6c8b78b2fb9a3fed6782",
       "installMode": "copy"
     },
     "tdd": {
@@ -169,12 +265,68 @@
       "computedHash": "e3e0f78ff1c2d52ffefa0378baa1e80e129d359288cf9a56f4e59afcd2aac86c",
       "installMode": "copy"
     },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/test-driven-development/SKILL.md",
+      "computedHash": "2782702b2cf69ace085ed30d067b6f8bfd2d777ad51770fc5bdae9cb5c1b5c04",
+      "installMode": "copy"
+    },
     "typescript-advanced-types": {
       "source": "wshobson/agents",
       "commit": "c96b5f6552dba32e4492307493ee613581430715",
       "sourceType": "github",
       "skillPath": "plugins/javascript-typescript/skills/typescript-advanced-types/SKILL.md",
       "computedHash": "34c5b3863fde1fc85981ac583ecaf0140471b374d0b7002ac5bc0bea2cf38b24",
+      "installMode": "copy"
+    },
+    "using-git-worktrees": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/using-git-worktrees/SKILL.md",
+      "computedHash": "b69324cb5e5ba5b846fc2ae2811616008dc6f19858245100e472713190d4c9e4",
+      "installMode": "copy"
+    },
+    "using-superpowers": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/using-superpowers/SKILL.md",
+      "computedHash": "6a9104fac7e16c3cec2bc118943aefd331cac35b4cfabd427cea4dc16337c6a5",
+      "installMode": "copy"
+    },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/verification-before-completion/SKILL.md",
+      "computedHash": "09b0e3a4689c1c38a3b8fc6ef57a1d4165aa33c0013d546dbde9dd348941a319",
+      "installMode": "copy"
+    },
+    "writing-clearly-and-concisely": {
+      "source": "obra/the-elements-of-style",
+      "commit": "05fc4f0d2b97b7c042dd9949ad658568e4a1324e",
+      "sourceType": "github",
+      "skillPath": "skills/writing-clearly-and-concisely/SKILL.md",
+      "computedHash": "435b361e25a4709cd61c14a820577e4533c1c7411224162771cbdf671670cf4a",
+      "installMode": "copy"
+    },
+    "writing-plans": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/writing-plans/SKILL.md",
+      "computedHash": "ef082ddb5354d736059397133b3682e8a0c85c57906affe47c9da354cbb7c91e",
+      "installMode": "copy"
+    },
+    "writing-skills": {
+      "source": "obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+      "sourceType": "github",
+      "skillPath": "skills/writing-skills/SKILL.md",
+      "computedHash": "50d87a4c2c6a9d60156ccfdbe844e0a11678968157e494a8a8c02377c273483a",
       "installMode": "copy"
     }
   }

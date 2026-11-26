@@ -252,3 +252,12 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: an operator can provision a local account for login QA without implicitly granting product access. The command is not a general user-management interface and does not run during application startup. It refuses production configuration and repeat bootstrap.
 - Validation: Bun 1.4 docs lookup confirmed parameterized SQL and `SQL.begin` transaction/rollback behavior; strict TypeScript check, Bun bundle, root typecheck/build, and `git diff --check` passed (see Handover). The CLI was not executed, and no account/password was created.
 - Rollback: remove `auth:bootstrap` from package scripts and delete `scripts/bootstrap-first-user.ts`; no database rollback because command has not been run. If it is run later, remove the user/audit record only through a reviewed local rollback after checking sessions/references.
+
+## ADR-029 — Bootstrap uses application database credentials (2026-11-26)
+
+- Status: implemented locally.
+- Context: the first-user bootstrap initially preferred `MIGRATION_DATABASE_URL`, which may have broader schema privileges than the application database role.
+- Decision: use only `DATABASE_URL` in the bootstrap CLI; do not fall back to `MIGRATION_DATABASE_URL`. Retain the loopback host, port, database-name, and PostgreSQL-major-version guards.
+- Consequences: bootstrap does not inherit the migrator credential. If the application role lacks the minimum local insert/lock rights, it fails closed and the local role configuration must be reviewed; it never silently escalates.
+- Validation: strict TypeScript, workspace typecheck/build, and `git diff --check` passed as recorded in Handover. No database or account mutation was performed.
+- Rollback: reverting the environment-variable selection would restore the migrator credential fallback; no DB rollback is needed.

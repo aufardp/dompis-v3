@@ -52,7 +52,7 @@ class BootstrapFailure extends Error {
 }
 
 function readDatabaseUrl(): URL {
-	const connectionString = Bun.env.MIGRATION_DATABASE_URL ?? Bun.env.DATABASE_URL;
+	const connectionString = Bun.env.DATABASE_URL;
 	if (!connectionString) throw new BootstrapFailure('database_url_missing');
 
 	let url: URL;

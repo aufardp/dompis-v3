@@ -848,3 +848,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: terminal hidden-input dan transaksi belum diuji secara interaktif/runtime; konfigurasi `APP_ORIGIN` dan proxy browser tetap harus berjalan untuk login. User pertama yang dibuat tidak dapat membaca product data sampai capability/scope grants disetujui dan diberikan lewat proses ber-audit.
 - Rollback: hapus command package, script dan perubahan dokumentasi; tidak ada perubahan DB. Jika operator menjalankan bootstrap kemudian perlu membatalkan, periksa sesi dan audit reference sebelum hapus user; jangan hapus row role catalog.
 - Langkah berikutnya: jalankan perintah hanya saat pemilik siap memilih role dan membuat password lokal; verifikasi login/logout menggunakan akun itu, lalu lanjutkan user-management API setelah capability matrix disetujui.
+
+## 2026-11-26 — Bootstrap credential boundary hardening
+
+- Tindakan: mengubah bootstrap CLI agar hanya membaca `DATABASE_URL` dan tidak memakai `MIGRATION_DATABASE_URL` sebagai fallback; memperjelas batas ini pada instruksi setup/security.
+- File berubah: `scripts/bootstrap-first-user.ts`, `docs/Getting-Started.md`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi atau perubahan database.
+- Command tersanitasi: perbandingan credential selection di script; strict TypeScript check bootstrap; `bun run typecheck`; `bun run build`; `git diff --check`.
+- Hasil aktual: script dan workspace typecheck lulus; web/API build lulus; diff check lulus. Warning lingkungan build `NO_COLOR`/`FORCE_COLOR` tetap muncul. Tidak menjalankan bootstrap atau test suite.
+- Keputusan teknis: first-user account creation memakai hanya credential runtime lokal yang dibatasi, bukan credential migrator; target guard dan no-capability invariants tetap berlaku.
+- Kendala/risiko: role lokal yang dipakai `DATABASE_URL` harus memiliki privilege minimum untuk lock/read/insert pada tabel bootstrap; bila tidak, command gagal tanpa fallback. Interaksi terminal dan login end-to-end belum dijalankan.
+- Rollback: pulihkan pemilihan migrator URL hanya bila ada keputusan keamanan baru dan dokumentasikan; tidak ada DB rollback.
+- Langkah berikutnya: review privilege `DATABASE_URL` lokal tanpa mencetak DSN, lalu operator dapat menjalankan bootstrap untuk membuat akun no-access dan QA login; capability matrix tetap owner-gated.
