@@ -944,3 +944,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: outage response path dibuktikan memakai DB sintetis yang gagal, bukan dengan mematikan PostgreSQL aktif. Browser login end-to-end dan penggunaan akun operator tetap belum dilakukan.
 - Rollback: revert perubahan route/test dan hapus ADR-033 serta pembaruan dokumentasi fase/handover; tidak ada migrasi atau rollback DB.
 - Langkah berikutnya: lanjutkan Phase 2 dengan audit event/workflow sebelum mutation administrasi; login end-to-end masih menunggu bootstrap akun yang dipilih operator dan verifikasi di browser.
+
+## 2026-11-26 — Add transaction-aware audit writer
+
+- Tindakan: menambahkan `appendAuditEvent` pada paket DB, menerima database/transaction handle dari caller, mewajibkan actor/action/target/request ID, dan membatasi metadata ke nilai scalar. Menambahkan integration test yang membaca event di transaksi lalu memastikan fixture tidak tersisa setelah rollback. Tidak menambah schema, migration, atau hak akses.
+- File berubah: `packages/db/src/audit.ts`, `packages/db/src/audit.test.ts`, `packages/db/src/index.ts`, `docs/Phase-2-Organization-Auth.md`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: PostgreSQL lokal development `dompis_v3` pada loopback; satu event sintetis, transaksi di-rollback. Tidak ada data bisnis atau akun nyata.
+- Command tersanitasi: `bun --env-file=.env test packages/db/src/audit.test.ts`; `bun run typecheck`; `bun run build`; `git diff --check`. Test DB pertama ditolak sandbox; setelah retry dengan izin koneksi lokal, test berhasil.
+- Hasil pengujian aktual: audit integration lulus 1 test / 2 expectations; workspace typecheck lulus (Svelte 0 error/0 warning; API dan worker lulus); web/API build lulus; diff check lulus. Build menampilkan warning lingkungan `NO_COLOR` diabaikan saat `FORCE_COLOR` aktif.
+- Keputusan teknis: audit ditulis melalui transaction handle yang sama dengan state change oleh caller; metadata hanya scalar dan tetap harus mengikuti allowlist tindakan. Helper bukan penegakan immutability database, tidak menyediakan reader, dan tidak mengubah bootstrap SQL yang telah ada.
+- Risiko/kendala: event taxonomy, allowlist tiap operasi, read authorization, retention, dan admin mutation workflows belum didefinisikan/diimplementasikan. Capability matrix masih belum disetujui.
+- Rollback: hapus helper, export, test, dan catatan ADR/perubahan dokumentasi; tidak ada rollback database.
+- Langkah berikutnya: tetapkan kontrak metadata untuk operasi admin yang akan dibangun setelah capability matrix disetujui, lalu gunakan helper dalam transaksi mutasi dan uji audit + state rollback sebagai satu unit.

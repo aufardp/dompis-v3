@@ -21,6 +21,7 @@ export async function closeDatabase(): Promise<void> {
 }
 
 export { loadAuthorizationContext, ticketAccessPredicate } from './authorization';
+export { appendAuditEvent, type AuditEventInput } from './audit';
 export { createSession, findActiveLoginIdentity, revokeSession } from './authentication';
 export { findTicketDetail } from './tickets';
 export { schema };

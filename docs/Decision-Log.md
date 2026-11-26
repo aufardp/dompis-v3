@@ -298,3 +298,12 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: transient store failure no longer appears as a valid anonymous session and does not clear client state. The extra DB probe occurs only on an exceptional auth lookup/revocation path.
 - Validation: auth integration test passed with 38 expectations on local PostgreSQL using rollback-only synthetic fixtures; workspace typecheck/build and `git diff --check` passed. No live account or production database was used.
 - Rollback: restore direct lookup/revocation behavior in `/auth/me` and remove the regression cases and this ADR; no schema or database rollback is required.
+
+## ADR-034 — Share transaction-aware audit event insertion (2026-11-26)
+
+- Status: implemented locally; admin mutations do not use it yet.
+- Context: the audit table and one bootstrap writer exist, while the next organization/user mutations must record audit events in the same transaction as state changes. Duplicated raw insert statements would make field handling and metadata safety inconsistent.
+- Decision: add a small DB package `appendAuditEvent` function that accepts the caller's Drizzle database/transaction handle, required actor/action/target/request identifiers, and scalar-only metadata. Do not add a table, index, event taxonomy, retention policy, or audit read permission in this change.
+- Consequences: future mutation code can append in the existing transaction and the helper can be tested without persistent fixtures. Event actions and metadata still require per-operation allowlists; the helper is not database-level append-only enforcement and does not grant read access.
+- Validation: local PostgreSQL integration test inserted and read a synthetic event in a transaction, then confirmed it disappeared after rollback (1 test, 2 expectations); workspace typecheck/build and `git diff --check` passed.
+- Rollback: remove `packages/db/src/audit.ts`, its test/export, and documentation entries; no migration or database rollback is needed.
