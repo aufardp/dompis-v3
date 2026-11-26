@@ -896,3 +896,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: countdown visual belum diverifikasi di browser; setiap tab/session tetap dibatasi oleh API, sedangkan timer hanya membantu UX.
 - Rollback: hapus helper/state/countdown dan submit guard serta entri ADR-032; tidak ada rollback DB.
 - Langkah berikutnya: runtime QA login/throttle/logout saat akun lokal tersedia; akses produk tetap menunggu permission/scope approval.
+
+## 2026-11-26 — Apply DOMPIS burgundy and navy web palette
+
+- Tindakan: menerapkan palet yang diminta ke halaman login yang saat ini menjadi UI web aktif, termasuk latar dark navy, panel, teks, aksen merah, hover, focus ring, pesan status, warna browser theme, dan favicon. Memperbarui token serta arah visual di Design System.
+- File berubah: `apps/web/src/routes/+page.svelte`, `apps/web/src/lib/assets/favicon.svg`, `docs/Design-System.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck`; `bun run build`; `git diff --check`; pencarian warna lama pada UI login dan token dokumentasi.
+- Hasil pengujian aktual: `bun run typecheck` lulus (Svelte 0 error/0 warning; API dan worker TypeScript lulus); `bun run build` lulus (web dan API); `git diff --check` lulus. Build menampilkan warning lingkungan bahwa `NO_COLOR` diabaikan saat `FORCE_COLOR` aktif. Tidak menjalankan test suite atau browser QA.
+- Keputusan teknis: #101220 canvas, #181A29 surface, #2A2F45 raised/card, #FFFFFF teks utama, #C5CAD3 teks sekunder, #AD0E27 aksi/brand, #750A1C hover/error. Status sukses menggunakan netral kontras dengan label eksplisit, karena palet tidak menyediakan warna sukses terpisah.
+- Risiko/kendala: UI web saat ini hanya menyediakan halaman login, jadi halaman produk lain belum ada untuk penerapan tema. Kontras visual belum diperiksa lewat browser/screenshot.
+- Rollback: revert perubahan pada empat file yang disebut di atas; tidak ada rollback database.
+- Langkah berikutnya: bila halaman produk ditambahkan, gunakan token desain yang sama dan lakukan visual QA desktop/mobile serta pemeriksaan kontras.

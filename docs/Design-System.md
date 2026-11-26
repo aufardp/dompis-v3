@@ -1,20 +1,17 @@
 # Design System — DOMPIS Ticket Workspace
 
-Arah visual usulan: clean operational console, light default, high density tetapi terbaca. Bahasa Indonesia untuk UI, status asli NOSSA dipertahankan. Svelte components reusable; CSS custom properties, no heavy UI framework wajib. Ikon SVG sederhana, font system atau self-hosted. Hindari gradient, glassmorphism, animasi berlebihan.
+Arah visual: dark operational console, kontras tinggi dan tetap terbaca untuk penggunaan harian. Bahasa Indonesia untuk UI, status asli NOSSA dipertahankan. Svelte components reusable; CSS custom properties, no heavy UI framework wajib. Ikon SVG sederhana, font system atau self-hosted. Hindari gradient, glassmorphism, animasi berlebihan.
 
 ## Tokens
-| Token | Light | Fungsi |
+| Token | Default | Fungsi |
 |---|---|---|
-| background | #F5F7FA | canvas |
-| surface | #FFFFFF | table, sidebar |
-| text | #172033 | teks utama |
-| muted | #475569 | sekunder |
-| border | #DCE2EA | pemisah |
-| primary | #4338CA | action/focus |
-| success | #166534 | closed/healthy |
-| warning | #92400E | pending/stale |
-| danger | #B91C1C | error/overdue |
-| info | #1D4ED8 | open/analysis |
+| background | #101220 | canvas utama |
+| surface | #181A29 | panel dan input |
+| raised | #2A2F45 | kartu dan lapisan terangkat |
+| text | #FFFFFF | teks utama |
+| muted | #C5CAD3 | teks sekunder dan pemisah |
+| primary | #AD0E27 | aksi utama, brand, focus |
+| primary-deep | #750A1C | hover dan penekanan/error |
 
 Gunakan tint background ringan dengan teks kontras AA; uji setiap kombinasi dan focus ring 2px. Jangan warna saja: badge selalu label. Spacing 4/8/12/16/24/32; radius 6–10px; shadow minimal. Base text 14px, table 13–14, page title 24, KPI 28, numeric tabular. Desktop sidebar 232px collapsible 64px; header 56px; content 24px; mobile drawer, padding 12px. Table row 40–48px, header sticky, horizontal scroll pada mobile, tidak shrink teks ke ukuran kecil. Interactive touch min 44px.
 
@@ -46,7 +43,7 @@ Sidebar: Ticket Management (Overview + bucket), Semesta, Rekap Workorder, Detail
 - No manual refresh that fans out to NOSSA; refresh reads DB. SSE event invalidates visible query only; fallback polling. Don't load inactive menus. Paginated 50 default, max 100. Lazy charts/export. Keep production JS budget measured (initial target <200 KB gzip excluding optional lazy charts), no unbounded DOM.
 
 ## QA visual
-Desktop 1440/1280, tablet 768, mobile 390; 200% zoom; keyboard only; screen reader labels; contrast; long incident/summary; null field, 401/403/503, offline, slow network, stale data, scope changed mid-request. Test Svelte escape and CSP, no `{@html}` untrusted. Dark theme optional post-MVP, no parallel design work until P0 complete.
+Desktop 1440/1280, tablet 768, mobile 390; 200% zoom; keyboard only; screen reader labels; contrast; long incident/summary; null field, 401/403/503, offline, slow network, stale data, scope changed mid-request. Test Svelte escape and CSP, no `{@html}` untrusted. Status selalu memiliki label teks; warna saja tidak menjadi penanda status. Tema terang dapat dipertimbangkan setelah MVP bila kebutuhan pengguna tervalidasi.
 
 ## v1.3 historical provenance
 Ticket detail may display `Data historis (migrasi)` for unverified legacy record and `Terverifikasi NOSSA` only after accepted source observation. Coverage gaps/unknown timestamp explicitly shown; do not hide old tickets solely because they lack live verification. Historical vs live filter optional if approved; not a default extra query. No raw legacy payload dump in UI; scoped allowlisted details only. Reports distinguish unavailable SLA and unexplained/approved reconciliation deltas during pilot.
