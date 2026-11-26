@@ -536,3 +536,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: tampilan request ID pada browser belum dikonfirmasi secara interaktif; keterbatasan lokal port/network perlu diselesaikan sebelum UI E2E.
 - Rollback: dokumentasi saja berubah; tidak ada database atau persistent application state yang berubah.
 - Langkah berikutnya: ulangi UI E2E ketika port lokal dapat di-bind dan akun sintetis aman tersedia; jangan mengubah/mematikan listener yang pemiliknya tidak diketahui.
+
+## 2026-11-26 — Session-check availability feedback
+
+- Tindakan: memperbarui startup session check di halaman login: respons 5xx menampilkan pesan autentikasi belum tersedia dan request reference tervalidasi bila ada; kegagalan transport menampilkan pesan generik sambil tetap mengaktifkan form.
+- File berubah: `apps/web/src/routes/+page.svelte`, `docs/Handover.md`.
+- Database target: tidak ada database atau API runtime yang diakses pada implementasi ini.
+- Command tersanitasi: `bun run typecheck:web`; `bun run build:web`; `git diff --check`.
+- Hasil aktual: Svelte diagnostics 0 error/0 warning; web build sukses; diff check lulus. Build memberi warning environment `NO_COLOR`/`FORCE_COLOR` yang tidak memengaruhi exit code.
+- Keputusan teknis: hanya 5xx yang menampilkan referensi dukungan; 401 tetap dianggap sesi anonim normal. Gangguan jaringan tetap memberi pesan tanpa ID karena server belum tentu merespons.
+- Risiko/blocker: belum ada interaksi browser karena port lokal tidak bisa di-bind; 503 header behavior API sudah terverifikasi in-process, tetapi tampilan pesan belum E2E.
+- Rollback: revert perubahan `checkSession` dan entri ini; tidak ada data/database rollback.
+- Langkah berikutnya: validasi UI error state saat port lokal tersedia; lanjutkan produk setelah permission, snapshot, dan business contracts owner-gated tersedia.

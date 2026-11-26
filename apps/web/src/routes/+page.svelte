@@ -45,8 +45,16 @@
 				cache: 'no-store'
 			});
 			if (response.ok) currentUser = 'Pengguna DOMPIS';
+			else if (response.status >= 500) {
+				const requestId = readRequestId(response);
+				messageKind = 'error';
+				message = requestId
+					? `Layanan autentikasi belum tersedia. Referensi: ${requestId}.`
+					: 'Layanan autentikasi belum tersedia. Coba lagi beberapa saat.';
+			}
 		} catch {
-			// Keep the form available; submission reports the connection problem.
+			messageKind = 'error';
+			message = 'Layanan autentikasi belum dapat dijangkau. Form masuk tetap tersedia.';
 		} finally {
 			checkingSession = false;
 		}
