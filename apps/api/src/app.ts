@@ -4,6 +4,7 @@ import { closeDatabase, database, pingDatabase } from '@dompis/db';
 import type { ReadinessState } from '@dompis/contracts';
 import { createAuthRoutes } from './auth';
 import { createTicketRoutes } from './tickets';
+import { createUserRoutes } from './users';
 
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 
@@ -89,6 +90,7 @@ export function createApp() {
 		})
 		.use(createAuthRoutes(database, appOrigin))
 		.use(createTicketRoutes(database))
+		.use(createUserRoutes(database, appOrigin))
 		.onStop(async () => {
 			await closeDatabase();
 		});

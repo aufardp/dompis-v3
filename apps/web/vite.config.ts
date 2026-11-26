@@ -15,6 +15,10 @@ export default defineConfig({
 				target: apiTarget,
 				changeOrigin: false
 			},
+			'/admin': {
+				target: apiTarget,
+				changeOrigin: false
+			},
 			'/health': {
 				target: apiTarget,
 				changeOrigin: false

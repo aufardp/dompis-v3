@@ -110,6 +110,16 @@ function isValidCsrf(request: Request, csrfCookie: string | undefined): boolean 
 	return timingSafeEqual(Buffer.from(csrfCookie), Buffer.from(csrfHeader));
 }
 
+export function validateMutationSecurity(
+	request: Request,
+	csrfCookie: string | undefined,
+	expectedOrigin: string | undefined
+): 'allowed' | 'origin_rejected' | 'csrf_rejected' {
+	if (!expectedOrigin || !isAllowedOrigin(request, expectedOrigin)) return 'origin_rejected';
+	if (!isValidCsrf(request, csrfCookie)) return 'csrf_rejected';
+	return 'allowed';
+}
+
 export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: string | undefined) {
 	const limiter = new LoginLimiter();
 	const dummyPasswordHash = Bun.password.hash('dompis-invalid-login-placeholder', { algorithm: 'argon2id' });

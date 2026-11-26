@@ -348,6 +348,17 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Rollback: restore ADR-028 bootstrap behavior and the earlier zero-capability account policy in `scripts/bootstrap-first-user.ts`, `docs/Getting-Started.md` and `docs/Security.md`; no database rollback because bootstrap was not run.
 - Owner approval: ADR-036, current conversation, 2026-11-26.
 
+## ADR-039 — Add superadmin-only User Management vertical slice (2026-11-27)
+
+- Status: implemented locally; database-backed API and browser verification remain pending.
+- Context: owner approved superadmin control and a superadmin-only user administration feature for creating/removing users and controlling their data scopes. The local permission catalog grants `users.read`, `users.manage`, and `organization.read` only to `superadmin`; the development database currently has no user to exercise those grants.
+- Decision: add bounded, keyset-paginated user listing and detail, plus account creation, scope/global-scope replacement, and soft deactivation routes. Enforce capability and explicit global scope server-side; mutations require exact configured Origin and double-submit CSRF validation. Recheck the actor's active superadmin/global-scope/permission state in a serialized transaction. Use Argon2id for the operator-supplied initial password; only superadmin may receive global scope, and creation of a global account requires password reauthentication. Existing-account scope changes require reauthentication, revoke target sessions, increment `scope_version`, and are blocked for self; prevent self-deactivation and removal of the final active global superadmin. Commit each mutation with allowlisted, non-sensitive audit metadata. Add a responsive role-aware UI, while keeping the API authoritative.
+- Boundary: role is selectable at creation, but changing an existing user's role and password reset/change are not implemented. Initial credentials must be conveyed through a separate secure channel. No users, scopes, sessions, or organization data were written in this work. No new table, index, worker, or runtime infrastructure was added.
+- Consequences: superadmin can administer users once a first account is provisioned using the guarded bootstrap. Other roles remain denied by current capability grants. Organization mutation workflows, audit read/retention, and operational-role capabilities remain open.
+- Validation: local `bun run typecheck`, `bun run build`, `bun test apps/api/src/user-security.test.ts`, and `git diff --check` passed. No DB-backed user route test or browser QA was run; the Bun API database transport was unavailable, and no user was provisioned.
+- Rollback: remove `apps/api/src/users.ts`, its app composition and dependency declaration if not used elsewhere; remove the admin Svelte route and navigation/proxy changes; remove `validateMutationSecurity` export only if no other caller uses it; revert this ADR, Security/Phase 2/Handover entries. No database rollback is required.
+- Owner approval: user administration scope and superadmin-only access approved in current conversation on 2026-11-27. Initial-password handoff and lack of role/password editing are implementation boundaries, not an approved credential recovery policy.
+
 ## ADR-035 — Add scoped ticket list with signed keyset cursors (2026-11-26)
 
 - Status: implemented locally; `tickets.read` remains an unseeded candidate pending owner approval.

@@ -9,7 +9,7 @@
 	};
 
 	type CsrfResponse = { csrfToken?: unknown };
-	type SessionResponse = { displayName?: unknown };
+	type SessionResponse = { displayName?: unknown; globalScope?: unknown; permissions?: unknown };
 
 	class HttpResponseError extends Error {
 		readonly requestId: string | null;
@@ -31,6 +31,7 @@
 	let password = $state('');
 	let showPassword = $state(false);
 	let currentUser = $state<string | null>(null);
+	let canManageUsers = $state(false);
 	let checkingSession = $state(true);
 	let submitting = $state(false);
 	let retryAfterSeconds = $state(0);
@@ -97,6 +98,7 @@
 				currentUser = typeof payload.displayName === 'string' && payload.displayName.trim().length > 0
 					? payload.displayName
 					: 'Pengguna DOMPIS';
+				canManageUsers = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('users.manage');
 			}
 			else if (response.status >= 500) {
 				const requestId = readRequestId(response);
@@ -172,6 +174,7 @@
 			currentUser = typeof displayName === 'string' && displayName.trim().length > 0
 				? displayName
 				: 'Pengguna DOMPIS';
+			await loadUserCapabilities();
 			password = '';
 			showPassword = false;
 			messageKind = 'success';
@@ -185,6 +188,15 @@
 		} finally {
 			submitting = false;
 		}
+	}
+
+	async function loadUserCapabilities(): Promise<void> {
+		try {
+			const response = await fetch('/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+			if (!response.ok) return;
+			const payload = await response.json() as SessionResponse;
+			canManageUsers = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('users.manage');
+		} catch { canManageUsers = false; }
 	}
 
 	async function logout(): Promise<void> {
@@ -203,6 +215,7 @@
 			requestId = readRequestId(response);
 			if (!response.ok) throw new Error('logout_failed');
 			currentUser = null;
+			canManageUsers = false;
 			username = '';
 			password = '';
 			showPassword = false;
@@ -287,6 +300,9 @@
 					<h2 id="form-title">Selamat datang.</h2>
 					<p class="user-name">{currentUser}</p>
 					<p class="form-note">Akses ticket dan laporan tetap dibatasi oleh permission serta scope akun Anda.</p>
+					{#if canManageUsers}
+						<a class="primary-button" href="/admin/users">Kelola pengguna</a>
+					{/if}
 					<button class="primary-button" type="button" onclick={logout} disabled={submitting}>
 						{#if submitting}Memproses…{:else}Keluar dari DOMPIS{/if}
 					</button>
