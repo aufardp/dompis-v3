@@ -392,3 +392,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Kendala/risiko: route detail sudah tersedia tetapi ticket source/sync belum diimplementasikan dan tabel lokal kosong; belum ada UI, list/search, filter, cursor atau audit. Jika permission matrix tidak menyetujui `tickets.read`, kode tersebut harus diganti sebelum permission diberikan. Tidak ada produksi/legacy/upstream write.
 - Rollback: revert route, query helper, export/test/docs via Git; tidak ada migration atau persistent data rollback.
 - Langkah berikutnya: lanjut Phase 3 sync dengan sanitized fixture dan contract validation; jangan membuat live NOSSA call tanpa budget/credential yang disetujui dan jangan mengasumsikan closed/reopen semantics. Ticket list/search tetap perlu cursor/filter contract dan endpoint detail ini belum menyelesaikan menu Ticket Management.
+
+## 2026-11-26 — Phase 3A migration readiness preflight
+
+- Tindakan: meninjau Implementation Plan, Database-Access, Migration, Migration-Validation, Master-Data-Migration, mapping, dan laporan Phase 0; mengonsolidasikan gate Phase 3A serta kondisi aman untuk mulai ETL.
+- File berubah: `docs/Phase-3A-Migration-Readiness.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses pada pekerjaan ini. Laporan hanya mengutip hasil read-only yang telah tercatat di Phase 0; tidak membaca credential, mengekspor data, atau melakukan DDL/DML.
+- SQL/command tersanitasi: tidak ada SQL atau database command dijalankan; `git diff --check` dijalankan setelah pembaruan.
+- Hasil aktual: review dokumentasi menghasilkan readiness matrix gate source/snapshot, target PG, actual schema drift, field retention, hierarchy/workzone, user access, fixtures, dan business-derived values. Tidak menjalankan test/typecheck/build karena hanya dokumentasi yang berubah.
+- Keputusan teknis: Phase 3A ETL ditandai **not started** sampai snapshot MySQL read-only terdaftar dan pulihannya terverifikasi, field/retention/crosswalk/role decisions tersedia, serta migration fixture suite siap. Jumlah 1.108.814 source rows adalah baseline lama, bukan snapshot manifest atau eligible count. Tidak menambah dependency source driver sebelum jalur akses dan kebutuhan ETL dibuktikan.
+- Risiko/blocker: MySQL `dompis_db` sebelumnya teridentifikasi sebagai local container tetapi environment/owner tidak diklasifikasikan dan role `root@%`; target tidak boleh diasumsikan aman sebagai snapshot. PostgreSQL `dompis_v3` adalah candidate schema, bukan disposable restore target; tidak ada least-privilege migration role atau restore rehearsal. Tipe enam kolom drift; 74 Workzone keys/7.171 ticket rows belum dipetakan; PII/archive retention dan per-user scope/role parity belum disetujui.
+- Rollback: dokumentasi saja berubah; revert kedua file melalui Git. Tidak ada data/database rollback.
+- Langkah berikutnya: minta/siapkan registered read-only snapshot, backup/restore evidence, crosswalk, data retention/field dispositions, dan role/scope approvals. Setelah input tersedia, bangun dry-run ETL + fixture acceptance sebelum write. Jangan loncat Phase 3A atau memanggil NOSSA live tanpa gate.
