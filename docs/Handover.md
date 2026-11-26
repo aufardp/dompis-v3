@@ -968,3 +968,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: browser E2E belum memverifikasi pembuatan akun awal interaktif melalui bootstrap CLI maupun permissioned product access. Chrome melaporkan request `/favicon.ico` 404 meski halaman login dan icon bundle termuat; perlu ditinjau terpisah bila icon browser tampak hilang.
 - Rollback: QA server telah dihentikan; akun dan sesi dihapus. Tidak ada migrasi. Hapus runner `/private/tmp/dompis-login-browser-qa.ts` bila file sementara tidak lagi diperlukan.
 - Langkah berikutnya: teruskan Phase 2 pada event catalog dan alur user/organization yang diaudit setelah capability matrix tervalidasi; login operator nyata tetap menunggu provisioning lokal oleh pemilik.
+
+## 2026-11-26 — Verify generic invalid-credential UX
+
+- Tindakan: memperluas browser QA login dengan satu percobaan password salah sebelum percobaan valid; memastikan pesan yang ditampilkan tetap generik, lalu menguji login, pemulihan sesi setelah reload, dan logout. Runner membuat akun sintetis zero-permission/zero-scope sementara dan menghapus akun serta sesi pada `finally`.
+- File berubah: `docs/Phase-2-Organization-Auth.md`, `docs/Handover.md`. Runner sementara `/private/tmp/dompis-login-browser-qa.ts` tidak masuk repository.
+- Database target: PostgreSQL 18.7 lokal `dompis_v3` pada loopback; satu akun sintetis dibuat dan satu dihapus bersama sesi. Tidak ada data bisnis atau akun operator digunakan.
+- Command tersanitasi: API loopback port 41001, SvelteKit loopback port 5174, `bun --env-file=.env /private/tmp/dompis-login-browser-qa.ts`, lalu server dihentikan.
+- Hasil pengujian aktual: browser QA lulus untuk pesan `Username atau password tidak sesuai.`, login valid setelah satu kegagalan, session restore, dan logout. Runner melaporkan akun dihapus pada cleanup. Tidak ada source behavior yang perlu diubah; `git diff --check` lulus.
+- Keputusan teknis: kredensial salah menggunakan satu attempt sintetis per akun baru sehingga tidak memicu throttling; pesan UI tidak membedakan username yang tidak ada dari password yang salah.
+- Risiko/kendala: bootstrap CLI interaktif dan akun operator nyata belum diuji. Request browser `/favicon.ico` 404 tetap observasi terpisah.
+- Rollback: tidak ada code/database state tersisa; API dan web QA server dihentikan. Tidak ada schema change.
+- Langkah berikutnya: lanjutkan audit/admin Phase 2 setelah capability matrix disetujui; untuk login, sisa verifikasi adalah bootstrap operator dan policy akses produk.
