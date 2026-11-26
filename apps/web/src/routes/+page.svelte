@@ -28,6 +28,7 @@
 
 	let username = $state('');
 	let password = $state('');
+	let showPassword = $state(false);
 	let currentUser = $state<string | null>(null);
 	let checkingSession = $state(true);
 	let submitting = $state(false);
@@ -117,6 +118,7 @@
 				? displayName
 				: 'Pengguna DOMPIS';
 			password = '';
+			showPassword = false;
 			messageKind = 'success';
 			message = 'Sesi DOMPIS Anda sudah aktif.';
 		} catch (error: unknown) {
@@ -148,6 +150,7 @@
 			currentUser = null;
 			username = '';
 			password = '';
+			showPassword = false;
 			messageKind = 'success';
 			message = 'Anda sudah keluar dari DOMPIS.';
 		} catch (error: unknown) {
@@ -256,17 +259,30 @@
 						<label for="password">Password</label>
 						<span>Rahasia akun</span>
 					</div>
-					<input
-						id="password"
-						name="password"
-						type="password"
-						bind:value={password}
-						autocomplete="current-password"
-						maxlength="1024"
-						required
-						disabled={submitting || checkingSession}
-						placeholder="Masukkan password"
-					/>
+					<div class="password-input-wrap">
+						<input
+							id="password"
+							name="password"
+							type={showPassword ? 'text' : 'password'}
+							bind:value={password}
+							autocomplete="current-password"
+							maxlength="1024"
+							required
+							disabled={submitting || checkingSession}
+							placeholder="Masukkan password"
+						/>
+						<button
+							class="password-toggle"
+							type="button"
+							aria-controls="password"
+							aria-pressed={showPassword}
+							aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+							disabled={submitting || checkingSession}
+							onclick={() => showPassword = !showPassword}
+						>
+							{showPassword ? 'Sembunyi' : 'Lihat'}
+						</button>
+					</div>
 
 					{#if message}
 						<p class="notice" class:notice-error={messageKind === 'error'} class:notice-success={messageKind === 'success'} role={messageKind === 'error' ? 'alert' : 'status'}>{message}</p>
@@ -496,6 +512,26 @@
 		font-size: 14px;
 		transition: border-color 140ms ease, box-shadow 140ms ease;
 	}
+	.password-input-wrap { position: relative; }
+	.password-input-wrap input { padding-right: 78px; }
+	.password-toggle {
+		position: absolute;
+		top: 2px;
+		right: 2px;
+		min-width: 44px;
+		min-height: 44px;
+		padding: 0 7px;
+		border: 0;
+		border-radius: 4px;
+		background: transparent;
+		color: #4338ca;
+		font-size: 12px;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.password-toggle:hover:not(:disabled) { background: #f5f7ff; }
+	.password-toggle:focus-visible { outline: 2px solid #4338ca; outline-offset: 1px; }
+	.password-toggle:disabled { color: #9aa3b2; cursor: wait; }
 	input::placeholder { color: #9aa3b2; }
 	input:hover { border-color: #9aa6ba; }
 	input:focus { border-color: #4338ca; box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.14); }

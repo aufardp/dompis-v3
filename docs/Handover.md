@@ -584,3 +584,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: satu synthetic connection error diuji; ini bukan exhaustive exception matrix atau test suite. Login interaktif/browser masih belum diverifikasi dengan user account.
 - Rollback: dokumentasi saja berubah; tidak ada data/db rollback.
 - Langkah berikutnya: gunakan hasil ini untuk menutup item internal 500 sanitization; lanjutkan fitur produk yang tidak bergantung pada owner-gated contracts, atau tunggu fixtures/decisions untuk ticket/report/admin/migration.
+
+## 2026-11-26 — Login password visibility control
+
+- Tindakan: menambahkan kontrol tampil/sembunyikan password pada form login, dengan password tersembunyi secara default, label aksesibel dan target sentuh minimum 44px. Nilai kontrol direset setelah login berhasil atau logout.
+- File berubah: `apps/web/src/routes/+page.svelte`, `docs/Handover.md`.
+- Database target: tidak ada database atau API runtime yang diakses.
+- Command tersanitasi: `bun run typecheck:web`; `bun run build:web`; `git diff --check`.
+- Hasil aktual: Svelte diagnostics 0 error/0 warning; web production build sukses; `git diff --check` lulus. Build mencetak warning environment `NO_COLOR`/`FORCE_COLOR` yang tidak memengaruhi hasil.
+- Keputusan teknis: kontrol memakai button native dengan `aria-controls`, `aria-pressed` dan nama aksesibel dinamis; aksi dinonaktifkan selama session check atau submit agar tidak mengubah field ketika auth berlangsung.
+- Risiko/blocker: interaksi show/hide belum diverifikasi di browser pada slice ini; tidak ada perubahan auth atau data.
+- Rollback: revert markup/state/CSS kontrol password dan entri handover ini; tidak ada database rollback.
+- Langkah berikutnya: validasi interaksi keyboard/touch pada browser saat sesi UI berikutnya tersedia; lanjutkan hanya pekerjaan produk yang tidak membutuhkan owner-gated business/data contract.
