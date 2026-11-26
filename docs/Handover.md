@@ -404,3 +404,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: MySQL `dompis_db` sebelumnya teridentifikasi sebagai local container tetapi environment/owner tidak diklasifikasikan dan role `root@%`; target tidak boleh diasumsikan aman sebagai snapshot. PostgreSQL `dompis_v3` adalah candidate schema, bukan disposable restore target; tidak ada least-privilege migration role atau restore rehearsal. Tipe enam kolom drift; 74 Workzone keys/7.171 ticket rows belum dipetakan; PII/archive retention dan per-user scope/role parity belum disetujui.
 - Rollback: dokumentasi saja berubah; revert kedua file melalui Git. Tidak ada data/database rollback.
 - Langkah berikutnya: minta/siapkan registered read-only snapshot, backup/restore evidence, crosswalk, data retention/field dispositions, dan role/scope approvals. Setelah input tersedia, bangun dry-run ETL + fixture acceptance sebelum write. Jangan loncat Phase 3A atau memanggil NOSSA live tanpa gate.
+
+## 2026-11-26 — Shared incident key normalization primitive
+
+- Tindakan: menambahkan pure shared incident normalizer sebagai persiapan migrasi; mengintegrasikannya pada route detail ticket agar runtime lookup dan ETL memakai canonical business key yang sama.
+- File berubah: `packages/contracts/src/incident.ts`, `packages/contracts/src/incident.test.ts`, `packages/contracts/src/index.ts`, `apps/api/src/tickets.ts`, `docs/Phase-3A-Migration-Readiness.md`, `docs/Handover.md`.
+- Database target: tidak ada database untuk unit test; API integration test memakai PostgreSQL 18.7 lokal `dompis_v3` dengan seluruh hierarchy/user/permission/ticket fixtures di satu transaction yang di-rollback.
+- Command tersanitasi: `bun test packages/contracts/src/incident.test.ts`; `bun run typecheck`; `bun run build`; `bun --env-file=.env test apps/api/src/auth.test.ts`; `git diff --check`.
+- Hasil aktual: pure test 2 pass/11 expectations; full typecheck dan build lulus; auth/ticket API integration test 1 pass/33 expectations; integration fixtures rollback. `git diff --check` dijalankan setelah dokumentasi final.
+- Keputusan teknis: input harus string; hanya ASCII A–Z/a–z/0–9/underscore/hyphen; trim hanya spasi ASCII di kedua ujung; uppercase; maksimum 100 karakter; tidak melakukan coercion, Unicode folding atau truncation. Invalid values mendapat alasan typed untuk quarantine. Fungsi ini tidak memilih winner untuk incident collision; collision mapping tetap harus snapshot-wide dan owner-dispositioned.
+- Risiko/blocker: tidak ada source snapshot atau migration runner; fungsi ini bukan izin untuk import. Sumber MySQL environment/owner, eligibility/retention, actual type drift, crosswalk 74 unmatched Workzone values, user role/scope parity dan restore tetap memblokir ETL.
+- Rollback: revert pure helper, export/test/API use dan docs via Git; tidak ada schema atau persistent data change.
+- Langkah berikutnya: siapkan snapshot/target registration dan keputusan Phase 3A; sesudah itu buat collision accounting + dry-run manifest dari synthetic fixtures, bukan data aktif yang belum terdaftar.

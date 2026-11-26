@@ -24,6 +24,8 @@ Do not start a bulk ETL, create a migration manifest from live records, or write
 
 Independent preparation may proceed with synthetic tests after the owner-approved field/eligibility contract is available. The implementation should then use immutable snapshot identity, keyset reads, stable incident grouping, one persistent old-ID→UUIDv7 mapping, short changed-only target transactions, checkpoint/resume, exact row accounting, and explicit imported/merged/quarantined/excluded dispositions. `incident` remains the unique business key; no import may regenerate an existing ticket UUID or promote ambiguous duplicates silently.
 
+The first independent primitive is implemented in `packages/contracts/src/incident.ts`: it accepts only string keys, trims ASCII spaces, validates the documented ASCII alphabet, uppercases without Unicode folding, enforces the 100-character local limit, and never truncates. Invalid values return a reason for quarantine. This does not resolve collisions between distinct legacy IDs; collision groups still require snapshot-wide accounting and an approved disposition.
+
 ## Required inputs to unlock Phase 3A
 
 - Register the MySQL source owner/environment/schema allowlist and provide a consistent read-only snapshot or verified restore, schema hash, manifest and backup/restore evidence.
@@ -35,4 +37,4 @@ Independent preparation may proceed with synthetic tests after the owner-approve
 
 ## Acceptance and next action
 
-Phase 3A remains **not started**. Once inputs above are available, first implement a dry-run plan and synthetic acceptance harness; only then request review of a concrete import plan before applying bounded data writes. Validate all MV01–MV15 and ORG-M01–ORG-M06 in `Migration-Validation.md`; do not mark a gate passed based on source row counts alone.
+Phase 3A ETL remains **not started**. The incident normalization primitive is tested, but no source reader, dry-run plan, snapshot manifest, checkpoint, or migration writer exists. Once inputs above are available, implement a dry-run plan and synthetic acceptance harness; only then request review of a concrete import plan before applying bounded data writes. Validate all MV01–MV15 and ORG-M01–ORG-M06 in `Migration-Validation.md`; do not mark a gate passed based on source row counts alone.

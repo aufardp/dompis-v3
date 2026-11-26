@@ -1,5 +1,6 @@
 import { Elysia, t } from 'elysia';
 import { findTicketDetail } from '@dompis/db';
+import { normalizeIncident } from '@dompis/contracts';
 import { database } from '@dompis/db';
 import { createPermissionGuard } from './permission-guard';
 
@@ -14,8 +15,12 @@ export function createTicketRoutes(database: TicketDatabase | undefined) {
 				set.status = 503;
 				return { error: 'ticket_data_unavailable' as const };
 			}
-			const incident = params.incident.trim().toUpperCase();
-			const ticket = await findTicketDetail(database, authorization, incident);
+			const normalized = normalizeIncident(params.incident);
+			if (!normalized.ok) {
+				set.status = 404;
+				return { error: 'ticket_not_found' as const };
+			}
+			const ticket = await findTicketDetail(database, authorization, normalized.incident);
 			if (!ticket) {
 				set.status = 404;
 				return { error: 'ticket_not_found' as const };
