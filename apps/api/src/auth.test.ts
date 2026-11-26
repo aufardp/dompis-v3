@@ -64,11 +64,26 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 			}).returning({ id: schema.workzones.id }), 'workzone');
 			await tx.insert(schema.userScopes).values({ userId: user.id, workzoneId: allowedWorkzone.id });
 			const allowedIncident = `AUTH-ALLOWED-${suffix}`.toUpperCase();
+			const olderIncident = `AUTH-OLDER-${suffix}`.toUpperCase();
+			const unknownDateIncident = `AUTH-UNKNOWN-DATE-${suffix}`.toUpperCase();
 			const deniedIncident = `AUTH-DENIED-${suffix}`.toUpperCase();
 			await tx.insert(schema.tickets).values([
 				{
 					incident: allowedIncident, workzoneId: allowedWorkzone.id, sourceWorkzone: allowedWorkzoneCode,
 					status: 'OPEN', lifecycle: 'open', dataOrigin: 'legacy', migratedAt: new Date(),
+					reportedAt: new Date('2026-11-26T10:00:00.123Z'),
+					operationalBucket: 'kpi_customer', kpiSeg: 'unknown', ruleVersion: 'auth-test'
+				},
+				{
+					incident: olderIncident, workzoneId: allowedWorkzone.id, sourceWorkzone: allowedWorkzoneCode,
+					status: 'BACKEND', lifecycle: 'open', dataOrigin: 'legacy', migratedAt: new Date(),
+					serviceNo: `SYN-SERVICE-${suffix}`,
+					reportedAt: new Date('2026-11-26T10:00:00.122Z'),
+					operationalBucket: 'kpi_customer', kpiSeg: 'unknown', ruleVersion: 'auth-test'
+				},
+				{
+					incident: unknownDateIncident, workzoneId: allowedWorkzone.id, sourceWorkzone: allowedWorkzoneCode,
+					status: 'UNKNOWN', lifecycle: 'unknown', dataOrigin: 'legacy', migratedAt: new Date(),
 					operationalBucket: 'unknown', kpiSeg: 'unknown', ruleVersion: 'auth-test'
 				},
 				{
@@ -198,6 +213,80 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 				headers: { cookie: `__Host-dompis_session=${token}` }
 			}));
 			expect(outOfScopeTicket.status).toBe(404);
+
+			const pageOneResponse = await ticketApp.handle(new Request('http://localhost/tickets?limit=1', {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(pageOneResponse.status).toBe(200);
+			const pageOne = await pageOneResponse.json() as {
+				items: Array<Record<string, unknown> & { incident: string }>;
+				nextCursor: string | null;
+			};
+			expect(pageOne.items.map((item) => item.incident)).toEqual([allowedIncident]);
+			expect(pageOne.nextCursor).toBeString();
+			expect(pageOne.items[0]).not.toHaveProperty('serviceNo');
+			expect(pageOne.items[0]).not.toHaveProperty('summary');
+			expect(pageOne.items[0]).not.toHaveProperty('detail');
+			if (!pageOne.nextCursor) throw new Error('synthetic_ticket_cursor_missing');
+
+			const cursorUrl = (cursor: string, extra = '') =>
+				`http://localhost/tickets?limit=1${extra}&cursor=${encodeURIComponent(cursor)}`;
+			const pageTwoResponse = await ticketApp.handle(new Request(cursorUrl(pageOne.nextCursor), {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(pageTwoResponse.status).toBe(200);
+			const pageTwo = await pageTwoResponse.json() as { items: Array<{ incident: string }>; nextCursor: string | null };
+			expect(pageTwo.items.map((item) => item.incident)).toEqual([olderIncident]);
+			expect(pageTwo.nextCursor).toBeString();
+			if (!pageTwo.nextCursor) throw new Error('synthetic_ticket_cursor_missing');
+
+			const pageThreeResponse = await ticketApp.handle(new Request(cursorUrl(pageTwo.nextCursor), {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(pageThreeResponse.status).toBe(200);
+			const pageThree = await pageThreeResponse.json() as { items: Array<{ incident: string }>; nextCursor: string | null };
+			expect(pageThree.items.map((item) => item.incident)).toEqual([unknownDateIncident]);
+			expect(pageThree.nextCursor).toBeNull();
+
+			const filteredResponse = await ticketApp.handle(new Request('http://localhost/tickets?bucket=kpi_customer&status=BACKEND', {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(filteredResponse.status).toBe(200);
+			const filtered = await filteredResponse.json() as { items: Array<{ incident: string }> };
+			expect(filtered.items.map((item) => item.incident)).toEqual([olderIncident]);
+
+			const exactSearch = await ticketApp.handle(new Request(`http://localhost/tickets?search=${allowedIncident.toLowerCase()}`, {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(exactSearch.status).toBe(200);
+			expect((await exactSearch.json() as { items: Array<{ incident: string }> }).items.map((item) => item.incident))
+				.toEqual([allowedIncident]);
+			const exactServiceSearch = await ticketApp.handle(new Request(`http://localhost/tickets?search=SYN-SERVICE-${suffix}`, {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(exactServiceSearch.status).toBe(200);
+			expect((await exactServiceSearch.json() as { items: Array<{ incident: string }> }).items.map((item) => item.incident))
+				.toEqual([olderIncident]);
+			const invalidLimit = await ticketApp.handle(new Request('http://localhost/tickets?limit=1.5', {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(invalidLimit.status).toBe(422);
+
+			const deniedPathFilter = await ticketApp.handle(new Request(`http://localhost/tickets?workzoneId=${deniedWorkzone.id}`, {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(deniedPathFilter.status).toBe(200);
+			expect((await deniedPathFilter.json() as { items: unknown[] }).items).toHaveLength(0);
+
+			const changedFilterCursor = await ticketApp.handle(new Request(cursorUrl(pageOne.nextCursor, '&lifecycle=closed'), {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(changedFilterCursor.status).toBe(400);
+			const changedSignature = `${pageOne.nextCursor.slice(0, -1)}${pageOne.nextCursor.endsWith('A') ? 'B' : 'A'}`;
+			const tamperedCursor = await ticketApp.handle(new Request(cursorUrl(changedSignature), {
+				headers: { cookie: `__Host-dompis_session=${token}` }
+			}));
+			expect(tamperedCursor.status).toBe(400);
 
 			const logout = await app.handle(new Request('http://localhost/auth/logout', {
 				method: 'POST',

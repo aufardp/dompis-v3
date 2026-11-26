@@ -20,8 +20,8 @@ export async function closeDatabase(): Promise<void> {
 	if (client) await client.close();
 }
 
-export { loadAuthorizationContext, ticketAccessPredicate } from './authorization';
+export { loadAuthorizationContext, ticketAccessPredicate, type AuthorizationContext } from './authorization';
 export { appendAuditEvent, type AuditEventInput } from './audit';
 export { createSession, findActiveLoginIdentity, revokeSession } from './authentication';
-export { findTicketDetail } from './tickets';
+export { findTicketDetail, listTickets, type TicketListFilters, type TicketListPosition } from './tickets';
 export { schema };
