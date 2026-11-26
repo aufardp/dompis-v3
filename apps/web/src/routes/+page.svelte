@@ -9,6 +9,7 @@
 	};
 
 	type CsrfResponse = { csrfToken?: unknown };
+	type SessionResponse = { displayName?: unknown };
 
 	class HttpResponseError extends Error {
 		readonly requestId: string | null;
@@ -45,7 +46,12 @@
 				credentials: 'same-origin',
 				cache: 'no-store'
 			});
-			if (response.ok) currentUser = 'Pengguna DOMPIS';
+			if (response.ok) {
+				const payload = await response.json() as SessionResponse;
+				currentUser = typeof payload.displayName === 'string' && payload.displayName.trim().length > 0
+					? payload.displayName
+					: 'Pengguna DOMPIS';
+			}
 			else if (response.status >= 500) {
 				const requestId = readRequestId(response);
 				messageKind = 'error';

@@ -860,3 +860,27 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Kendala/risiko: role lokal yang dipakai `DATABASE_URL` harus memiliki privilege minimum untuk lock/read/insert pada tabel bootstrap; bila tidak, command gagal tanpa fallback. Interaksi terminal dan login end-to-end belum dijalankan.
 - Rollback: pulihkan pemilihan migrator URL hanya bila ada keputusan keamanan baru dan dokumentasikan; tidak ada DB rollback.
 - Langkah berikutnya: review privilege `DATABASE_URL` lokal tanpa mencetak DSN, lalu operator dapat menjalankan bootstrap untuk membuat akun no-access dan QA login; capability matrix tetap owner-gated.
+
+## 2026-11-26 — Expire and revoke rejected sessions
+
+- Tindakan: `/auth/me` kini mengirim cookie sesi kedaluwarsa ketika cookie ada tetapi formatnya malformed atau token tidak lagi memetakan ke sesi aktif (expired/revoked/user-role inactive). Jika token berformat valid tetapi konteks sesi ditolak, route juga mencabut record sesi yang masih hidup sebelum menghapus cookie. Jalur database-unavailable tetap mempertahankan cookie. Logout memakai konstanta atribut expiry yang sama.
+- File berubah: `apps/api/src/auth.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck`; `bun run build`; `git diff --check`.
+- Hasil aktual: typecheck workspace lulus (Svelte 0 error/0 warning; API/worker TS lulus); build web/API lulus; diff check lulus. Warning lingkungan build `NO_COLOR`/`FORCE_COLOR` muncul. Tidak menjalankan test suite.
+- Keputusan teknis: hanya 401 dari invalid/stale session yang membersihkan cookie; sesi yang masih hidup namun tidak lolos resolusi active identity ikut dicabut. Token malformed tidak dipakai untuk query revocation. 503 saat store tidak tersedia tidak menghapus cookie sehingga outage transient tidak memaksa logout.
+- Kendala/risiko: perilaku `Set-Cookie` pada 401 belum diverifikasi lewat request runtime/browser; cookie options ditinjau statis dan compile.
+- Rollback: pulihkan cabang `/auth/me` agar hanya mengembalikan 401 dan hapus constant expiry serta catatan ADR/Security/Handover; tidak ada rollback DB.
+- Langkah berikutnya: lanjutkan login/session QA dengan akun lokal yang dibuat operator melalui `bun run auth:bootstrap`; akun belum dibuat dan permission matrix masih menahan akses produk.
+
+## 2026-11-26 — Restore current-user label after reload
+
+- Tindakan: menambahkan `username` dan `displayName` milik pengguna dari `loadAuthorizationContext` ke response `/auth/me`; UI login sekarang memulihkan display name pada session check, bukan memakai label generik.
+- File berubah: `packages/db/src/authorization.ts`, `apps/api/src/auth.ts`, `apps/web/src/routes/+page.svelte`, `docs/Phase-2-Organization-Auth.md`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck`; `bun run build`; `git diff --check`.
+- Hasil aktual: percobaan typecheck pertama gagal karena `AuthorizationContext` belum memiliki tipe untuk dua field baru; tipe diperbarui, lalu typecheck workspace dan build web/API lulus. Svelte 0 error/0 warning; build memperlihatkan warning `NO_COLOR`/`FORCE_COLOR`; diff check lulus. Tidak menjalankan test suite.
+- Keputusan teknis: endpoint mengembalikan hanya identity fields pemilik session yang sudah terverifikasi; tidak ada user ID dari query/body atau akses profile pihak lain.
+- Risiko/kendala: DTO `/auth/me` berubah additive; consumer selain login UI harus menerima dua field tambahan. Belum dilakukan request runtime/browser atau test suite.
+- Rollback: hapus field username/display name dari DB auth context dan route schema/response, lalu kembalikan label generik UI; tidak ada rollback DB.
+- Langkah berikutnya: saat akun bootstrap lokal tersedia, QA login, refresh session, logout, expiry/revocation, dan memastikan status 503 tidak menghapus cookie.

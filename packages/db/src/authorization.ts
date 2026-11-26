@@ -6,6 +6,8 @@ type AuthorizationReader = Pick<BunSQLDatabase<typeof schema>, 'select'>;
 
 export interface AuthorizationContext {
 	readonly userId: string;
+	readonly username: string;
+	readonly displayName: string;
 	readonly globalScope: boolean;
 	readonly scopeVersion: number;
 	readonly permissions: ReadonlySet<string>;
@@ -23,6 +25,8 @@ export async function loadAuthorizationContext(
 	const [identity] = await database
 		.select({
 			userId: schema.users.id,
+			username: schema.users.username,
+			displayName: schema.users.displayName,
 			roleId: schema.users.roleId,
 			globalScope: schema.users.globalScope,
 			scopeVersion: schema.users.scopeVersion
@@ -49,6 +53,8 @@ export async function loadAuthorizationContext(
 
 	return {
 		userId: identity.userId,
+		username: identity.username,
+		displayName: identity.displayName,
 		globalScope: identity.globalScope,
 		scopeVersion: identity.scopeVersion,
 		permissions: new Set(grants.map((grant) => grant.code))

@@ -261,3 +261,21 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: bootstrap does not inherit the migrator credential. If the application role lacks the minimum local insert/lock rights, it fails closed and the local role configuration must be reviewed; it never silently escalates.
 - Validation: strict TypeScript, workspace typecheck/build, and `git diff --check` passed as recorded in Handover. No database or account mutation was performed.
 - Rollback: reverting the environment-variable selection would restore the migrator credential fallback; no DB rollback is needed.
+
+## ADR-030 — Clear rejected session cookies (2026-11-26)
+
+- Status: implemented locally.
+- Context: `/auth/me` rejected malformed or stale session tokens but left the cookie in the browser, causing repeated unauthenticated requests to resend it.
+- Decision: expire a present malformed token and any token that does not resolve to a current active session, using the same `__Host-` cookie path/security attributes. For valid-format rejected tokens, revoke any still-live matching session record before clearing the cookie. Preserve cookies on the database-unavailable 503 path.
+- Consequences: stale/revoked/expired/inactive sessions are cleared by the normal session check; an inactive account/role cannot regain an old session if reactivated. Temporary database outages do not sign users out locally. Logout uses the same cookie-expiration attributes.
+- Validation: API typecheck/build and `git diff --check` passed; no test suite or database access in this slice.
+- Rollback: remove cookie expiration from `/auth/me`; keep the shared expiration attributes used by logout. No DB rollback is needed.
+
+## ADR-031 — Return current-user label from session endpoint (2026-11-26)
+
+- Status: implemented locally.
+- Context: after reload, the login screen knew only that `/auth/me` succeeded and displayed a generic name despite the API resolving the authenticated user.
+- Decision: include the current session user's own username/display name in the existing `/auth/me` DTO; use the display name to restore the signed-in screen. Identity remains selected by the opaque session token, never by a client-supplied user ID.
+- Consequences: session UI is consistent before and after reload. No additional profile endpoint, permission, scope, or user data access was added.
+- Validation: API/DB/web typecheck and workspace build passed; no test suite or database access in this slice.
+- Rollback: remove the two identity fields from authorization context/API response and restore the generic label in Svelte; no DB rollback is needed.

@@ -10,6 +10,14 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_LIMIT = 10;
 const LOGIN_BUCKET_LIMIT = 10_000;
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const expiredSessionCookie = {
+	value: '',
+	path: '/',
+	secure: true,
+	httpOnly: true,
+	sameSite: 'lax' as const,
+	maxAge: 0
+};
 const invalidRequestResponse = t.Object({ error: t.Literal('invalid_request'), requestId: t.String() });
 const internalErrorResponse = t.Object({ error: t.Literal('internal_error'), requestId: t.String() });
 type AuthDatabase = NonNullable<typeof database>;
@@ -224,14 +232,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			if (isSessionToken(token)) {
 				await revokeSession(database, hashSessionToken(token));
 			}
-			cookie[SESSION_COOKIE]?.set({
-				value: '',
-				path: '/',
-				secure: true,
-				httpOnly: true,
-				sameSite: 'lax',
-				maxAge: 0
-			});
+			cookie[SESSION_COOKIE]?.set(expiredSessionCookie);
 			return { status: 'signed_out' as const };
 		}, {
 			cookie: t.Cookie({
@@ -257,16 +258,21 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			}
 			const token = cookie[SESSION_COOKIE]?.value;
 			if (!isSessionToken(token)) {
+				if (token !== undefined) cookie[SESSION_COOKIE]?.set(expiredSessionCookie);
 				set.status = 401;
 				return { error: 'unauthenticated' };
 			}
 			const context = await loadAuthorizationContext(database, hashSessionToken(token));
 			if (!context) {
+				await revokeSession(database, hashSessionToken(token));
+				cookie[SESSION_COOKIE]?.set(expiredSessionCookie);
 				set.status = 401;
 				return { error: 'unauthenticated' };
 			}
 			return {
 				userId: context.userId,
+				username: context.username,
+				displayName: context.displayName,
 				globalScope: context.globalScope,
 				scopeVersion: context.scopeVersion,
 				permissions: [...context.permissions].sort()
@@ -276,6 +282,8 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			response: {
 				200: t.Object({
 					userId: t.String(),
+					username: t.String(),
+					displayName: t.String(),
 					globalScope: t.Boolean(),
 					scopeVersion: t.Number(),
 					permissions: t.Array(t.String())
