@@ -800,3 +800,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: log output aktual untuk tiap label belum diamati melalui runtime QA; SQL/database failure class yang bukan built-in dinormalisasi sebagai `Error`.
 - Rollback: kembalikan `error.name` pada dua lokasi logging dan hapus ADR-026/Security/Handover; tidak ada rollback database.
 - Langkah berikutnya: lakukan smoke check sanitasi log dengan error sintetis saat runtime QA tersedia; error detail produk tetap harus melalui handler global.
+
+## 2026-11-26 — Legacy role vocabulary and login readiness boundary
+
+- Tindakan: melakukan audit statis read-only pada helper role, skema Prisma, migrasi role 5/6 dan sebagian pemeriksaan role pada service user di checkout `dompis_v2`; mencatat role keys/ID serta batas bukti. Memperbarui status Phase 2 agar kesiapan kode login dibedakan dari kesiapan akun nyata.
+- File berubah: `docs/Legacy-Role-Discovery.md`, `docs/Phase-2-Organization-Auth.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah. Tidak membaca credential/configuration files.
+- Command tersanitasi: `rg --files` terbatas ke nama file auth/user/role; `rg -n` pada helper/service/schema source; `sed` pada skema role, helper, dan dokumen Phase 2. Legacy checkout dibaca saja.
+- Hasil aktual: source mendokumentasikan ID/key 1 `superadmin`, 2 `admin`, 3 `helpdesk`, 4 `teknisi`, 5 `senior_leader`, dan 6 `admin_branch`; migration history menunjukkan `general_manager` diubah menjadi `senior_leader`. Tidak ada verifikasi live terhadap row role/user atau matriks hak efektif. Tidak menjalankan typecheck/build/test karena perubahan dokumentasi saja.
+- Keputusan teknis: tidak menyalin role, permission, user, atau ID ke v3. Login/session code ada, tetapi tidak ada akun yang bisa dipakai karena v3 belum memiliki role/permission/user dan jalur provisioning belum dibangun/disahkan. Tidak membuat default administrator.
+- Kendala/risiko: akses login nyata tetap tertahan oleh persetujuan owner atas role/action/global-scope/account-activation mapping dan prosedur provisioning/recovery; inspeksi source tidak mengungkap seluruh hak efektif atau keadaan database legacy aktif.
+- Rollback: perubahan dokumentasi saja; revert ketiga file yang disebut di atas untuk menghapus hasil audit ini. Tidak ada rollback database.
+- Langkah berikutnya: validasi matriks role dan proses provisioning akun pertama; setelah itu selesaikan endpoint/UI administrasi akun dengan audit dan scope guard, lalu verifikasi login end-to-end menggunakan akun sintetis/terotorisasi.

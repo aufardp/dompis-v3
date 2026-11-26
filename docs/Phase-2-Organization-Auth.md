@@ -32,6 +32,7 @@ Tanggal: 2026-11-26. Status: **schema foundation, shared authorization resolver,
 
 - Phase 2 is not complete: the permission macro currently protects only exact incident detail; ticket list/search/report/export/SSE routes, organization/user APIs and UI, audit behavior, reparent/revocation workflows, session invalidation on administrative changes, and broad endpoint security tests remain unimplemented. Permission `tickets.read` is proposed and intentionally unseeded pending capability approval.
 - Permission codes and role assignments are intentionally unseeded until the capability matrix is owner-approved. The schema only expresses RBAC relationships; empty permission state must deny all protected actions.
+- A read-only source audit found six legacy role keys (`superadmin`, `admin`, `helpdesk`, `teknisi`, `senior_leader`, `admin_branch`) and documented ID/source evidence in `Legacy-Role-Discovery.md`. This is not a live role-table inventory or a validated effective-permission matrix; no v3 roles, permissions, or users were seeded. Login has no usable account until an approved provisioning path and role/permission grants exist.
 - No legacy master/user/scope data was migrated. New top-level-area crosswalk, Workzone dictionary, old-to-new role mapping, account activation, and effective-scope parity remain Phase 0C blockers.
 - No Workzone alias table was added. The 74 unmatched legacy keys remain unresolved pending an approved crosswalk.
 - The candidate schema migration includes drops of empty scaffold structures. Do not apply this migration line to a database containing application data; production requires a reviewed additive/copy/backfill plan and backup.
@@ -42,3 +43,4 @@ Tanggal: 2026-11-26. Status: **schema foundation, shared authorization resolver,
 2. Define and implement audit events before organization/user administration mutations; capability matrix is still owner-gated.
 3. Build organization/user administration endpoints and UI only after mutation permissions are explicit; test reparent, grant revocation, last-admin protection and session invalidation.
 4. Keep legacy import, role mapping, crosswalk and live NOSSA behavior gated by their owner decisions and fixtures.
+5. Before enabling user provisioning/login for real accounts, validate the legacy account activation and effective permission matrix, approve v3 role/action/global-scope mapping, and choose a secure initial-account provisioning and recovery procedure. Do not seed a default administrator.
