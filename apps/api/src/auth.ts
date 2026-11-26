@@ -182,7 +182,14 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			if (database && typeof token === 'string' && token.length === 43) {
 				await revokeSession(database, hashSessionToken(token));
 			}
-			cookie[SESSION_COOKIE]?.remove();
+			cookie[SESSION_COOKIE]?.set({
+				value: '',
+				path: '/',
+				secure: true,
+				httpOnly: true,
+				sameSite: 'lax',
+				maxAge: 0
+			});
 			return { status: 'signed_out' as const };
 		}, {
 			cookie: t.Cookie({

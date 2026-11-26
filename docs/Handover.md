@@ -644,3 +644,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: jalur verifier exception belum diverifikasi lewat runtime/test; sanitasi 500 sudah pernah diuji untuk kegagalan koneksi DB, bukan specifically exception verifier.
 - Rollback: pulihkan catch yang mengubah seluruh exception menjadi `false`, lalu hapus ADR-015/entri ini; tidak ada rollback database.
 - Langkah berikutnya: validasi jalur verifier rusak menggunakan fixture terisolasi saat pengujian diizinkan; kontrak business Phase 0C tetap memblokir endpoint produk/laporan dan migrasi.
+
+## 2026-11-26 — Session cookie logout attribute parity
+
+- Tindakan: mengganti `.remove()` generik saat logout dengan cookie kedaluwarsa yang eksplisit memakai atribut yang sama seperti saat login: `Path=/`, `Secure`, `HttpOnly`, `SameSite=Lax`, `Max-Age=0`, dan value kosong.
+- File berubah: `apps/api/src/auth.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah; pencabutan sesi tetap memakai query DB yang sudah ada tanpa dijalankan pada pekerjaan ini.
+- Command tersanitasi: Context7 lookup Elysia `Cookie.remove()`; inspeksi implementasi Elysia lokal 1.4.32; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: implementasi terpasang Elysia menunjukkan `remove()` menetapkan value kosong/expiry/maxAge, tetapi tidak memasukkan atribut cookie; typecheck API dan build API lulus; diff check lulus. Tidak melakukan request runtime atau test suite.
+- Keputusan teknis: atribut logout dibuat sama dengan cookie sesi `__Host-` saat login agar penghapusan menunjuk cookie host/path yang tepat.
+- Risiko/blocker: header `Set-Cookie` aktual belum diperiksa lewat runtime/browser; logout E2E sebelumnya menguji revokasi DB, bukan penerimaan penghapusan cookie browser.
+- Rollback: kembalikan pemanggilan `.remove()` dan hapus ADR-016/entri ini; tidak ada rollback database.
+- Langkah berikutnya: cek header logout dalam runtime auth QA ketika target sintetis dan pemeriksaan browser tersedia; business contracts Phase 0C tetap menjadi gate bagi endpoint/report/migration.

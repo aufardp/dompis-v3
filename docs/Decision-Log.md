@@ -16,6 +16,7 @@
 | ADR-013 | Compute login throttle `Retry-After` from limiter bucket expiry | Implemented locally | Static limiter review; API typecheck/build |
 | ADR-014 | Validate CSRF token base64url alphabet before constant-time comparison | Implemented locally | Malformed-token review; API typecheck/build |
 | ADR-015 | Propagate password verifier failures to sanitized API error handling | Implemented locally | Static error-path review; API typecheck/build |
+| ADR-016 | Expire session cookie using the same `__Host-` attributes as issuance | Implemented locally | Elysia 1.4.32 cookie implementation and API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -112,3 +113,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: no exception details or credential material are exposed; monitoring can distinguish infrastructure/hash failures from routine failed login attempts. No schema, dependency, or business policy change.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No automated test or runtime request was performed in this slice.
 - Rollback: restore the catch that converts verifier exceptions to `false`; no database or persistent state rollback is needed.
+
+## ADR-016 — Explicit session cookie expiration attributes (2026-11-26)
+
+- Status: implemented locally.
+- Context: login sets the session cookie with `Path=/`, `Secure`, `HttpOnly`, and `SameSite=Lax`; logout called Elysia `Cookie.remove()`, which sets an empty value and expiration but does not explicitly set those cookie attributes.
+- Evidence: the installed Elysia 1.4.32 `Cookie.remove()` implementation sets only `expires`, `maxAge`, and `value`; the auth route's cookie schema does not declare issuance attributes as defaults. Context7 Elysia cookie docs confirm `remove()` expires the cookie while attributes are configured separately.
+- Decision: logout emits the expired cookie with the same `Path=/`, `Secure`, `HttpOnly`, and `SameSite=Lax` attributes used at login, plus `Max-Age=0` and empty value.
+- Consequences: makes deletion target the same host/path/security cookie as issuance, including `__Host-` prefix requirements. Session revocation remains unchanged.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime cookie response or automated test was performed in this slice.
+- Rollback: restore `cookie[SESSION_COOKIE]?.remove()`; no database or persistent state rollback is needed.
