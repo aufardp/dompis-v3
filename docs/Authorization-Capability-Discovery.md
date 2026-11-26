@@ -62,3 +62,51 @@ The source has additional guards on out-of-scope routes (technician, attendance,
 6. Approve account activation and per-user migration parity separately from role capability; no legacy account or grant activates automatically.
 
 Until decisions are recorded, v3 role catalog rows remain labels only, `role_permissions` remains empty, and protected operations deny access. Static legacy evidence may inform owner review but cannot resolve these decisions because legacy route checks conflict and some are explicitly unsafe.
+
+## Approval worksheet
+
+Use this section to record the owner decision. An empty cell means **deny**. Role name alone does not imply global scope. This worksheet is intentionally not pre-filled from legacy behavior.
+
+### A. Role capabilities
+
+For each capability, list only role codes explicitly granted it. Omitted roles stay denied.
+
+| Capability | Granted role codes (owner fills) | Approved by / date |
+|---|---|---|
+| `tickets.read` |  |  |
+| `reports.semesta.read` |  |  |
+| `reports.workorder.read` |  |  |
+| `reports.wo_hi.read` |  |  |
+| `sync.monitor` |  |  |
+| `organization.read` |  |  |
+| `organization.manage` |  |  |
+| `users.read` |  |  |
+| `users.manage` |  |  |
+| `audit.read` |  |  |
+
+Allowed codes: `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leader`, `officer`. `teknisi` receives no assignment/dispatch feature because that is outside the product scope.
+
+### B. Global scope and account administration
+
+| Decision | Owner response |
+|---|---|
+| Roles allowed to hold explicit global data scope (write `none` if nobody) |  |
+| Roles allowed to grant/revoke global scope |  |
+| Roles allowed to create/deactivate accounts |  |
+| Roles allowed to change another user's role |  |
+| Roles allowed to reset another user's credentials |  |
+| Roles allowed to grant/revoke hierarchical scopes |  |
+| May an administrator change their own role or scope? (yes/no) |  |
+| Last active global administrator must not be removable (confirm/modify) |  |
+
+### C. Audit and migrated account activation
+
+| Decision | Owner response |
+|---|---|
+| Roles allowed to read audit events |  |
+| Audit metadata fields approved for display (default: action, target type/ID, timestamp, request ID; no PII/secrets) |  |
+| Audit retention period (or identify the existing policy to follow) |  |
+| Activate migrated accounts automatically? (recommended default: no) |  |
+| Approve old-to-new role and per-user effective-scope crosswalk separately? (yes/no; this requires a validated migration manifest) |  |
+
+Once answered, record the approval date and update both this worksheet and `Decision-Log.md`. Do not seed grants or expose admin mutations until the corresponding answers are approved and tests cover the effective authorization behavior.

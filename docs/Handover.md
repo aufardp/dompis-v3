@@ -1016,3 +1016,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: ikon diuji pada format dan HTTP response, belum melalui pemeriksaan visual lintas browser.
 - Rollback: hapus `apps/web/static/favicon.ico` dan entri handover ini; tidak ada rollback database.
 - Langkah berikutnya: lanjutkan Phase 2 pada pekerjaan yang tidak membutuhkan capability bisnis; user/org mutation dan pemberian izin tetap menunggu persetujuan owner.
+
+## 2026-11-26 — Prepare precise authorization approval worksheet
+
+- Tindakan: merapikan quality gate Phase 2 menjadi lembar keputusan yang dapat diisi: role yang diberi tiap capability, pemegang/pemberi global scope, operasi administrasi user, aturan self-change/last-admin, pembaca/metadata/retensi audit, serta aktivasi dan crosswalk user migrasi. Omitted role tetap deny; tidak menyalin keputusan dari guard legacy.
+- File berubah: `docs/Authorization-Capability-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: inspeksi read-only dokumen authorization/scope/phase; `git diff --check`.
+- Hasil pengujian aktual: pemeriksaan dokumentasi saja; `git diff --check` lulus. Tidak ada code test atau database query.
+- Keputusan teknis: worksheet tidak mengisi rekomendasi grant yang akan disalahartikan sebagai keputusan bisnis. Seluruh operasi terlindungi tetap deny-by-default sampai jawaban owner dicatat.
+- Risiko/kendala: endpoint produk/admin yang memerlukan capability tetap tertahan; bukti legacy tidak menyelesaikan kebutuhan role baru atau hak efektif.
+- Rollback: pulihkan hanya penambahan worksheet dan catatan handover ini; tidak ada rollback runtime/database.
+- Langkah berikutnya: minta owner mengisi worksheet bagian A–C. Setelah ada persetujuan, turunkan keputusan ke seed permission, audit allowlists, endpoint admin, dan uji deny/scope/revocation sesuai scope yang disetujui.
