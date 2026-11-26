@@ -755,12 +755,12 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 
 ## 2026-11-26 — Generic API error response schemas
 
-- Tindakan: menambahkan response schema generik 422 `invalid_request` + `requestId` dan 500 `internal_error` + `requestId` pada route auth/ticket yang memiliki validasi atau operasi async; route CSRF juga mendeklarasikan 500.
+- Tindakan: menambahkan response schema generik 400/422 `invalid_request` + `requestId` dan 500 `internal_error` + `requestId` pada route auth/ticket yang memiliki parsing/validasi atau operasi async; route CSRF juga mendeklarasikan 422/500.
 - File berubah: `apps/api/src/auth.ts`, `apps/api/src/tickets.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
 - Database target: tidak ada database yang diakses atau diubah.
 - Command tersanitasi: perbandingan `apps/api/src/app.ts` error handler dengan schema route; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
 - Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan request error runtime atau test suite.
-- Keputusan teknis: skema mengikuti status/body yang sudah dihasilkan handler global; tidak mengubah payload/status runtime.
+- Keputusan teknis: status 400 mengikuti `ParseError` Elysia 1.4.32 lokal, 422 mengikuti validation handler, dan 500 mengikuti error handler global; skema hanya mendokumentasikan response yang ada.
 - Risiko/blocker: kesesuaian OpenAPI/runtime aktual belum diperiksa melalui HTTP; response validators Elysia sudah lolos typecheck/build.
 - Rollback: hapus schema 422/500 dan konstanta lokal di auth/ticket; tidak ada rollback database.
 - Langkah berikutnya: lanjutkan audit response schema terhadap handler global; jalankan error matrix sintetis saat runtime verification tersedia.

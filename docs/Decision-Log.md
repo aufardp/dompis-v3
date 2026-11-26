@@ -196,8 +196,8 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 
 - Status: implemented locally.
 - Context: the global API error handler returns `invalid_request` plus `requestId` for validation errors and `internal_error` plus `requestId` for unexpected exceptions, but explicit auth/ticket route response schemas did not declare these outcomes.
-- Evidence: compared `apps/api/src/app.ts` error handling with response schemas in `auth.ts` and `tickets.ts`; login params/body validation and async handlers can reach the generic 422/500 path.
-- Decision: declare the matching 422 and 500 schemas on routes with validation/async operations, and declare the 500 schema on CSRF, logout, and session-read routes. Reuse local schema constants within each module.
+- Evidence: compared `apps/api/src/app.ts` error handling with response schemas in `auth.ts` and `tickets.ts`; Elysia 1.4.32's local `ParseError` uses status 400, TypeBox validation uses 422, and async handlers can reach generic 500.
+- Decision: declare matching 400/422/500 schemas on routes with applicable parsing/validation/async operations, and declare 500 on CSRF, logout, and session-read routes. Reuse local schema constants within each module.
 - Consequences: route response typing now describes the generic error contract without changing runtime error bodies or status mapping. No business, authorization, or DB behavior changed.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No HTTP error request or automated test was performed in this slice.
 - Rollback: remove the generic 422/500 response entries and local schema constants; no database or persistent state rollback is needed.

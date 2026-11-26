@@ -201,6 +201,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 				]),
 				429: t.Object({ error: t.Literal('invalid_credentials') }),
 				503: t.Object({ error: t.Literal('authentication_unavailable') }),
+				400: invalidRequestResponse,
 				422: invalidRequestResponse,
 				500: internalErrorResponse
 			}
