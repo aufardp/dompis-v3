@@ -11,6 +11,7 @@
 | ADR-008 | Basic HTTP auth uses opaque DB-backed sessions, strict Origin + double-submit CSRF, Argon2id, bounded in-process login throttling, and a per-route permission macro | Implemented locally; production/session operations review pending | `apps/api/src/auth.ts`, `apps/api/src/permission-guard.ts`; synthetic PostgreSQL integration tests; limiter is single-process only |
 | ADR-009 | Vite development proxy target follows `API_PORT` with a default of 3000 | Implemented locally | Local port 3000 collision; proxy smoke check succeeded with API on 39871 |
 | ADR-010 | Apply baseline anti-sniffing, anti-framing, and no-referrer headers to every API request | Implemented locally; deployment CSP/TLS controls remain separate | `apps/api/src/app.ts`; API typecheck passed |
+| ADR-011 | Normalize unhandled API errors and correlate them with opaque request IDs | Implemented locally | Context7 Elysia error-hook docs; API typecheck/build passed |
 
 ## ADR-007 details — 2026-11-26
 
@@ -55,3 +56,14 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Validation: `bun run typecheck:api` and `git diff --check` passed. No HTTP response assertion was run in this slice.
 - Follow-up validation: local API on `127.0.0.1:39871` returned the three headers on both `GET /health/live` (200) and an unknown route (404); process stopped after the check.
 - Rollback: remove the global hook and this ADR entry; no DB or persistent state changes.
+
+## ADR-011 — Generic API error responses (2026-11-26)
+
+- Status: implemented locally.
+- Context: Security.md requires generic errors with request IDs and prohibits query/stack disclosure. Elysia's default development error response can include implementation detail, and validation/not-found errors did not have a consistent correlation ID.
+- Evidence: Context7 documentation for Elysia `onError` says returning a value replaces the default response and context supplies error code, error and status. Current API route errors are returned as typed values; thrown/validation/framework errors flow through the app hook.
+- Alternatives: rely on production-mode Elysia redaction (does not provide a consistent request ID and is environment-dependent); add handlers per route (easy to miss).
+- Decision: global error hook preserves valid 4xx/5xx status, returns only `not_found`, `invalid_request`, or `internal_error` plus a random UUID request ID, and sets `X-Request-ID`. It logs only 5xx event, request ID, framework error code and error type; it never logs message/stack/body/query.
+- Consequences: thrown errors, parsing/validation failures and unknown routes no longer reveal framework details through their response. Explicit business errors returned by route handlers keep their existing documented shape.
+- Validation: `bun run typecheck:api` and `bun run build:api` passed. Local API smoke checks on `127.0.0.1:39871` verified unknown route HTTP 404 returns only `not_found` and request ID, while invalid login body HTTP 422 returns only `invalid_request` and request ID. The process was stopped after the checks. No synthetic thrown-500 request was run.
+- Rollback: remove the global error hook and this ADR entry; no database change.

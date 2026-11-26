@@ -488,3 +488,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: security header lain dan production TLS/CSP belum diverifikasi; route data tetap memerlukan auth/scope/business gates masing-masing.
 - Rollback: dokumentasi hasil verifikasi dapat dibalik melalui Git; tidak ada runtime/database state tersisa.
 - Langkah berikutnya: lanjutkan ke pekerjaan produk berikut yang dapat dilakukan tanpa keputusan owner; ticket list/user administration/migrasi tetap menunggu input kontrak dan akses yang tercatat.
+
+## 2026-11-26 — Generic API errors with request IDs
+
+- Tindakan: menambahkan Elysia `onError` global yang mempertahankan status HTTP, mengembalikan error code generik dan request ID, mengirim `X-Request-ID`, serta membatasi log 5xx ke event/request ID/framework code/error type. Memperbarui kebijakan keamanan dan ADR-011.
+- File berubah: `apps/api/src/app.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi atau perubahan database.
+- Command tersanitasi: Context7 lookup resmi Elysia `onError`; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: API typecheck lulus; API bundle berhasil (`index.js`, 0.96 MB). Smoke check localhost: 404 mengembalikan `{error: not_found, requestId}` dan header `x-request-id`; body login kosong menghasilkan 422 `{error: invalid_request, requestId}`. Kedua respons tetap membawa security headers dasar. API berhenti setelah pemeriksaan; `git diff --check` lulus.
+- Keputusan teknis: error status valid 400–599 dipertahankan; response body hanya menggunakan `not_found`, `invalid_request`, atau `internal_error` beserta UUID acak. Internal logs tidak memuat message/stack/SQL/payload. Error bisnis yang dikembalikan eksplisit oleh route tetap memakai kontraknya sendiri.
+- Risiko/blocker: unexpected thrown 500 belum disimulasikan melalui runtime; review deployment tetap diperlukan. Error bisnis eksplisit per route bukan diseragamkan oleh hook.
+- Rollback: revert hook dan catatan Security/ADR/Handover; tidak ada data rollback.
+- Langkah berikutnya: tambahkan synthetic thrown-500 assertion pada test terisolasi saat permintaan test diberi scope; lanjutkan ticket list/user management hanya setelah approval permission dan contract tersedia.
