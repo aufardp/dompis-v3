@@ -18,6 +18,7 @@
     "build": "bun run build:web && bun run build:api",
     "build:web": "bun run --cwd apps/web build",
     "build:api": "bun build apps/api/src/index.ts --target bun --outdir apps/api/dist",
+    "auth:bootstrap": "bun --env-file=.env scripts/bootstrap-first-user.ts",
     "db:generate": "bunx drizzle-kit generate --config=packages/db/drizzle.config.ts",
     "db:migrate": "bun --env-file=.env packages/db/src/migrate.ts"
   },
