@@ -1028,3 +1028,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: endpoint produk/admin yang memerlukan capability tetap tertahan; bukti legacy tidak menyelesaikan kebutuhan role baru atau hak efektif.
 - Rollback: pulihkan hanya penambahan worksheet dan catatan handover ini; tidak ada rollback runtime/database.
 - Langkah berikutnya: minta owner mengisi worksheet bagian A–C. Setelah ada persetujuan, turunkan keputusan ke seed permission, audit allowlists, endpoint admin, dan uji deny/scope/revocation sesuai scope yang disetujui.
+
+## 2026-11-26 — Restore saved theme before first paint
+
+- Tindakan: menambahkan `theme-init.js` statis yang membaca pilihan tersimpan atau preferensi OS, lalu mengatur atribut tema sebelum parser memproses stylesheet. Script dipasang sebelum `%sveltekit.head%` agar mengurangi kilatan tema yang salah; pemulihan setelah hydration tetap menyelaraskan state tombol dan warna browser.
+- File berubah: `apps/web/src/app.html`, `apps/web/static/theme-init.js`, `docs/Design-System.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck`; `bun run build`; `git diff --check`; browser QA pada `http://127.0.0.1:4173/` dengan prefensi sintetik `light`, reload, pemeriksaan `data-theme`, `color-scheme`, latar, dan urutan script/style di head.
+- Hasil pengujian aktual: typecheck workspace lulus (Svelte 0 error/0 warning, API dan worker lulus); build web/API lulus; browser mendapati `theme-init.js` sebelum style, `data-theme=light`, `color-scheme=light`, latar putih setelah reload; diff check lulus. API auth tidak dijalankan, sehingga request `/auth/me` mencatat koneksi ditolak pada server proxy selama QA; login tidak diuji. Build mencetak warning environment `NO_COLOR`/`FORCE_COLOR`.
+- Keputusan teknis: gunakan aset eksternal same-origin, bukan inline script, sehingga mengikuti CSP `script-src 'self'` yang direncanakan dan tidak memerlukan nonce/hash inline.
+- Risiko/kendala: belum diukur secara visual kecepatan first paint dan belum diuji saat storage diblokir atau perubahan preferensi OS setelah halaman terbuka. Browser automation memverifikasi urutan DOM dan state akhir, bukan rekaman frame awal.
+- Rollback: hapus script statis dan tag `script` dari app template, lalu pulihkan catatan Design System/Handover; tidak ada rollback database.
+- Langkah berikutnya: lanjutkan verifikasi login/bootstrap dan authorization; keputusan capability role, global scope, dan admin workflows masih menunggu jawaban owner.
