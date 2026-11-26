@@ -1076,3 +1076,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: saat horizontal scaling, limiter in-memory tidak memberi kuota bersama antar process; distribusi limiter belum ditambahkan karena arsitektur tidak menyetujui infra tambahan tanpa ADR.
 - Rollback: hapus request concurrency dan assertion tambahan serta catatan dokumentasi; tidak ada rollback database.
 - Langkah berikutnya: implementasi mutasi user/organisasi dan role grants menunggu owner mengisi matriks capability serta keputusan global scope, admin operations, audit visibility/retention, dan account activation pada worksheet authorization.
+
+## 2026-11-26 — Continue Phase 2 with role grants deferred
+
+- Tindakan: menerima arahan owner untuk melanjutkan pekerjaan Phase 2 sementara keputusan role ditunda; memeriksa kembali worksheet dan menguji concurrency login throttle dengan 20 percobaan sintetis serentak. Tidak mengisi matrix atau menerapkan grants.
+- File berubah: `apps/api/src/auth.test.ts`, `docs/Phase-2-Organization-Auth.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: PostgreSQL development lokal `dompis_v3` loopback; fixture autentikasi sintetis dalam transaksi rollback. Tidak ada data bisnis atau write permanen.
+- Command tersanitasi: inspeksi read-only worksheet/fase; `bun run typecheck:api`; `bun --env-file=.env test apps/api/src/auth.test.ts`; `git diff --check`.
+- Hasil pengujian aktual: API typecheck lulus; auth integration lulus 1 test / 68 expectations; 20 request serentak menghasilkan tepat 10 percobaan verifikasi dan 10 throttle 429; diff check lulus. Seluruh fixture rollback.
+- Keputusan teknis: penundaan role berarti tidak ada capability atau global scope yang diasumsikan. Endpoint/list permission tetap 403 bagi semua akun tanpa grant.
+- Risiko/kendala: Phase 2 tidak dapat mencapai acceptance untuk user/organization administration, audit read, scope/global grant, atau aktivasi role sampai policy tiap tindakan disahkan. Dokumentasi saat ini secara eksplisit melarang membuka mutation API sebelum jawaban yang relevan disetujui.
+- Rollback: hapus concurrency test dan catatan ini; tidak ada perubahan schema atau data.
+- Langkah berikutnya: lanjutkan hanya pekerjaan auth/read-only yang tidak memerlukan capability/admin-policy yang belum disetujui. Untuk menyelesaikan acceptance Phase 2, owner harus mengisi keputusan bagian A–C di `Authorization-Capability-Discovery.md`; menunda nama/assignment role tidak memberi wewenang admin secara implisit.
