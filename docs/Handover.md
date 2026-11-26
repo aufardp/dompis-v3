@@ -548,3 +548,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: belum ada interaksi browser karena port lokal tidak bisa di-bind; 503 header behavior API sudah terverifikasi in-process, tetapi tampilan pesan belum E2E.
 - Rollback: revert perubahan `checkSession` dan entri ini; tidak ada data/database rollback.
 - Langkah berikutnya: validasi UI error state saat port lokal tersedia; lanjutkan produk setelah permission, snapshot, dan business contracts owner-gated tersedia.
+
+## 2026-11-26 — Phase 0C/3A input availability refresh
+
+- Tindakan: memeriksa ulang repository untuk fixture NOSSA Closed/reopen, OpenAPI/Swagger, snapshot manifest, crosswalk, dan owner permission matrix sebelum memilih implementasi berikutnya.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada database diakses; pemeriksaan hanya pada file repository.
+- Command tersanitasi: `rg --files` dengan pola nama artifact; pencarian blocker `C0C-01–06` pada laporan Phase 0C, Phase 3A, dan Phase 2.
+- Hasil aktual: hanya Drizzle metadata snapshot yang ditemukan; tidak ada artifact input baru yang memenuhi owner gates. `docs/Phase-0C-Contract-Access-Discovery.md` dan `docs/Phase-3A-Migration-Readiness.md` tetap mencatat blockers. Tidak menjalankan typecheck/build/test karena tidak ada code change.
+- Keputusan teknis: tidak menambahkan endpoint ticket list/report, ETL, permission seed, atau account provisioning berdasarkan tebakan.
+- Risiko/blocker: C0C-01 closed/reopen fixture + authoritative OpenAPI; C0C-02 lifecycle/date/time/TTR policy; C0C-03 geography/Workzone crosswalk; C0C-04 role/action/global/activation parity; C0C-05 84-field disposition/PII retention; C0C-06 registered source snapshot/read role masih belum lengkap.
+- Rollback: dokumentasi saja berubah; revert entri ini melalui Git.
+- Langkah berikutnya: lanjutkan hanya slice teknis yang independen. Untuk membuka data/report/admin implementation, masukkan fixture dan keputusan pemilik ke dokumen Phase 0C/3A; jangan gunakan data produksi/live endpoint sebagai pengganti bukti yang disetujui.
