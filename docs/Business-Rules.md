@@ -1,5 +1,5 @@
 # Business Rules Registry — candidate inventory, not approved rules
-Status: Phase 0 baseline. Evidence below from supplied archives and QOSMIC documentation/sample; local agent verifies current checkout and obtains business sign-off. Do not implement disputed KPI logic as fact. Shared pure TS domain for classification; shared SQL predicates for list/aggregation with golden fixture parity, not two divergent rules.
+Status: **Phase 0B candidate inventory completed against the read-only legacy checkout on 2026-11-26; not approved for implementation.** See `Phase-0B-Discovery.md` for evidence paths, code conflicts, synthetic fixture plan and owner decisions. Do not implement disputed KPI logic as fact. Intended architecture: shared domain rules and shared scoped predicates with golden fixture parity; this is a design target, not a port of the legacy code.
 
 | ID | Candidate / question | Evidence | Gate |
 |---|---|---|---|
@@ -23,3 +23,7 @@ Status: Phase 0 baseline. Evidence below from supplied archives and QOSMIC docum
 
 ## Rule acceptance template
 For each ID add source file/line + commit, plain-language rule, required fields and types, precedence, null/unknown treatment, time window/timezone, permitted scope, test input/output (synthetic), metric numerator/denominator and membership, conflict with old results, proposed correction, approver/date, rule version. State candidate/validated/rejected; unknown fields not filled with zero. Mutually exclusive bucket priority approved; overlays explicitly separate. Archive original historical values; no automatic reclassify without bounded versioned job and before/after count. KPI publication blocked until definition validated. No technician workflow. No source code copied.
+
+## Phase 0B verified checkout findings
+
+All BR-01–BR-17 rows above remain **candidate**. The local checkout confirms multiple implementations disagree on bucket predicates/precedence; the SLA matrix and `jenis-tiket.ts` disagree for Indibiz and Reseller; Semesta V1/V2 have different date defaults; and the legacy close set includes statuses whose business meaning is unresolved. These are evidence-backed conflicts, not resolved business rules. See `Phase-0B-Discovery.md` sections “Kandidat classification dan konflik implementasi”, “Lifecycle dan daily membership”, “SLA/TTR”, and “Konflik dan keputusan owner”. Synthetic fixtures and an approver/result record are required before any candidate becomes validated.

@@ -20,4 +20,6 @@ export async function closeDatabase(): Promise<void> {
 	if (client) await client.close();
 }
 
+export { loadAuthorizationContext, ticketAccessPredicate } from './authorization';
+export { createSession, findActiveLoginIdentity, revokeSession } from './authentication';
 export { schema };

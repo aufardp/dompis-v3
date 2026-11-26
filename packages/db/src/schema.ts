@@ -22,50 +22,105 @@ const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({
 	dataType: () => 'bytea'
 });
 
-export const regions = pgTable('regions', {
+export const areas = pgTable('areas', {
 	id: id(),
 	code: text('code').notNull().unique(),
-	name: text('name').notNull()
+	name: text('name').notNull(),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamptz('created_at').notNull().defaultNow(),
+	updatedAt: timestamptz('updated_at').notNull().defaultNow()
 });
+
+export const regions = pgTable('regions', {
+	id: id(),
+	areaId: uuid('area_id').notNull().references(() => areas.id),
+	code: text('code').notNull(),
+	name: text('name').notNull(),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamptz('created_at').notNull().defaultNow(),
+	updatedAt: timestamptz('updated_at').notNull().defaultNow()
+}, (table) => [unique('regions_area_code_unique').on(table.areaId, table.code)]);
 
 export const branches = pgTable('branches', {
 	id: id(),
 	regionId: uuid('region_id').notNull().references(() => regions.id),
 	code: text('code').notNull(),
-	name: text('name').notNull()
+	name: text('name').notNull(),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamptz('created_at').notNull().defaultNow(),
+	updatedAt: timestamptz('updated_at').notNull().defaultNow()
 }, (table) => [unique('branches_region_code_unique').on(table.regionId, table.code)]);
 
-export const workzones = pgTable('workzones', {
+export const serviceAreas = pgTable('service_areas', {
 	id: id(),
 	branchId: uuid('branch_id').notNull().references(() => branches.id),
 	code: text('code').notNull(),
 	name: text('name').notNull(),
-	serviceArea: text('service_area')
-}, (table) => [unique('workzones_branch_code_unique').on(table.branchId, table.code)]);
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamptz('created_at').notNull().defaultNow(),
+	updatedAt: timestamptz('updated_at').notNull().defaultNow()
+}, (table) => [unique('service_areas_branch_code_unique').on(table.branchId, table.code)]);
+
+export const workzones = pgTable('workzones', {
+	id: id(),
+	serviceAreaId: uuid('service_area_id').notNull().references(() => serviceAreas.id),
+	code: text('code').notNull(),
+	name: text('name').notNull(),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamptz('created_at').notNull().defaultNow(),
+	updatedAt: timestamptz('updated_at').notNull().defaultNow()
+}, (table) => [unique('workzones_service_area_code_unique').on(table.serviceAreaId, table.code)]);
+
+export const roles = pgTable('roles', {
+	id: id(),
+	code: text('code').notNull().unique(),
+	name: text('name').notNull(),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamptz('created_at').notNull().defaultNow(),
+	updatedAt: timestamptz('updated_at').notNull().defaultNow()
+});
+
+export const permissions = pgTable('permissions', {
+	id: id(),
+	code: text('code').notNull().unique(),
+	description: text('description').notNull(),
+	createdAt: timestamptz('created_at').notNull().defaultNow()
+});
+
+export const rolePermissions = pgTable('role_permissions', {
+	id: id(),
+	roleId: uuid('role_id').notNull().references(() => roles.id),
+	permissionId: uuid('permission_id').notNull().references(() => permissions.id),
+	createdAt: timestamptz('created_at').notNull().defaultNow()
+}, (table) => [unique('role_permissions_pair_unique').on(table.roleId, table.permissionId)]);
 
 export const users = pgTable('users', {
 	id: id(),
 	username: text('username').notNull().unique(),
 	displayName: text('display_name').notNull(),
 	passwordHash: text('password_hash').notNull(),
-	role: text('role').notNull(),
+	roleId: uuid('role_id').notNull().references(() => roles.id),
 	globalScope: boolean('global_scope').notNull().default(false),
 	active: boolean('active').notNull().default(true),
 	scopeVersion: bigint('scope_version', { mode: 'number' }).notNull().default(1),
 	createdAt: timestamptz('created_at').notNull().defaultNow(),
 	updatedAt: timestamptz('updated_at').notNull().defaultNow()
 }, (table) => [
-	check('users_role_check', sql`${table.role} IN ('superadmin','admin','helpdesk','viewer')`),
 	check('users_username_canonical_check', sql`${table.username}=lower(btrim(${table.username}))`)
 ]);
 
-export const userWorkzones = pgTable('user_workzones', {
+export const userScopes = pgTable('user_scopes', {
 	id: id(),
-	userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-	workzoneId: uuid('workzone_id').notNull().references(() => workzones.id)
+	userId: uuid('user_id').notNull().references(() => users.id),
+	areaId: uuid('area_id').references(() => areas.id),
+	regionId: uuid('region_id').references(() => regions.id),
+	branchId: uuid('branch_id').references(() => branches.id),
+	serviceAreaId: uuid('service_area_id').references(() => serviceAreas.id),
+	workzoneId: uuid('workzone_id').references(() => workzones.id),
+	createdAt: timestamptz('created_at').notNull().defaultNow()
 }, (table) => [
-	unique('user_workzones_user_zone_unique').on(table.userId, table.workzoneId),
-	index('user_workzones_reverse').on(table.workzoneId)
+	check('user_scopes_exactly_one_target_check', sql`num_nonnulls(${table.areaId}, ${table.regionId}, ${table.branchId}, ${table.serviceAreaId}, ${table.workzoneId})=1`),
+	unique('user_scopes_unique_target').on(table.userId, table.areaId, table.regionId, table.branchId, table.serviceAreaId, table.workzoneId).nullsNotDistinct()
 ]);
 
 export const sessions = pgTable('sessions', {

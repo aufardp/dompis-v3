@@ -18,7 +18,8 @@
     "build": "bun run build:web && bun run build:api",
     "build:web": "bun run --cwd apps/web build",
     "build:api": "bun build apps/api/src/index.ts --target bun --outdir apps/api/dist",
-    "db:generate": "bunx drizzle-kit generate --config=packages/db/drizzle.config.ts"
+    "db:generate": "bunx drizzle-kit generate --config=packages/db/drizzle.config.ts",
+    "db:migrate": "bun --env-file=.env packages/db/src/migrate.ts"
   },
   "devDependencies": {
     "@types/bun": "1.4.2",
