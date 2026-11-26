@@ -908,3 +908,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: UI web saat ini hanya menyediakan halaman login, jadi halaman produk lain belum ada untuk penerapan tema. Kontras visual belum diperiksa lewat browser/screenshot.
 - Rollback: revert perubahan pada empat file yang disebut di atas; tidak ada rollback database.
 - Langkah berikutnya: bila halaman produk ditambahkan, gunakan token desain yang sama dan lakukan visual QA desktop/mobile serta pemeriksaan kontras.
+
+## 2026-11-26 — Document light and dark theme requirement
+
+- Tindakan: memperbarui Design System agar aplikasi mendukung mode terang dan gelap menggunakan kombinasi warna yang sama dari pemilik; menambahkan pemetaan token untuk kedua mode dan persyaratan kontrol tema keyboard-accessible, preferensi sistem, persistensi pilihan, serta QA kontras.
+- File berubah: `docs/Design-System.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `git diff --check`.
+- Hasil pengujian aktual: `git diff --check` lulus; tidak ada perubahan kode sehingga typecheck/build tidak dijalankan.
+- Keputusan teknis: tema terang memakai #FFFFFF untuk canvas, #C5CAD3 untuk surface, #101220 untuk teks, #2A2F45 untuk teks sekunder/pemisah, dan pasangan merah #750A1C/#AD0E27 untuk aksen; tema gelap memakai pemetaan yang telah dicatat pada entri palet sebelumnya. Semua nilai berasal dari palet pemilik.
+- Risiko/kendala: ini pembaruan requirement dokumentasi; implementasi toggle dan validasi kontras dua mode belum dilakukan.
+- Rollback: pulihkan dua file dokumentasi pada perubahan ini; tidak ada rollback database.
+- Langkah berikutnya: implementasikan kontrol dan token tema dua mode saat pekerjaan UI shell dimulai, lalu ukur kontras aktual di browser pada kedua mode.

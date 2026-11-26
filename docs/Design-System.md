@@ -1,19 +1,19 @@
 # Design System — DOMPIS Ticket Workspace
 
-Arah visual: dark operational console, kontras tinggi dan tetap terbaca untuk penggunaan harian. Bahasa Indonesia untuk UI, status asli NOSSA dipertahankan. Svelte components reusable; CSS custom properties, no heavy UI framework wajib. Ikon SVG sederhana, font system atau self-hosted. Hindari gradient, glassmorphism, animasi berlebihan.
+Arah visual: operational console dengan mode terang dan gelap, kontras tinggi dan tetap terbaca untuk penggunaan harian. Kedua mode harus memakai palet brand yang sama di bawah ini. Bahasa Indonesia untuk UI, status asli NOSSA dipertahankan. Svelte components reusable; CSS custom properties, no heavy UI framework wajib. Ikon SVG sederhana, font system atau self-hosted. Hindari gradient, glassmorphism, animasi berlebihan.
 
 ## Tokens
-| Token | Default | Fungsi |
-|---|---|---|
-| background | #101220 | canvas utama |
-| surface | #181A29 | panel dan input |
-| raised | #2A2F45 | kartu dan lapisan terangkat |
-| text | #FFFFFF | teks utama |
-| muted | #C5CAD3 | teks sekunder dan pemisah |
-| primary | #AD0E27 | aksi utama, brand, focus |
-| primary-deep | #750A1C | hover dan penekanan/error |
+| Token | Dark | Light | Fungsi |
+|---|---|---|---|
+| background | #101220 | #FFFFFF | canvas utama |
+| surface | #181A29 | #C5CAD3 | panel dan input |
+| raised / border | #2A2F45 | #2A2F45 | kartu terangkat / pemisah |
+| text | #FFFFFF | #101220 | teks utama |
+| muted | #C5CAD3 | #2A2F45 | teks sekunder |
+| primary | #AD0E27 | #750A1C | aksi utama, brand, focus |
+| primary-deep | #750A1C | #AD0E27 | hover dan penekanan/error |
 
-Gunakan tint background ringan dengan teks kontras AA; uji setiap kombinasi dan focus ring 2px. Jangan warna saja: badge selalu label. Spacing 4/8/12/16/24/32; radius 6–10px; shadow minimal. Base text 14px, table 13–14, page title 24, KPI 28, numeric tabular. Desktop sidebar 232px collapsible 64px; header 56px; content 24px; mobile drawer, padding 12px. Table row 40–48px, header sticky, horizontal scroll pada mobile, tidak shrink teks ke ukuran kecil. Interactive touch min 44px.
+Sediakan kontrol tema terang/gelap yang dapat diakses keyboard, menyimpan pilihan pengguna dan menghormati preferensi sistem sebelum ada pilihan eksplisit. Terapkan token sebagai CSS custom properties agar semua komponen memakai mode aktif secara konsisten. Uji kontras AA dan focus ring 2px pada kedua mode; warna status selalu disertai label teks. Spacing 4/8/12/16/24/32; radius 6–10px; shadow minimal. Base text 14px, table 13–14, page title 24, KPI 28, numeric tabular. Desktop sidebar 232px collapsible 64px; header 56px; content 24px; mobile drawer, padding 12px. Table row 40–48px, header sticky, horizontal scroll pada mobile, tidak shrink teks ke ukuran kecil. Interactive touch min 44px.
 
 ## Information architecture
 Sidebar: Ticket Management (Overview + bucket), Semesta, Rekap Workorder, Detail WO HI; Settings hanya authorized. Header: breadcrumb, last successful sync open/closed WIB, freshness badge (Segar/Tertunda/Gagal/Belum sinkron), profile. Tidak ada menu teknisi. Ticket Management default route setelah login.
@@ -43,7 +43,7 @@ Sidebar: Ticket Management (Overview + bucket), Semesta, Rekap Workorder, Detail
 - No manual refresh that fans out to NOSSA; refresh reads DB. SSE event invalidates visible query only; fallback polling. Don't load inactive menus. Paginated 50 default, max 100. Lazy charts/export. Keep production JS budget measured (initial target <200 KB gzip excluding optional lazy charts), no unbounded DOM.
 
 ## QA visual
-Desktop 1440/1280, tablet 768, mobile 390; 200% zoom; keyboard only; screen reader labels; contrast; long incident/summary; null field, 401/403/503, offline, slow network, stale data, scope changed mid-request. Test Svelte escape and CSP, no `{@html}` untrusted. Status selalu memiliki label teks; warna saja tidak menjadi penanda status. Tema terang dapat dipertimbangkan setelah MVP bila kebutuhan pengguna tervalidasi.
+Desktop 1440/1280, tablet 768, mobile 390; 200% zoom; keyboard only; screen reader labels; contrast pada mode terang dan gelap; long incident/summary; null field, 401/403/503, offline, slow network, stale data, scope changed mid-request. Uji pergantian tema, persistensi pilihan dan preferensi sistem. Test Svelte escape and CSP, no `{@html}` untrusted. Status selalu memiliki label teks; warna saja tidak menjadi penanda status.
 
 ## v1.3 historical provenance
 Ticket detail may display `Data historis (migrasi)` for unverified legacy record and `Terverifikasi NOSSA` only after accepted source observation. Coverage gaps/unknown timestamp explicitly shown; do not hide old tickets solely because they lack live verification. Historical vs live filter optional if approved; not a default extra query. No raw legacy payload dump in UI; scoped allowlisted details only. Reports distinguish unavailable SLA and unexplained/approved reconciliation deltas during pilot.
