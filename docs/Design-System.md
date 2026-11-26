@@ -15,6 +15,8 @@ Arah visual: operational console dengan mode terang dan gelap, kontras tinggi da
 
 Sediakan kontrol tema terang/gelap yang dapat diakses keyboard, menyimpan pilihan pengguna dan menghormati preferensi sistem sebelum ada pilihan eksplisit. Terapkan token sebagai CSS custom properties agar semua komponen memakai mode aktif secara konsisten. Uji kontras AA dan focus ring 2px pada kedua mode; warna status selalu disertai label teks. Spacing 4/8/12/16/24/32; radius 6–10px; shadow minimal. Base text 14px, table 13–14, page title 24, KPI 28, numeric tabular. Desktop sidebar 232px collapsible 64px; header 56px; content 24px; mobile drawer, padding 12px. Table row 40–48px, header sticky, horizontal scroll pada mobile, tidak shrink teks ke ukuran kecil. Interactive touch min 44px.
 
+Implementasi aktif saat ini: halaman login mendukung tema terang/gelap, menyimpan pilihan di `localStorage` dan memakai preferensi sistem sebelum pilihan eksplisit. Halaman lain harus memakai token yang sama saat shell aplikasi tersedia; jangan menganggap seluruh aplikasi sudah bertema.
+
 ## Information architecture
 Sidebar: Ticket Management (Overview + bucket), Semesta, Rekap Workorder, Detail WO HI; Settings hanya authorized. Header: breadcrumb, last successful sync open/closed WIB, freshness badge (Segar/Tertunda/Gagal/Belum sinkron), profile. Tidak ada menu teknisi. Ticket Management default route setelah login.
 

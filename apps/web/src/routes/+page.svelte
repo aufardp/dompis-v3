@@ -34,14 +34,32 @@
 	let checkingSession = $state(true);
 	let submitting = $state(false);
 	let retryAfterSeconds = $state(0);
+	let theme = $state<'light' | 'dark'>('dark');
 	let message = $state('');
 	let messageKind = $state<'error' | 'success' | 'info'>('info');
 	let retryTimer: ReturnType<typeof setInterval> | undefined;
 
 	onMount(() => {
+		let storedTheme: string | null = null;
+		try { storedTheme = window.localStorage.getItem('dompis-theme'); } catch { /* Storage may be disabled by browser policy. */ }
+		const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+		applyTheme(storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : systemPrefersLight ? 'light' : 'dark');
 		void checkSession();
 		return () => clearRetryTimer();
 	});
+
+	function applyTheme(nextTheme: 'light' | 'dark'): void {
+		theme = nextTheme;
+		document.documentElement.dataset.theme = nextTheme;
+		const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+		if (themeColor) themeColor.content = nextTheme === 'light' ? '#FFFFFF' : '#101220';
+	}
+
+	function toggleTheme(): void {
+		const nextTheme = theme === 'dark' ? 'light' : 'dark';
+		try { window.localStorage.setItem('dompis-theme', nextTheme); } catch { /* Theme still changes for this page view. */ }
+		applyTheme(nextTheme);
+	}
 
 	function clearRetryTimer(): void {
 		if (retryTimer !== undefined) clearInterval(retryTimer);
@@ -250,7 +268,12 @@
 		<div class="access-card">
 			<div class="access-card-top">
 				<span class="access-label">AKSES AKUN</span>
-				<span class="access-indicator"><span></span> INTERNAL</span>
+				<div class="access-actions">
+					<button class="theme-toggle" type="button" onclick={toggleTheme} aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}>
+						{#if theme === 'dark'}<span aria-hidden="true">☼</span> Terang{:else}<span aria-hidden="true">◐</span> Gelap{/if}
+					</button>
+					<span class="access-indicator"><span></span> INTERNAL</span>
+				</div>
 			</div>
 
 			{#if currentUser}
@@ -348,23 +371,34 @@
 		--dompis-canvas: #101220;
 		--dompis-surface: #181a29;
 		--dompis-raised: #2a2f45;
+		--dompis-text: #ffffff;
 		--dompis-muted: #c5cad3;
 		--dompis-red: #ad0e27;
 		--dompis-red-deep: #750a1c;
-		--dompis-white: #ffffff;
+		color-scheme: dark;
+	}
+	:global(:root[data-theme='light']) {
+		--dompis-canvas: #ffffff;
+		--dompis-surface: #c5cad3;
+		--dompis-raised: #2a2f45;
+		--dompis-text: #101220;
+		--dompis-muted: #2a2f45;
+		--dompis-red: #750a1c;
+		--dompis-red-deep: #ad0e27;
+		color-scheme: light;
 	}
 	:global(*) { box-sizing: border-box; }
 	:global(html) { min-width: 320px; background: var(--dompis-canvas); }
 	:global(body) {
 		margin: 0;
 		background: var(--dompis-canvas);
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 		font-size: 15px;
 		-webkit-font-smoothing: antialiased;
 	}
 	:global(button), :global(input) { font: inherit; }
-	:global(::selection) { background: var(--dompis-red-deep); color: var(--dompis-white); }
+	:global(::selection) { background: var(--dompis-red-deep); color: var(--dompis-text); }
 
 	.skip-link {
 		position: fixed;
@@ -375,7 +409,7 @@
 		padding: 12px 16px;
 		border-radius: 6px;
 		background: var(--dompis-red-deep);
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 	}
 	.skip-link:focus { transform: translateY(0); }
 
@@ -400,7 +434,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 11px;
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-size: 15px;
 		font-weight: 750;
 		letter-spacing: 0.105em;
@@ -413,7 +447,7 @@
 		place-items: center;
 		border-radius: 7px;
 		background: var(--dompis-red);
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-size: 17px;
 		font-weight: 650;
 		letter-spacing: -0.06em;
@@ -477,7 +511,7 @@
 		align-items: center;
 		justify-content: space-between;
 		border-bottom: 1px solid var(--dompis-raised);
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-size: 13px;
 	}
 	.product-map li span:last-child {
@@ -518,6 +552,21 @@
 		align-items: center;
 		justify-content: space-between;
 	}
+	.access-actions { display: flex; align-items: center; gap: 14px; }
+	.theme-toggle {
+		min-height: 44px;
+		padding: 0 10px;
+		border: 1px solid var(--dompis-muted);
+		border-radius: 6px;
+		background: var(--dompis-surface);
+		color: var(--dompis-text);
+		font-size: 12px;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.theme-toggle span { margin-right: 4px; }
+	.theme-toggle:hover { border-color: var(--dompis-red); }
+	.theme-toggle:focus-visible { outline: 2px solid var(--dompis-red); outline-offset: 2px; }
 	.access-label, .access-indicator {
 		color: var(--dompis-muted);
 		font-size: 10px;
@@ -526,7 +575,7 @@
 	}
 	.access-indicator { display: inline-flex; align-items: center; gap: 7px; color: var(--dompis-muted); }
 	.access-indicator span { width: 6px; height: 6px; border-radius: 50%; background: var(--dompis-muted); }
-	.form-heading .eyebrow { color: var(--dompis-white); }
+	.form-heading .eyebrow { color: var(--dompis-text); }
 	h2 {
 		margin: 10px 0 8px;
 		font-size: 28px;
@@ -544,7 +593,7 @@
 	label {
 		display: block;
 		margin-bottom: 8px;
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-size: 13px;
 		font-weight: 650;
 	}
@@ -556,7 +605,7 @@
 		border-radius: 6px;
 		outline: none;
 		background: var(--dompis-surface);
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-size: 14px;
 		transition: border-color 140ms ease, box-shadow 140ms ease;
 	}
@@ -572,13 +621,13 @@
 		border: 0;
 		border-radius: 4px;
 		background: transparent;
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-size: 12px;
 		font-weight: 650;
 		cursor: pointer;
 	}
 	.password-toggle:hover:not(:disabled) { background: var(--dompis-red-deep); }
-	.password-toggle:focus-visible { outline: 2px solid var(--dompis-white); outline-offset: 1px; }
+	.password-toggle:focus-visible { outline: 2px solid var(--dompis-text); outline-offset: 1px; }
 	.password-toggle:disabled { color: var(--dompis-muted); cursor: wait; }
 	input::placeholder { color: var(--dompis-muted); }
 	input:hover { border-color: var(--dompis-muted); }
@@ -597,7 +646,7 @@
 		border: 1px solid var(--dompis-red);
 		border-radius: 6px;
 		background: var(--dompis-red);
-		color: var(--dompis-white);
+		color: var(--dompis-text);
 		font-size: 14px;
 		font-weight: 650;
 		cursor: pointer;
@@ -629,8 +678,8 @@
 		font-size: 13px;
 		line-height: 1.5;
 	}
-	.notice-error { border-color: var(--dompis-red); background: var(--dompis-red-deep); color: var(--dompis-white); }
-	.notice-success { border-color: var(--dompis-muted); background: var(--dompis-surface); color: var(--dompis-white); }
+	.notice-error { border-color: var(--dompis-red); background: var(--dompis-red-deep); color: var(--dompis-text); }
+	.notice-success { border-color: var(--dompis-muted); background: var(--dompis-surface); color: var(--dompis-text); }
 	.signed-in { padding-bottom: 4px; animation: enter 450ms ease-out both; }
 	.signed-icon {
 		width: 44px;
@@ -644,7 +693,7 @@
 		color: var(--dompis-muted);
 	}
 	.signed-icon svg { width: 22px; height: 22px; }
-	.user-name { margin: 0 0 10px; color: var(--dompis-white); font-size: 15px; font-weight: 650; }
+	.user-name { margin: 0 0 10px; color: var(--dompis-text); font-size: 15px; font-weight: 650; }
 
 	@keyframes enter {
 		from { opacity: 0; transform: translateY(8px); }
