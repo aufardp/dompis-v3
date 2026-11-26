@@ -364,6 +364,24 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 			}));
 			expect(throttled.status).toBe(429);
 
+			const concurrentLoginApp = new Elysia()
+				.use(createAuthRoutes(tx, 'https://dompis.example.test'));
+			const concurrentStatuses = await Promise.all(Array.from({ length: 20 }, async () => {
+				const response = await concurrentLoginApp.handle(new Request('http://localhost/auth/login', {
+					method: 'POST',
+					headers: {
+						origin: 'https://dompis.example.test',
+						'content-type': 'application/json',
+						'x-csrf-token': csrfToken,
+						cookie: `__Host-dompis_csrf=${csrfCookie}`
+					},
+					body: JSON.stringify({ username: user.username, password: 'wrong-password' })
+				}));
+				return response.status;
+			}));
+			expect(concurrentStatuses.filter((status) => status === 401)).toHaveLength(10);
+			expect(concurrentStatuses.filter((status) => status === 429)).toHaveLength(10);
+
 			throw new RollbackFixture('rollback_synthetic_authentication_fixtures');
 		});
 	} catch (error: unknown) {

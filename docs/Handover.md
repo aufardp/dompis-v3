@@ -1064,3 +1064,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: ini membuktikan boundary untuk `tickets.read`, tetapi tidak menguji endpoint admin/report yang belum dibuat. Tidak memberikan permission kepada role katalog.
 - Rollback: hapus tambahan fixture/assertion test dan catatan verifikasi; tidak ada rollback DB.
 - Langkah berikutnya: Phase 2 tetap menunggu keputusan owner pada role/capability, global scope, hak user-admin, audit visibility/retention, dan aktivasi account migration sebelum menyelesaikan API mutasi atau membuat grants.
+
+## 2026-11-26 — Verify concurrent login throttling
+
+- Tindakan: menambahkan 20 request login invalid serentak melalui instance limiter baru pada route auth. Hasil menguji reservasi `inFlight` sebelum query/hash dan membuktikan throttle tidak dapat dilewati dengan konkurensi. Seluruh user/sesi/role fixture tetap dalam transaksi rollback; tidak memakai credential real.
+- File berubah: `apps/api/src/auth.test.ts`, `docs/Phase-2-Organization-Auth.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: PostgreSQL development lokal `dompis_v3` loopback; hanya test fixtures sintetis rollback-only.
+- Command tersanitasi: `bun run typecheck:api`; `bun --env-file=.env test apps/api/src/auth.test.ts`; `git diff --check`.
+- Hasil pengujian aktual: API typecheck lulus; integration test lulus 1 test / 68 expectations, termasuk 10 response 401 dan tepat 10 response 429 dari 20 request bersamaan; diff check lulus. Test menggunakan password salah sintetis.
+- Keputusan teknis: limiter tetap membatasi per proses dan mempertahankan batas akun/IP; pengujian baru memvalidasi in-flight reservation dalam satu proses, bukan koordinasi lintas replica.
+- Risiko/kendala: saat horizontal scaling, limiter in-memory tidak memberi kuota bersama antar process; distribusi limiter belum ditambahkan karena arsitektur tidak menyetujui infra tambahan tanpa ADR.
+- Rollback: hapus request concurrency dan assertion tambahan serta catatan dokumentasi; tidak ada rollback database.
+- Langkah berikutnya: implementasi mutasi user/organisasi dan role grants menunggu owner mengisi matriks capability serta keputusan global scope, admin operations, audit visibility/retention, dan account activation pada worksheet authorization.
