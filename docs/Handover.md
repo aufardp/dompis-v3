@@ -680,3 +680,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: alasan readiness baru belum diverifikasi melalui runtime probe; probe yang menganggap database saja sebagai readiness perlu disesuaikan. Tidak mengubah authorization atau data bisnis.
 - Rollback: kembalikan pass-through `Bun.env.APP_ORIGIN`, hapus pemeriksaan readiness, union reason baru, dan catatan ADR/handover; tidak ada rollback database.
 - Langkah berikutnya: pastikan typecheck/build selesai dan periksa diff; validasi readiness dengan env sintetis saat pemeriksaan runtime diizinkan.
+
+## 2026-11-26 — API request body size cap
+
+- Tindakan: membatasi body request API Bun/Elysia ke 16 KiB sebelum parsing/validasi route; batas default Elysia yang terdokumentasi adalah 128 MiB. API saat ini hanya menerima JSON auth kecil dengan batas field eksplisit; ingest berada di worker.
+- File berubah: `apps/api/src/app.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: Context7 lookup Elysia serve options dan Bun `maxRequestBodySize`; `bun run typecheck`; `bun run build`; `git diff --check`.
+- Hasil aktual: `bun run typecheck` lulus (Svelte 0 error/0 warning; API dan worker TypeScript lulus); `bun run build` lulus untuk web static dan API bundle; `git diff --check` lulus. Build web mencetak warning environment `NO_COLOR`/`FORCE_COLOR`. Tidak mengirim oversized runtime request dan tidak menjalankan test suite.
+- Keputusan teknis: konfigurasi server memakai 16 KiB berdasarkan ukuran maksimum body login saat ini (username 160, password 1.024 karakter) dengan ruang untuk JSON escaping/UTF-8; endpoint masa depan yang butuh body lebih besar harus meninjau ulang kontrak dan limit.
+- Risiko/blocker: perilaku rejection body oversized belum diverifikasi lewat runtime; framework adapter lain selain Bun tidak menjadi target runtime aplikasi.
+- Rollback: hapus setting body limit dan catatan ADR-019/Security/Handover; tidak ada rollback database.
+- Langkah berikutnya: pertahankan cap selama API hanya menerima body kecil; evaluasi payload maksimum sebelum menambah route mutasi/unggah.

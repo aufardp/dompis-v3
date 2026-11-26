@@ -19,6 +19,7 @@
 | ADR-016 | Expire session cookie using the same `__Host-` attributes as issuance | Implemented locally | Elysia 1.4.32 cookie implementation and API typecheck/build |
 | ADR-017 | Validate opaque session token format consistently before hashing or lookup | Implemented locally | Shared auth guard review; API typecheck/build |
 | ADR-018 | Include valid auth origin in API readiness | Implemented locally | APP_ORIGIN validation path; API typecheck/build |
+| ADR-019 | Bound API request body size to 16 KiB | Implemented locally | Context7 Elysia/Bun server docs; current auth schema bounds; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -145,3 +146,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: an operational health probe no longer marks the API ready when login is disabled by origin configuration. The configured origin value is not exposed in the response/log. HTTP remains valid for documented local development; TLS policy is unchanged.
 - Validation: `bun run typecheck`, `bun run build`, and `git diff --check` passed. No runtime health request or automated test was performed in this slice.
 - Rollback: restore direct `Bun.env.APP_ORIGIN` pass-through and remove the readiness origin checks, contract variants, and ADR-018; no database or persistent state rollback is needed.
+
+## ADR-019 — API request body limit (2026-11-26)
+
+- Status: implemented locally; future routes with larger payloads require an explicit contract review.
+- Context: Elysia's Bun server default allows request bodies up to 128 MiB. The current API accepts only small JSON auth bodies, so the default permits unnecessary memory and parsing work before field-level validation.
+- Evidence: Context7 Elysia serve-option documentation and Bun server references identify `maxRequestBodySize` in bytes with a 128 MiB default. Current login schema limits username to 160 characters and password to 1,024 characters; no API upload or sync payload route exists.
+- Decision: configure the API server maximum request body at 16 KiB. This leaves headroom for escaped UTF-8 JSON while bounding malformed oversized requests. Keep upstream ingestion in the separately bounded worker.
+- Consequences: oversized API bodies are rejected by the server before route schema handling; no dependency, DB, route payload schema, or business behavior changes. Any future larger request must revisit this limit with its payload contract.
+- Validation: `bun run typecheck`, `bun run build`, and `git diff --check` passed. No oversized runtime request or automated test was performed in this slice.
+- Rollback: remove `MAX_REQUEST_BODY_BYTES` and the Elysia `serve.maxRequestBodySize` setting, and remove the Security.md requirement/ADR-019; no database rollback is needed.

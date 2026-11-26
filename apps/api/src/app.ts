@@ -5,6 +5,8 @@ import type { ReadinessState } from '@dompis/contracts';
 import { createAuthRoutes } from './auth';
 import { createTicketRoutes } from './tickets';
 
+const MAX_REQUEST_BODY_BYTES = 16 * 1024;
+
 function isValidAppOrigin(value: string | undefined): value is string {
 	if (!value) return false;
 	try {
@@ -20,7 +22,7 @@ export function createApp() {
 	const appOrigin = isValidAppOrigin(configuredAppOrigin) ? configuredAppOrigin : undefined;
 	const appOriginFailure = configuredAppOrigin ? 'auth_origin_invalid' as const : 'auth_origin_not_configured' as const;
 
-	return new Elysia()
+	return new Elysia({ serve: { maxRequestBodySize: MAX_REQUEST_BODY_BYTES } })
 		.onRequest(({ set }) => {
 			set.headers['x-request-id'] = randomUUID();
 			set.headers['x-content-type-options'] = 'nosniff';
