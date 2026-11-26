@@ -10,6 +10,22 @@
 
 	type CsrfResponse = { csrfToken?: unknown };
 
+	class HttpResponseError extends Error {
+		readonly requestId: string | null;
+
+		constructor(message: string, requestId: string | null) {
+			super(message);
+			this.requestId = requestId;
+		}
+	}
+
+	function readRequestId(response: Response): string | null {
+		const requestId = response.headers.get('x-request-id');
+		return requestId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)
+			? requestId
+			: null;
+	}
+
 	let username = $state('');
 	let password = $state('');
 	let currentUser = $state<string | null>(null);
@@ -41,7 +57,7 @@
 			credentials: 'same-origin',
 			cache: 'no-store'
 		});
-		if (!response.ok) throw new Error('csrf_unavailable');
+		if (!response.ok) throw new HttpResponseError('csrf_unavailable', readRequestId(response));
 		const payload = await response.json() as CsrfResponse;
 		if (typeof payload.csrfToken !== 'string' || payload.csrfToken.length !== 43) {
 			throw new Error('csrf_invalid');
@@ -55,6 +71,7 @@
 
 		submitting = true;
 		message = '';
+		let requestId: string | null = null;
 		try {
 			const csrfToken = await requestCsrfToken();
 			const response = await fetch('/auth/login', {
@@ -67,6 +84,7 @@
 				},
 				body: JSON.stringify({ username: username.trim(), password })
 			});
+			requestId = readRequestId(response);
 
 			if (response.status === 401) {
 				messageKind = 'error';
@@ -93,9 +111,12 @@
 			password = '';
 			messageKind = 'success';
 			message = 'Sesi DOMPIS Anda sudah aktif.';
-		} catch {
+		} catch (error: unknown) {
 			messageKind = 'error';
-			message = 'Layanan masuk belum dapat dijangkau. Coba lagi beberapa saat.';
+			const failureRequestId = error instanceof HttpResponseError ? error.requestId : requestId;
+			message = failureRequestId
+				? `Layanan masuk belum dapat dijangkau. Coba lagi beberapa saat. Referensi: ${failureRequestId}.`
+				: 'Layanan masuk belum dapat dijangkau. Coba lagi beberapa saat.';
 		} finally {
 			submitting = false;
 		}
@@ -105,6 +126,7 @@
 		if (submitting) return;
 		submitting = true;
 		message = '';
+		let requestId: string | null = null;
 		try {
 			const csrfToken = await requestCsrfToken();
 			const response = await fetch('/auth/logout', {
@@ -113,15 +135,19 @@
 				cache: 'no-store',
 				headers: { 'x-csrf-token': csrfToken }
 			});
+			requestId = readRequestId(response);
 			if (!response.ok) throw new Error('logout_failed');
 			currentUser = null;
 			username = '';
 			password = '';
 			messageKind = 'success';
 			message = 'Anda sudah keluar dari DOMPIS.';
-		} catch {
+		} catch (error: unknown) {
 			messageKind = 'error';
-			message = 'Sesi belum dapat ditutup. Periksa koneksi lalu coba lagi.';
+			const failureRequestId = error instanceof HttpResponseError ? error.requestId : requestId;
+			message = failureRequestId
+				? `Sesi belum dapat ditutup. Periksa koneksi lalu coba lagi. Referensi: ${failureRequestId}.`
+				: 'Sesi belum dapat ditutup. Periksa koneksi lalu coba lagi.';
 		} finally {
 			submitting = false;
 		}

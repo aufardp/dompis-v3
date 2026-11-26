@@ -512,3 +512,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: synthetic thrown 500 belum dijalankan, jadi pemetaan internal-error/log redaction belum teruji lewat HTTP; tidak menjalankan test suite.
 - Rollback: revert perubahan app/security/ADR/handover; tidak ada DB atau data rollback.
 - Langkah berikutnya: jalankan kontrol internal 500 pada test terisolasi; lanjutkan endpoint produk hanya setelah owner-gated access/business contract siap.
+
+## 2026-11-26 — Show API request reference on login failures
+
+- Tindakan: menghubungkan `X-Request-ID` API ke error generik form login/logout. UI menerima ID hanya jika formatnya UUID, sehingga pengguna dapat mengirim referensi dukungan tanpa menerima detail internal. CSRF endpoint failure membawa ID melalui error bertipe internal UI.
+- File berubah: `apps/web/src/routes/+page.svelte`, `docs/Handover.md`.
+- Database target: tidak ada akses database atau request API runtime.
+- Command tersanitasi: `bun run typecheck:web`; `bun run build:web`; `git diff --check`.
+- Hasil aktual: percobaan awal typecheck/build mendeteksi unsupported TypeScript parameter property pada script Svelte; properti diubah menjadi deklarasi eksplisit. Setelah koreksi, Svelte diagnostics 0 error/0 warning dan build web sukses. Diff check lulus.
+- Keputusan teknis: hanya kegagalan tak terduga/layanan menampilkan request reference; error credential, CSRF, dan throttle tetap memakai pesan operasional yang sudah ada. ID dirender sebagai text escaped Svelte.
+- Risiko/blocker: tidak menjalankan browser interaction test; belum ada akun sintetis untuk menguji tampilan error 5xx secara end-to-end. Error transport sebelum response tidak punya request ID.
+- Rollback: revert perubahan helper/penanganan login/logout UI dan entri ini; tidak ada database rollback.
+- Langkah berikutnya: uji alur interaktif memakai synthetic account ketika jalur provisioning aman tersedia; lanjutkan endpoint produk setelah permission/business contract disetujui.
