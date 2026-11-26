@@ -812,3 +812,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Kendala/risiko: akses login nyata tetap tertahan oleh persetujuan owner atas role/action/global-scope/account-activation mapping dan prosedur provisioning/recovery; inspeksi source tidak mengungkap seluruh hak efektif atau keadaan database legacy aktif.
 - Rollback: perubahan dokumentasi saja; revert ketiga file yang disebut di atas untuk menghapus hasil audit ini. Tidak ada rollback database.
 - Langkah berikutnya: validasi matriks role dan proses provisioning akun pertama; setelah itu selesaikan endpoint/UI administrasi akun dengan audit dan scope guard, lalu verifikasi login end-to-end menggunakan akun sintetis/terotorisasi.
+
+## 2026-11-26 — Owner-approved target role names
+
+- Tindakan: memperbarui dokumentasi role target sesuai keputusan pemilik: `admin` menjadi `team_leader`, `admin_branch` menjadi `officer`; `superadmin`, `helpdesk`, `teknisi`, dan `senior_leader` tetap. Riwayat role source legacy dipertahankan sebagai evidence dan ditautkan ke nama target.
+- File berubah: `docs/Database.md`, `docs/schema-proposed.sql`, `docs/PRD.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Legacy-Role-Discovery.md`, `docs/Phase-2-Organization-Auth.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah; tidak ada migration atau runtime role seed.
+- Command tersanitasi: `rg -n -i` atas dokumentasi untuk seluruh nama/alias role; `git diff --check`.
+- Hasil aktual: dokumentasi target dan candidate role check kini memakai enam nama yang disetujui. Role lama hanya disebut dalam konteks source/history atau sebagai nama yang diganti. `git diff --check` lulus; typecheck/build/test tidak dijalankan karena perubahan dokumentasi saja.
+- Keputusan teknis: persetujuan mencakup nama role saja. Legacy ID, capability, scope/global access, account activation, serta hak efektif tidak diwariskan otomatis. `teknisi` tetap nama role; assignment teknisi tetap di luar scope produk.
+- Kendala/risiko: migration/schema runtime v3 menggunakan relasi `roles` generik sehingga belum ada enum runtime yang perlu diganti; permission matrix dan jalur provisioning akun masih menunggu validasi. Schema SQL candidate disesuaikan, bukan diaplikasikan ke database.
+- Rollback: revert hanya perubahan dokumentasi pada file yang disebut di atas; tidak ada rollback database.
+- Langkah berikutnya: validasi capability matrix dan proses provisioning akun awal; setelah disetujui, implementasikan role catalog/grants tanpa mengubah nama atau memberi hak tambahan di luar keputusan.

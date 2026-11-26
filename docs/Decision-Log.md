@@ -233,3 +233,12 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: logs cannot include an attacker- or library-supplied custom error name; generic DB/runtime errors remain classed as `Error`. Response payloads and status handling do not change.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime log event or automated test was produced in this slice.
 - Rollback: restore `error.name` usage in both log paths and remove ADR-026/Security entry; no database or persistent state rollback is needed.
+
+## ADR-027 — Owner-approved role names (2026-11-26)
+
+- Status: naming decision approved by the application owner; runtime catalog and authorization mapping remain pending.
+- Context: legacy source uses `admin` and `admin_branch`, while the owner selected new names for the rebuilt application.
+- Decision: the DOMPIS v3 target role-name set is `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leader`, and `officer`. Rename `admin` to `team_leader` and `admin_branch` to `officer`; retain the other four names.
+- Consequences: documentation and candidate schema role lists use the target names. This decision does not transfer legacy IDs, permissions, scopes, global access, account activation, or user assignments. Technician assignment remains outside product scope. Runtime role provisioning waits for the owner-approved capability matrix and secure account-provisioning procedure.
+- Validation: scanned Markdown and candidate SQL for role names; `git diff --check` passed. No code, database, migration, typecheck, build, or test changed/run.
+- Rollback: update the target-name set and all references if the owner changes the decision; no database rollback is needed because no runtime catalog was seeded or migrated.

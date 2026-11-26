@@ -2,6 +2,19 @@
 
 Date: 2026-11-26. Scope: static, read-only inspection of the legacy `dompis_v2` source checkout. This is evidence about source-defined role vocabulary, not a live database inventory or an authorization approval for DOMPIS v3.
 
+The owner has since approved the **target names** below. This changes naming requirements only; it does not approve or transfer any permission, scope, account state, or legacy user assignment.
+
+| Legacy key | DOMPIS v3 target name | Decision |
+|---|---|---|
+| `superadmin` | `superadmin` | Keep |
+| `admin` | `team_leader` | Rename |
+| `helpdesk` | `helpdesk` | Keep |
+| `teknisi` | `teknisi` | Keep role name; technician assignment remains out of scope |
+| `senior_leader` | `senior_leader` | Keep |
+| `admin_branch` | `officer` | Rename |
+
+The target role-name set is therefore `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leader`, and `officer`. Do not treat legacy IDs or permissions as target IDs/permissions.
+
 ## Role vocabulary found
 
 The legacy role helper documents role IDs and keys as follows:
@@ -15,7 +28,7 @@ The legacy role helper documents role IDs and keys as follows:
 | 5 | `senior_leader` | Senior Leader | Migration `202608040001_user_scope_general_manager` inserted this label/key; migration `202608040002_rename_general_manager_to_senior_leader` records a rename from `general_manager`. |
 | 6 | `admin_branch` | Admin Branch | Migration `202608040003_add_admin_branch_role` inserted this label/key. |
 
-The role normalizer also accepts spelling aliases: `super_admin` and `super-admin` for `superadmin`; `technician` for `teknisi`; `sl` and `seniorleader` for `senior_leader`; and `adminbranch` for `admin_branch`. These are code compatibility aliases, not distinct roles.
+The legacy role normalizer also accepts spelling aliases: `super_admin` and `super-admin` for `superadmin`; `technician` for `teknisi`; `sl` and `seniorleader` for `senior_leader`; and `adminbranch` for `admin_branch`. These are code compatibility aliases, not distinct roles and not additional target names.
 
 ## What this does not establish
 

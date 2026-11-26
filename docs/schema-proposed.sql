@@ -38,7 +38,7 @@ CREATE TABLE workzone_source_aliases (
 CREATE TABLE users (
  id uuid PRIMARY KEY DEFAULT uuidv7(), username text NOT NULL UNIQUE,
  display_name text NOT NULL, password_hash text NOT NULL,
- role text NOT NULL CHECK(role IN ('superadmin','admin','helpdesk','viewer')),
+ role text NOT NULL CHECK(role IN ('superadmin','team_leader','helpdesk','teknisi','senior_leader','officer')),
  global_scope boolean NOT NULL DEFAULT false, active boolean NOT NULL DEFAULT true,
  scope_version bigint NOT NULL DEFAULT 1,
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
