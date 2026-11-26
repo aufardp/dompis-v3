@@ -127,12 +127,7 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 
 			const identity = await findActiveLoginIdentity(database, username);
 
-			let passwordMatches = false;
-			try {
-				passwordMatches = await Bun.password.verify(body.password, identity?.passwordHash ?? await dummyPasswordHash);
-			} catch {
-				passwordMatches = false;
-			}
+			const passwordMatches = await Bun.password.verify(body.password, identity?.passwordHash ?? await dummyPasswordHash);
 			if (!identity || !passwordMatches) {
 				limiter.failed(limitKeys, now);
 				set.status = 401;

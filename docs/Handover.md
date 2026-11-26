@@ -632,3 +632,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: perilaku 403 untuk input malformed belum diverifikasi lewat runtime/test; scope bisnis Phase 0C tetap terbuka.
 - Rollback: kembalikan pemeriksaan panjang saja dan hapus ADR-014/entri ini; tidak ada rollback database.
 - Langkah berikutnya: lanjutkan slice hardening independen; jalankan pengujian auth terisolasi saat diizinkan dan tersedia target DB sintetis/disposable.
+
+## 2026-11-26 — Password verifier error propagation
+
+- Tindakan: menghapus catch yang menyamarkan exception `Bun.password.verify` sebagai kegagalan kredensial biasa. Hasil `false` tetap menjadi 401 generik; exception tak terduga masuk ke sanitizer global sebagai 500 generik dengan request ID.
+- File berubah: `apps/api/src/auth.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan runtime request atau test suite pada slice ini.
+- Keputusan teknis: mempertahankan pemisahan antara password salah normal dan kegagalan verifier internal tanpa mencatat detail exception, hash, atau input.
+- Risiko/blocker: jalur verifier exception belum diverifikasi lewat runtime/test; sanitasi 500 sudah pernah diuji untuk kegagalan koneksi DB, bukan specifically exception verifier.
+- Rollback: pulihkan catch yang mengubah seluruh exception menjadi `false`, lalu hapus ADR-015/entri ini; tidak ada rollback database.
+- Langkah berikutnya: validasi jalur verifier rusak menggunakan fixture terisolasi saat pengujian diizinkan; kontrak business Phase 0C tetap memblokir endpoint produk/laporan dan migrasi.

@@ -15,6 +15,7 @@
 | ADR-012 | Attach one server-generated request ID to every API response and related operational logs | Implemented locally | Loopback HTTP smoke checks; API typecheck/build passed |
 | ADR-013 | Compute login throttle `Retry-After` from limiter bucket expiry | Implemented locally | Static limiter review; API typecheck/build |
 | ADR-014 | Validate CSRF token base64url alphabet before constant-time comparison | Implemented locally | Malformed-token review; API typecheck/build |
+| ADR-015 | Propagate password verifier failures to sanitized API error handling | Implemented locally | Static error-path review; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -101,3 +102,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: valid generated tokens retain identical behavior; malformed input no longer reaches a throwing comparison. No schema, dependency, response body, or business policy change.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime request or automated test was performed in this slice.
 - Rollback: restore the previous length-only guard; no database or persistent state rollback is needed.
+
+## ADR-015 — Preserve password verifier failures (2026-11-26)
+
+- Status: implemented locally.
+- Context: login caught every exception from `Bun.password.verify` and converted it to `passwordMatches=false`, making verifier/runtime or malformed stored-hash failures indistinguishable from a normal bad password.
+- Evidence: the catch block swallowed all exceptions; the API already has a global error handler that maps unexpected exceptions to a generic 500 response with a request ID and logs only sanitized error type/code.
+- Decision: allow verifier exceptions to propagate to the global handler. A normal `false` verification result remains a generic 401; unexpected verifier failure becomes sanitized 500.
+- Consequences: no exception details or credential material are exposed; monitoring can distinguish infrastructure/hash failures from routine failed login attempts. No schema, dependency, or business policy change.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No automated test or runtime request was performed in this slice.
+- Rollback: restore the catch that converts verifier exceptions to `false`; no database or persistent state rollback is needed.
