@@ -1,19 +1,27 @@
 # Authorization Capability Discovery
 
-Tanggal: 2026-11-26. Status: **evidence extracted; target role-to-capability mapping requires owner approval**.
+Tanggal: 2026-11-26. Status: **partial owner approval recorded; non-superadmin operational grants remain deferred**.
 
-This document records static, read-only evidence from `dompis_v2` to prepare the v3 authorization decision. It is not an approval, does not migrate old assignments, and must not be interpreted as an effective permission matrix. No live user rows or credentials were inspected for this analysis.
+This document records static, read-only evidence from `dompis_v2` and owner decisions for v3. Approved grants below are target policy only; they do not migrate old assignments, activate accounts, or imply that the feature APIs/UI already exist. No live user rows or credentials were inspected for this analysis.
+
+## Owner decision recorded — 2026-11-26
+
+- `superadmin` has full application control. For this capability worksheet this is interpreted to include the listed product reads, sync monitoring, organization administration, user administration, and audit reading, plus explicit global data scope. This interpretation is captured in ADR-036 for later review if the owner intends “full control” to exclude global ticket/report visibility.
+- User Management is restricted to `superadmin`. The explicitly requested operations are add users, remove users, and manage each user's hierarchical scope. User deletion in v3 is defined as deactivation/soft deletion so historical ownership, references, and audit history remain intact; this is a data-integrity interpretation, not a claim about the legacy behavior.
+- `officer`, `team_leader`, and `senior_leader` form one equivalent authorization cohort for now. This means their eventual capability sets must match each other; the owner has not yet selected which product capabilities that set includes. No operational capability is granted by this equivalence statement alone.
+- `helpdesk` and `teknisi` permissions are deferred. They receive no grants by default. Technician assignment remains out of scope.
+- This is not approval to migrate/activate legacy users or to import legacy role permissions/scopes. Protect self-demotion/scope removal and last-active-superadmin safeguards in implementation.
 
 ## Target role vocabulary
 
 | Legacy key | v3 role name approved by owner | Capability disposition |
 |---|---|---|
-| `superadmin` | `superadmin` | Not assigned by this discovery |
-| `admin` | `team_leader` | Not assigned by this discovery |
-| `helpdesk` | `helpdesk` | Not assigned by this discovery |
-| `teknisi` | `teknisi` | No technician-assignment capability; remains outside product scope |
-| `senior_leader` | `senior_leader` | Not assigned by this discovery |
-| `admin_branch` | `officer` | Not assigned by this discovery |
+| `superadmin` | `superadmin` | Full application capability set approved below |
+| `admin` | `team_leader` | Equivalent cohort with officer/senior_leader; capability set deferred |
+| `helpdesk` | `helpdesk` | Permission decision deferred; deny-by-default |
+| `teknisi` | `teknisi` | Permission decision deferred; no technician-assignment capability |
+| `senior_leader` | `senior_leader` | Equivalent cohort with officer/team_leader; capability set deferred |
+| `admin_branch` | `officer` | Equivalent cohort with team_leader/senior_leader; capability set deferred |
 
 Owner approval covers names only. Legacy numeric IDs, role keys, UI menus, and endpoint guards are not v3 permissions.
 
@@ -23,16 +31,16 @@ The following are action-level candidates derived from the approved product scop
 
 | Capability candidate | superadmin | team_leader | helpdesk | teknisi | senior_leader | officer | Product basis |
 |---|---:|---:|---:|---:|---:|---:|---|
-| `tickets.read` | — | — | — | — | — | — | Ticket Management read-only MVP |
-| `reports.semesta.read` | — | — | — | — | — | — | Semesta |
-| `reports.workorder.read` | — | — | — | — | — | — | Rekap Workorder |
-| `reports.wo_hi.read` | — | — | — | — | — | — | Detail WO HI |
-| `sync.monitor` | — | — | — | — | — | — | Sync Monitoring support feature |
-| `organization.read` | — | — | — | — | — | — | Organization Management |
-| `organization.manage` | — | — | — | — | — | — | Hierarchy mutations; preview/audit required |
-| `users.read` | — | — | — | — | — | — | User Management |
-| `users.manage` | — | — | — | — | — | — | User/role/scope administration; audit required |
-| `audit.read` | — | — | — | — | — | — | Audit Log; scope and metadata exposure need owner decision |
+| `tickets.read` | superadmin | — | — | — | — | — | Owner-approved full application control; others deferred |
+| `reports.semesta.read` | superadmin | — | — | — | — | — | Semesta |
+| `reports.workorder.read` | superadmin | — | — | — | — | — | Rekap Workorder |
+| `reports.wo_hi.read` | superadmin | — | — | — | — | — | Detail WO HI |
+| `sync.monitor` | superadmin | — | — | — | — | — | Sync Monitoring support feature |
+| `organization.read` | superadmin | — | — | — | — | — | Organization Management |
+| `organization.manage` | superadmin | — | — | — | — | — | Hierarchy mutations; audit required |
+| `users.read` | superadmin | — | — | — | — | — | User Management is superadmin-only |
+| `users.manage` | superadmin | — | — | — | — | — | Create, deactivate, manage hierarchical scope; audit required |
+| `audit.read` | superadmin | — | — | — | — | — | Audit metadata still needs an allowlist and retention policy |
 
 Authentication self-service (login, logout, current-session lookup) is a session capability, not a role grant. Ticket mutation, technician assignment, legacy clustering, maps, attendance, push, and other out-of-PRD capabilities are excluded.
 
@@ -52,16 +60,16 @@ Authentication self-service (login, logout, current-session lookup) is a session
 
 The source has additional guards on out-of-scope routes (technician, attendance, clustering, maps, push, and manual ticket operations). Their presence is not a reason to add those features or permissions to DOMPIS v3.
 
-## Owner decisions required before grants
+## Remaining owner decisions required before other grants / rollout
 
-1. Approve each role-to-capability cell above, including deny-by-default for omitted cells.
-2. Approve whether `superadmin` receives any global scope; role name alone must never imply global data access.
-3. Approve who can create/deactivate users, change roles, reset credentials, grant/revoke scopes, and manage organization nodes; define self-change and last-administrator protections.
-4. Approve whether `senior_leader` and `officer` have any operational report access, and whether `helpdesk` can view tickets, reports, or user records.
-5. Approve `audit.read` audience, metadata visibility, and retention; protect credentials, tokens, customer PII, and raw upstream payloads from audit metadata.
-6. Approve account activation and per-user migration parity separately from role capability; no legacy account or grant activates automatically.
+1. Define the equal capability set for `officer`, `team_leader`, and `senior_leader`; their equivalence to one another is approved, the set is not.
+2. Decide any future `helpdesk` and `teknisi` capabilities; they remain deny-by-default now.
+3. Confirm whether superadmin user control includes role changes and credential resets; implement secure, audited flows only (never reproduce the legacy username-as-password reset).
+4. Confirm whether superadmin scope changes may target all accounts including other superadmins; retain self-protection and last-active-superadmin safeguards unless explicitly revised.
+5. Approve audit metadata visibility/retention; protect credentials, tokens, customer PII, and raw upstream payloads.
+6. Approve account activation and per-user migration parity separately; no legacy account or grant activates automatically.
 
-Until decisions are recorded, v3 role catalog rows remain labels only, `role_permissions` remains empty, and protected operations deny access. Static legacy evidence may inform owner review but cannot resolve these decisions because legacy route checks conflict and some are explicitly unsafe.
+The approved superadmin grants are policy only and have not been seeded; the role catalog remains labels only and `role_permissions` remains empty. Other role grants remain denied. Static legacy evidence cannot resolve remaining decisions because legacy route checks conflict and some are explicitly unsafe.
 
 ## Approval worksheet
 
@@ -73,16 +81,16 @@ For each capability, list only role codes explicitly granted it. Omitted roles s
 
 | Capability | Granted role codes (owner fills) | Approved by / date |
 |---|---|---|
-| `tickets.read` |  |  |
-| `reports.semesta.read` |  |  |
-| `reports.workorder.read` |  |  |
-| `reports.wo_hi.read` |  |  |
-| `sync.monitor` |  |  |
-| `organization.read` |  |  |
-| `organization.manage` |  |  |
-| `users.read` |  |  |
-| `users.manage` |  |  |
-| `audit.read` |  |  |
+| `tickets.read` | `superadmin` | Owner, 2026-11-26 |
+| `reports.semesta.read` | `superadmin` | Owner, 2026-11-26 |
+| `reports.workorder.read` | `superadmin` | Owner, 2026-11-26 |
+| `reports.wo_hi.read` | `superadmin` | Owner, 2026-11-26 |
+| `sync.monitor` | `superadmin` | Owner, 2026-11-26 |
+| `organization.read` | `superadmin` | Owner, 2026-11-26 |
+| `organization.manage` | `superadmin` | Owner, 2026-11-26 |
+| `users.read` | `superadmin` | Owner, 2026-11-26 |
+| `users.manage` | `superadmin` | Owner, 2026-11-26 |
+| `audit.read` | `superadmin` | Owner, 2026-11-26 |
 
 Allowed codes: `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leader`, `officer`. `teknisi` receives no assignment/dispatch feature because that is outside the product scope.
 
@@ -90,20 +98,20 @@ Allowed codes: `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leade
 
 | Decision | Owner response |
 |---|---|
-| Roles allowed to hold explicit global data scope (write `none` if nobody) |  |
-| Roles allowed to grant/revoke global scope |  |
-| Roles allowed to create/deactivate accounts |  |
-| Roles allowed to change another user's role |  |
-| Roles allowed to reset another user's credentials |  |
-| Roles allowed to grant/revoke hierarchical scopes |  |
-| May an administrator change their own role or scope? (yes/no) |  |
-| Last active global administrator must not be removable (confirm/modify) |  |
+| Roles allowed to hold explicit global data scope (write `none` if nobody) | `superadmin` (inferred from full application control; see ADR-036) |
+| Roles allowed to grant/revoke global scope | `superadmin` (within user management) |
+| Roles allowed to create/deactivate accounts | `superadmin`; physical deletion is not allowed |
+| Roles allowed to change another user's role | Pending explicit definition |
+| Roles allowed to reset another user's credentials | Pending secure reset policy |
+| Roles allowed to grant/revoke hierarchical scopes | `superadmin` |
+| May an administrator change their own role or scope? (yes/no) | No self-demotion / self-scope removal by default; guardrail pending implementation review |
+| Last active global administrator must not be removable (confirm/modify) | Yes as a safety invariant; implementation and recovery path pending |
 
 ### C. Audit and migrated account activation
 
 | Decision | Owner response |
 |---|---|
-| Roles allowed to read audit events |  |
+| Roles allowed to read audit events | `superadmin` |
 | Audit metadata fields approved for display (default: action, target type/ID, timestamp, request ID; no PII/secrets) |  |
 | Audit retention period (or identify the existing policy to follow) |  |
 | Activate migrated accounts automatically? (recommended default: no) |  |

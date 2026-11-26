@@ -1088,3 +1088,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: Phase 2 tidak dapat mencapai acceptance untuk user/organization administration, audit read, scope/global grant, atau aktivasi role sampai policy tiap tindakan disahkan. Dokumentasi saat ini secara eksplisit melarang membuka mutation API sebelum jawaban yang relevan disetujui.
 - Rollback: hapus concurrency test dan catatan ini; tidak ada perubahan schema atau data.
 - Langkah berikutnya: lanjutkan hanya pekerjaan auth/read-only yang tidak memerlukan capability/admin-policy yang belum disetujui. Untuk menyelesaikan acceptance Phase 2, owner harus mengisi keputusan bagian A–C di `Authorization-Capability-Discovery.md`; menunda nama/assignment role tidak memberi wewenang admin secara implisit.
+
+## 2026-11-26 — Owner approval: superadmin and user management policy
+
+- Phase: Phase 2 — Organization and Authorization Foundation (policy/discovery slice; phase remains in progress).
+- Tindakan: memeriksa secara statis dan read-only layar serta endpoint user management `dompis_v2`; mencatat fitur legacy, ketidakkonsistenan guard, hard-delete, dan reset password yang tidak aman. Mencatat keputusan owner: superadmin mengontrol aplikasi; User Management hanya superadmin untuk tambah, hapus/nonaktifkan, dan atur scope user; officer/team_leader/senior_leader satu cohort setara sementara; helpdesk/teknisi ditunda. Memperbarui matriks capability, worksheet approval, ringkasan Phase 2, temuan legacy, dan ADR-036.
+- File berubah: `docs/Authorization-Capability-Discovery.md`, `docs/Legacy-Role-Discovery.md`, `docs/Decision-Log.md`, `docs/Phase-2-Organization-Auth.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada query/credential/data pengguna yang dibaca.
+- Command tersanitasi: `sed`/`rg` terbatas pada source user-management di `dompis_v2`; `git diff --check` di repository v3.
+- Hasil pengujian aktual: validasi dokumentasi dengan `git diff --check` (hasil dicatat setelah command); tidak ada test aplikasi karena hanya dokumentasi berubah.
+- Jumlah record terdampak: 0; tidak ada database write, migrasi, grant, akun, atau kode aplikasi berubah.
+- Keputusan teknis: full superadmin control ditafsirkan mencakup explicit global data scope; ini ditandai sebagai interpretasi yang perlu direvisi sebelum grant jika bukan maksud owner. Permintaan “hapus” direpresentasikan sebagai deactivate/soft delete pada v3 untuk menjaga FK, atribusi, dan audit; legacy hard delete hanya dicatat sebagai temuan, bukan requirement implementasi. Role/credential changes dan audit retention/metadata masih butuh desain aman.
+- Risiko/kendala: capability cohort tengah belum ditentukan; helpdesk/teknisi belum diberi grant; user migration/activation tetap tidak disetujui; superadmin grants belum di-seed. Phase 2 tidak selesai.
+- Rollback: revert bagian persetujuan pada empat dokumen keputusan/discovery/phase dan entry ini; tidak ada rollback aplikasi/database.
+- Langkah berikutnya: implementasikan grants superadmin dan user administration dengan audit transaksional, batas role/credential aman, scope hierarchical, pencegahan penghapusan superadmin aktif terakhir, dan session invalidation; setelah itu uji integration/UI. Definisikan capability cohort tengah sebelum memberikan akses.

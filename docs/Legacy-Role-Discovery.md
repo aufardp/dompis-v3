@@ -47,3 +47,18 @@ The legacy role normalizer also accepts spelling aliases: `super_admin` and `sup
 No credential/configuration files, database records, or customer data were read by this static audit.
 
 Follow-up static guard analysis, candidate v3 capabilities, discrepancies, and owner decisions are recorded in `Authorization-Capability-Discovery.md`. Those candidates do not approve or seed permissions.
+
+## Legacy User Management follow-up — read-only source inspection
+
+The legacy `/superadmin/users` screen contains hierarchy, create-user, and user-list/edit flows. Its user form exposes role selection and a combination of primary region/branch/area/service-area fields plus multi-select region/branch/area scopes. The page's local visibility check allows `superadmin` and `admin_branch`, while the corresponding user APIs also admit `admin` and `helpdesk` (and then apply separate branch checks). This UI/API mismatch reinforces that legacy access behavior is not a reliable v3 policy.
+
+Static source evidence:
+
+- `app/superadmin/users/page.tsx`: page gate accepts `superadmin` or `admin_branch`.
+- `app/superadmin/users/SuperadminUsersClient.tsx`: hierarchy/create/list tabs, role and hierarchy-scope editing, delete confirmation, and reset-password action. Client-side target-role guard is not a server authorization boundary.
+- `app/api/users/route.ts`: GET and POST accept `admin`, `helpdesk`, and `superadmin`; POST separately checks role assignment and branch scope.
+- `app/api/users/[id]/route.ts`: GET/PUT/DELETE accept `admin`, `helpdesk`, and `superadmin`, with separate target-role and branch-scope checks.
+- `app/libs/services/users.service.ts`: `deleteUser` deletes user-to-scope joins and then physically deletes the user row. This risks losing attribution/history and must not be copied into v3; owner-requested “hapus” is represented as account deactivation in v3 to preserve references and audit history.
+- `app/api/users/[id]/reset-password/route.ts`: legacy reset behavior was previously found to set password to username; v3 explicitly rejects that unsafe pattern.
+
+No database connection, credentials, live user data, or customer records were accessed. These findings are source-only. The owner has now approved a superadmin-only v3 User Management capability for adding users, removing/deactivating accounts, and managing hierarchical scopes. The authorization matrix and exact outstanding role/credential actions are recorded in `Authorization-Capability-Discovery.md` and ADR-036; no code, grants, migrated accounts, or database records changed in this documentation task.

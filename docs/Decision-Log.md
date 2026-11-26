@@ -308,6 +308,18 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Validation: local PostgreSQL integration test inserted and read a synthetic event in a transaction, then confirmed it disappeared after rollback (1 test, 2 expectations); workspace typecheck/build and `git diff --check` passed.
 - Rollback: remove `packages/db/src/audit.ts`, its test/export, and documentation entries; no migration or database rollback is needed.
 
+## ADR-036 — Superadmin control and deferred role cohorts (2026-11-26)
+
+- Status: owner-approved policy recorded; not implemented or seeded.
+- Context: owner clarified that `superadmin` controls the application, User Management is superadmin-only for adding/removing users and administering each user's scope, `officer`/`team_leader`/`senior_leader` are equivalent for now, and `helpdesk`/`teknisi` are deferred.
+- Evidence: static legacy inspection found the `/superadmin/users` page offers hierarchy, create, list, edit, delete, and reset-password flows. Legacy page access allows `superadmin`/`admin_branch`, while user APIs allow `admin`/`helpdesk`/`superadmin` plus separate scope checks. Legacy `deleteUser` removes scope joins and physically deletes the user; the old reset endpoint sets password to username. These behaviors are inconsistent or unsafe and are not copied.
+- Decision: grant target `superadmin` all current in-scope application capabilities, including ticket/report reads, sync monitoring, organization management, user management, and audit reading. Interpret full application control as explicit global data scope, and let only superadmin grant/revoke global or hierarchical user scope. Restrict v3 User Management to superadmin. Implement user removal as deactivation/soft deletion to retain historical references and audit. Keep the three named middle roles equivalent to one another but grant them no capabilities until their common capability set is defined. Keep helpdesk and teknisi deny-by-default until later approval; technician assignment stays excluded.
+- Boundaries: this does not activate or migrate legacy users/grants. Role changes and credential resets through User Management still need an explicit secure policy; never copy the legacy username-as-password reset. Enforce no self-demotion/self-scope removal and protect the last active global superadmin unless a reviewed recovery design replaces those safeguards. Audit metadata allowlist/retention remains open.
+- Consequences: docs now contain a partial approved matrix; `role_permissions` remains empty and no User Management API/UI or database mutation was performed. If owner intended “full control” to exclude global ticket/report access, revise the global-scope interpretation before seeding grants.
+- Validation: read-only source inspection only; no database access. `git diff --check` is the documentation validation for this change; no application test was run.
+- Rollback: revert this ADR and corresponding approval entries in `Authorization-Capability-Discovery.md`, `Legacy-Role-Discovery.md`, `Phase-2-Organization-Auth.md`, and `Handover.md`; no application/database rollback is needed.
+- Owner approval: current conversation, 2026-11-26 (superadmin full control, superadmin-only user management, three-role equivalence, helpdesk/teknisi deferred).
+
 ## ADR-035 — Add scoped ticket list with signed keyset cursors (2026-11-26)
 
 - Status: implemented locally; `tickets.read` remains an unseeded candidate pending owner approval.
