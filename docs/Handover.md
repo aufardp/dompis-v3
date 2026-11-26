@@ -740,3 +740,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: jalur tanpa database belum diverifikasi lewat runtime; UI yang menerima 503 mempertahankan state signed-in dan memberi pesan retry.
 - Rollback: hapus guard awal database dan schema 503, lalu pulihkan revocation bersyarat lama; tidak ada rollback database.
 - Langkah berikutnya: verifikasi kontrak 503 dengan request sintetis saat runtime QA tersedia; lanjutkan feature produk yang memerlukan owner contracts hanya setelah gate dibuka.
+
+## 2026-11-26 — Ticket detail authorization response schema
+
+- Tindakan: menyelaraskan response schema `GET /tickets/:incident` dengan status yang dikeluarkan `requirePermission`: 401 `unauthenticated`, 403 `forbidden`, serta 503 `authorization_unavailable`; schema tetap menerima 404 dan 503 `ticket_data_unavailable` dari handler ticket.
+- File berubah: `apps/api/src/tickets.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: perbandingan source route/guard; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan HTTP request atau test suite.
+- Keputusan teknis: hanya kontrak response yang diselaraskan; permission `tickets.read` tetap tidak di-seed dan endpoint tetap deny-by-default.
+- Risiko/blocker: status/response guard belum diverifikasi di runtime karena endpoint belum memiliki fixture auth disposable pada slice ini.
+- Rollback: pulihkan response schema sebelumnya dan hapus ADR-022/entri handover; tidak ada rollback database.
+- Langkah berikutnya: validasi route dengan fixture otorisasi sintetis jika test/QA diizinkan; ticket list/report tetap menunggu kontrak lifecycle, permission, scope, serta KPI.

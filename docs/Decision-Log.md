@@ -22,6 +22,7 @@
 | ADR-019 | Bound API request body size to 16 KiB | Implemented locally | Context7 Elysia/Bun server docs; current auth schema bounds; API typecheck/build |
 | ADR-020 | Reserve login attempts before async verification to enforce concurrency limit | Implemented locally | Static auth flow/race review; API typecheck/build |
 | ADR-021 | Do not report logout success when session revocation cannot run | Implemented locally | Auth route failure-path review; API typecheck/build |
+| ADR-022 | Declare permission-guard error responses in ticket detail contract | Implemented locally | Route/guard response comparison; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -178,3 +179,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: clients no longer receive a false success during an unavailable-auth state. On DB query errors, the existing generic 500 handler remains responsible; no session cookie is cleared before successful revocation.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime request or automated test was performed in this slice.
 - Rollback: remove the initial database guard, conditional revocation guard, and 503 response schema; no database or persistent state rollback is needed.
+
+## ADR-022 — Ticket detail authorization response contract (2026-11-26)
+
+- Status: implemented locally.
+- Context: the ticket detail route response schema declared 404 and `ticket_data_unavailable` 503 only, while its permission guard can return 401 `unauthenticated`, 403 `forbidden`, or 503 `authorization_unavailable`.
+- Evidence: compared `apps/api/src/tickets.ts` with `apps/api/src/permission-guard.ts`; guard outcomes were absent or mismatched in the route response schema.
+- Decision: declare 401 and 403 guard responses and make 503 a union of authorization and ticket-data unavailable errors.
+- Consequences: route typing/OpenAPI response contract matches the authorization macro and ticket handler. No permission grant or business behavior changed; access remains deny-by-default.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No HTTP response/runtime request or automated test was performed in this slice.
+- Rollback: restore the prior route response schema; no database or persistent state rollback is needed.

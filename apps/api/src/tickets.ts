@@ -88,8 +88,13 @@ export function createTicketRoutes(database: TicketDatabase | undefined) {
 						branch: t.String(), region: t.String(), area: t.String()
 					})
 				}),
+				401: t.Object({ error: t.Literal('unauthenticated') }),
+				403: t.Object({ error: t.Literal('forbidden') }),
 				404: t.Object({ error: t.Literal('ticket_not_found') }),
-				503: t.Object({ error: t.Literal('ticket_data_unavailable') })
+				503: t.Union([
+					t.Object({ error: t.Literal('authorization_unavailable') }),
+					t.Object({ error: t.Literal('ticket_data_unavailable') })
+				])
 			}
 		});
 }
