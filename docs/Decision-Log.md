@@ -23,6 +23,8 @@
 | ADR-020 | Reserve login attempts before async verification to enforce concurrency limit | Implemented locally | Static auth flow/race review; API typecheck/build |
 | ADR-021 | Do not report logout success when session revocation cannot run | Implemented locally | Auth route failure-path review; API typecheck/build |
 | ADR-022 | Declare permission-guard error responses in ticket detail contract | Implemented locally | Route/guard response comparison; API typecheck/build |
+| ADR-023 | Declare global validation and internal-error responses on existing API routes | Implemented locally | App error-handler/route-schema comparison; API typecheck/build |
+| ADR-024 | Disable caching of dynamic API readiness responses | Implemented locally | Readiness state review; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -189,3 +191,23 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: route typing/OpenAPI response contract matches the authorization macro and ticket handler. No permission grant or business behavior changed; access remains deny-by-default.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No HTTP response/runtime request or automated test was performed in this slice.
 - Rollback: restore the prior route response schema; no database or persistent state rollback is needed.
+
+## ADR-023 — Shared generic API error response contracts (2026-11-26)
+
+- Status: implemented locally.
+- Context: the global API error handler returns `invalid_request` plus `requestId` for validation errors and `internal_error` plus `requestId` for unexpected exceptions, but explicit auth/ticket route response schemas did not declare these outcomes.
+- Evidence: compared `apps/api/src/app.ts` error handling with response schemas in `auth.ts` and `tickets.ts`; login params/body validation and async handlers can reach the generic 422/500 path.
+- Decision: declare the matching 422 and 500 schemas on routes with validation/async operations, and declare the 500 schema on CSRF, logout, and session-read routes. Reuse local schema constants within each module.
+- Consequences: route response typing now describes the generic error contract without changing runtime error bodies or status mapping. No business, authorization, or DB behavior changed.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No HTTP error request or automated test was performed in this slice.
+- Rollback: remove the generic 422/500 response entries and local schema constants; no database or persistent state rollback is needed.
+
+## ADR-024 — Readiness response cache policy (2026-11-26)
+
+- Status: implemented locally.
+- Context: `/health/ready` reports dynamic database and auth-origin configuration state. A caching proxy or client could reuse a prior `ready` response after the dependency/configuration became unavailable, or retain `not_ready` after recovery.
+- Evidence: the route returns different states based on current environment configuration and a live database ping; it did not set a cache policy.
+- Decision: set `Cache-Control: no-store` at the start of every readiness request, covering both 200 and 503 responses.
+- Consequences: readiness consumers must obtain current state from the API; no payload, status, DB behavior, or auth policy changes.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No HTTP cache-header request or automated test was performed in this slice.
+- Rollback: remove the readiness `cache-control` assignment and ADR-024/Security entry; no database rollback is needed.

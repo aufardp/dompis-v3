@@ -5,6 +5,8 @@ import { database } from '@dompis/db';
 import { createPermissionGuard } from './permission-guard';
 
 export const TICKET_READ_PERMISSION = 'tickets.read';
+const invalidRequestResponse = t.Object({ error: t.Literal('invalid_request'), requestId: t.String() });
+const internalErrorResponse = t.Object({ error: t.Literal('internal_error'), requestId: t.String() });
 type TicketDatabase = NonNullable<typeof database>;
 
 export function createTicketRoutes(database: TicketDatabase | undefined) {
@@ -94,7 +96,9 @@ export function createTicketRoutes(database: TicketDatabase | undefined) {
 				503: t.Union([
 					t.Object({ error: t.Literal('authorization_unavailable') }),
 					t.Object({ error: t.Literal('ticket_data_unavailable') })
-				])
+				]),
+				422: invalidRequestResponse,
+				500: internalErrorResponse
 			}
 		});
 }

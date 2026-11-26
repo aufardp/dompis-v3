@@ -752,3 +752,27 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: status/response guard belum diverifikasi di runtime karena endpoint belum memiliki fixture auth disposable pada slice ini.
 - Rollback: pulihkan response schema sebelumnya dan hapus ADR-022/entri handover; tidak ada rollback database.
 - Langkah berikutnya: validasi route dengan fixture otorisasi sintetis jika test/QA diizinkan; ticket list/report tetap menunggu kontrak lifecycle, permission, scope, serta KPI.
+
+## 2026-11-26 — Generic API error response schemas
+
+- Tindakan: menambahkan response schema generik 422 `invalid_request` + `requestId` dan 500 `internal_error` + `requestId` pada route auth/ticket yang memiliki validasi atau operasi async; route CSRF juga mendeklarasikan 500.
+- File berubah: `apps/api/src/auth.ts`, `apps/api/src/tickets.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: perbandingan `apps/api/src/app.ts` error handler dengan schema route; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan request error runtime atau test suite.
+- Keputusan teknis: skema mengikuti status/body yang sudah dihasilkan handler global; tidak mengubah payload/status runtime.
+- Risiko/blocker: kesesuaian OpenAPI/runtime aktual belum diperiksa melalui HTTP; response validators Elysia sudah lolos typecheck/build.
+- Rollback: hapus schema 422/500 dan konstanta lokal di auth/ticket; tidak ada rollback database.
+- Langkah berikutnya: lanjutkan audit response schema terhadap handler global; jalankan error matrix sintetis saat runtime verification tersedia.
+
+## 2026-11-26 — Readiness response no-store
+
+- Tindakan: menetapkan `Cache-Control: no-store` pada setiap `/health/ready` response agar perubahan kondisi DB atau `APP_ORIGIN` tidak tertutup cache lama.
+- File berubah: `apps/api/src/app.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: review readiness handler; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak memanggil health endpoint runtime atau menjalankan test suite.
+- Keputusan teknis: header diterapkan sebelum seluruh branch return, mencakup HTTP 200 dan semua HTTP 503 readiness state.
+- Risiko/blocker: header aktual belum diperiksa melalui HTTP/proxy; kebijakan cache ditinjau dari source dan type/build.
+- Rollback: hapus assignment cache-control readiness dan entri ADR/Security/Handover; tidak ada rollback database.
+- Langkah berikutnya: lanjutkan API hardening independen; kontrak data bisnis tetap menahan route ticket list/report dan ETL.

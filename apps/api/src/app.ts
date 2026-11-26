@@ -54,6 +54,7 @@ export function createApp() {
 		})
 		.get('/health/live', () => ({ status: 'alive' as const }))
 		.get('/health/ready', async ({ set }): Promise<ReadinessState> => {
+			set.headers['cache-control'] = 'no-store';
 			if (!database) {
 				set.status = 503;
 				return { status: 'not_ready', reason: 'database_not_configured' };

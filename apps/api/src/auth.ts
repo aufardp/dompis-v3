@@ -10,6 +10,8 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_LIMIT = 10;
 const LOGIN_BUCKET_LIMIT = 10_000;
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const invalidRequestResponse = t.Object({ error: t.Literal('invalid_request'), requestId: t.String() });
+const internalErrorResponse = t.Object({ error: t.Literal('internal_error'), requestId: t.String() });
 type AuthDatabase = NonNullable<typeof database>;
 
 interface LoginBucket {
@@ -119,7 +121,11 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			return { csrfToken: token };
 		}, {
 			cookie: t.Cookie({ [CSRF_COOKIE]: t.Optional(t.String()) }),
-			response: t.Object({ csrfToken: t.String() })
+			response: {
+				200: t.Object({ csrfToken: t.String() }),
+				422: invalidRequestResponse,
+				500: internalErrorResponse
+			}
 		})
 		.post('/auth/login', async ({ body, cookie, request, server, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
@@ -194,7 +200,9 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 					t.Object({ error: t.Literal('csrf_rejected') })
 				]),
 				429: t.Object({ error: t.Literal('invalid_credentials') }),
-				503: t.Object({ error: t.Literal('authentication_unavailable') })
+				503: t.Object({ error: t.Literal('authentication_unavailable') }),
+				422: invalidRequestResponse,
+				500: internalErrorResponse
 			}
 		})
 		.post('/auth/logout', async ({ cookie, request, set }) => {
@@ -235,7 +243,9 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 					t.Object({ error: t.Literal('request_origin_rejected') }),
 					t.Object({ error: t.Literal('csrf_rejected') })
 				]),
-				503: t.Object({ error: t.Literal('authentication_unavailable') })
+				503: t.Object({ error: t.Literal('authentication_unavailable') }),
+				422: invalidRequestResponse,
+				500: internalErrorResponse
 			}
 		})
 		.get('/auth/me', async ({ cookie, set }) => {
@@ -270,7 +280,9 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 					permissions: t.Array(t.String())
 				}),
 				401: t.Object({ error: t.Literal('unauthenticated') }),
-				503: t.Object({ error: t.Literal('authentication_unavailable') })
+				503: t.Object({ error: t.Literal('authentication_unavailable') }),
+				422: invalidRequestResponse,
+				500: internalErrorResponse
 			}
 		});
 }
