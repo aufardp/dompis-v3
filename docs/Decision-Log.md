@@ -10,6 +10,7 @@
 | ADR-007 | Phase 2 organization/auth schema: five master levels, generic role/permission catalog, typed `user_scopes` with exactly-one target and NULLS NOT DISTINCT uniqueness; supersedes ADR-004's 17-table count | Implemented candidate on local `dompis_v3`; production approval pending | Owner hierarchy/multi-scope requirements; `docs/Phase-2-Organization-Auth.md`; PG18 constraint checks |
 | ADR-008 | Basic HTTP auth uses opaque DB-backed sessions, strict Origin + double-submit CSRF, Argon2id, bounded in-process login throttling, and a per-route permission macro | Implemented locally; production/session operations review pending | `apps/api/src/auth.ts`, `apps/api/src/permission-guard.ts`; synthetic PostgreSQL integration tests; limiter is single-process only |
 | ADR-009 | Vite development proxy target follows `API_PORT` with a default of 3000 | Implemented locally | Local port 3000 collision; proxy smoke check succeeded with API on 39871 |
+| ADR-010 | Apply baseline anti-sniffing, anti-framing, and no-referrer headers to every API request | Implemented locally; deployment CSP/TLS controls remain separate | `apps/api/src/app.ts`; API typecheck passed |
 
 ## ADR-007 details — 2026-11-26
 
@@ -42,3 +43,14 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: local development can avoid the port conflict without changing browser origin, CSRF validation, cookies, or production deployment. No dependency or runtime API changes.
 - Validation: `bun run typecheck:web`, `bun run build:web`, desktop Chrome render, proxied CSRF/session smoke checks, and `git diff --check` passed. Interactive login/logout with a provisioned synthetic user remains unverified.
 - Rollback: restore the fixed `http://127.0.0.1:3000` proxy target and remove the local setup note. No database rollback.
+
+## ADR-010 — Baseline API response security headers (2026-11-26)
+
+- Status: implemented locally.
+- Context: Security.md requires `nosniff` and a restrictive referrer policy; the JSON API had no shared hook applying headers to every route, including health and not-found responses.
+- Evidence: Elysia 1.4.32 is installed. Its local type declarations and lifecycle reference confirm `onRequest` runs before routing and exposes `set`; API typecheck passed after adding the hook.
+- Alternatives: duplicate headers in each route (easy to miss) or configure at deployment proxy only (not all local execution paths use that proxy).
+- Decision: set `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: no-referrer` in a global `onRequest` hook before route registration.
+- Consequences: all API responses receive these baseline headers without changing payloads, auth decisions, cookies, or schemas. CSP and HSTS remain deployment-layer controls; do not enable HSTS until TLS is validated.
+- Validation: `bun run typecheck:api` and `git diff --check` passed. No HTTP response assertion was run in this slice.
+- Rollback: remove the global hook and this ADR entry; no DB or persistent state changes.

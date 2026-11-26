@@ -6,6 +6,11 @@ import { createTicketRoutes } from './tickets';
 
 export function createApp() {
 	return new Elysia()
+		.onRequest(({ set }) => {
+			set.headers['x-content-type-options'] = 'nosniff';
+			set.headers['x-frame-options'] = 'DENY';
+			set.headers['referrer-policy'] = 'no-referrer';
+		})
 		.get('/health/live', () => ({ status: 'alive' as const }))
 		.get('/health/ready', async ({ set }): Promise<ReadinessState> => {
 			if (!database) {

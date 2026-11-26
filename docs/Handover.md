@@ -464,3 +464,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: role/action matrix, lifecycle/closed fixture, data retention, dan source snapshot tetap belum tervalidasi; endpoint/administrasi/migrasi yang bergantung padanya tidak boleh dibuat berdasarkan asumsi.
 - Rollback: revert README, Decision Log, dan entri handover ini melalui Git.
 - Langkah berikutnya: lanjutkan pada slice yang tidak bergantung pada keputusan tertahan; validasi C0C-01–06 yang relevan sebelum ticket list, user administration, atau migrasi.
+
+## 2026-11-26 — Baseline API response security headers
+
+- Tindakan: menambahkan hook global Elysia sebelum routing untuk memasang `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, dan `Referrer-Policy: no-referrer`; memperbarui kebijakan keamanan dan ADR.
+- File berubah: `apps/api/src/app.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada akses database atau perubahan data.
+- Command tersanitasi: `bun run typecheck:api`; `git diff --check`.
+- Hasil aktual: API TypeScript check lulus; `git diff --check` lulus. Tidak menjalankan HTTP assertion atau test suite pada slice ini.
+- Keputusan teknis: gunakan `onRequest` global agar baseline berlaku sebelum routing, termasuk health dan route not-found. HSTS/CSP tidak ditambahkan di API karena TLS dan CSP halaman web harus dikonfigurasi pada deployment layer.
+- Risiko/blocker: bukti runtime header belum diverifikasi melalui response HTTP; security headers tidak menggantikan CSP, TLS, authorization atau review deployment.
+- Rollback: hapus hook serta pembaruan Security/ADR/Handover; tidak ada rollback database.
+- Langkah berikutnya: validasi response headers pada smoke check API saat server lokal tersedia; kemudian lanjutkan kebutuhan yang tidak memerlukan lifecycle/role/business sign-off.
