@@ -692,3 +692,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: perilaku rejection body oversized belum diverifikasi lewat runtime; framework adapter lain selain Bun tidak menjadi target runtime aplikasi.
 - Rollback: hapus setting body limit dan catatan ADR-019/Security/Handover; tidak ada rollback database.
 - Langkah berikutnya: pertahankan cap selama API hanya menerima body kecil; evaluasi payload maksimum sebelum menambah route mutasi/unggah.
+
+## 2026-11-26 — Owner contract artifact checkpoint
+
+- Tindakan: memeriksa repository untuk fixture NOSSA Closed/reopen, OpenAPI/Swagger aktual, crosswalk Workzone/Area, permission matrix, keputusan retensi, dan snapshot/manifest MySQL sebelum memilih pekerjaan ticket, reporting, atau ETL berikutnya.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada database yang diakses; pemeriksaan hanya pada nama file dan dokumen lokal.
+- Command tersanitasi: `rg --files` dengan pola fixture/OpenAPI/Swagger/crosswalk/permission/retention/snapshot/manifest; baca status C0C-01–06 di `docs/Phase-0C-Contract-Access-Discovery.md` dan required inputs di `docs/Phase-3A-Migration-Readiness.md`; `git diff --check`.
+- Hasil aktual: tidak ditemukan artifact baru selain metadata snapshot Drizzle. C0C-01–05 tetap belum terpenuhi; C0C-06 hanya menyediakan PostgreSQL lokal dan masih kekurangan MySQL source owner/environment, consistent snapshot, dan read-role registration. Tidak ada typecheck/build/test karena tidak ada perubahan kode.
+- Keputusan teknis: tidak mengimplementasikan ticket list/report/admin grants/ETL dan tidak melakukan live endpoint/database source access tanpa evidence/registration yang disebutkan.
+- Risiko/blocker: kontrak lifecycle/KPI/TTR, akses user, geography, 84-field retention, dan identitas snapshot sumber tetap menghalangi implementasi yang bergantung padanya.
+- Rollback: dokumentasi saja berubah; revert entri ini melalui Git.
+- Langkah berikutnya: lanjutkan hardening/scaffold yang independen; untuk membuka produk/ETL, sediakan artifact dan persetujuan yang tercantum pada C0C-01–06 dan Phase 3A readiness.
