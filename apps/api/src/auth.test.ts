@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
+import { randomBytes } from 'node:crypto';
 import { Elysia } from 'elysia';
-import { closeDatabase, database, schema } from '@dompis/db';
-import { createAuthRoutes } from './auth';
+import { closeDatabase, createSession, database, schema } from '@dompis/db';
+import { createAuthRoutes, hashSessionToken } from './auth';
 import { createPermissionGuard } from './permission-guard';
 import { createTicketRoutes, TICKET_READ_PERMISSION } from './tickets';
 
@@ -42,6 +43,18 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 				passwordHash: await Bun.password.hash('synthetic-password', { algorithm: 'argon2id' }),
 				roleId: role.id
 			}).returning({ id: schema.users.id, username: schema.users.username }), 'user');
+			const noPermissionRole = firstInserted(await tx.insert(schema.roles).values({
+				code: `auth-test-no-ticket-read-${suffix}`,
+				name: 'Synthetic no ticket read role'
+			}).returning({ id: schema.roles.id }), 'no_permission_role');
+			const noPermissionUser = firstInserted(await tx.insert(schema.users).values({
+				username: `auth-no-ticket-read-${suffix}`,
+				displayName: 'Synthetic user without ticket permission',
+				passwordHash: 'synthetic-not-a-password-hash',
+				roleId: noPermissionRole.id
+			}).returning({ id: schema.users.id }), 'no_permission_user');
+			const noPermissionToken = randomBytes(32).toString('base64url');
+			await createSession(tx, noPermissionUser.id, hashSessionToken(noPermissionToken), new Date(Date.now() + 60 * 60 * 1000));
 			const area = firstInserted(await tx.insert(schema.areas).values({
 				code: `AREA-${suffix}`, name: 'Synthetic ticket area'
 			}).returning({ id: schema.areas.id }), 'area');
@@ -201,6 +214,18 @@ test('HTTP auth checks Origin, issues secure opaque cookies, and revokes session
 			expect(missingPermission.status).toBe(403);
 
 			const ticketApp = new Elysia().use(createTicketRoutes(tx));
+			const unauthenticatedTicketList = await ticketApp.handle(new Request('http://localhost/tickets'));
+			expect(unauthenticatedTicketList.status).toBe(401);
+			const deniedTicketList = await ticketApp.handle(new Request('http://localhost/tickets', {
+				headers: { cookie: `__Host-dompis_session=${noPermissionToken}` }
+			}));
+			expect(deniedTicketList.status).toBe(403);
+			expect(deniedTicketList.headers.get('cache-control')).toBe('private, no-store');
+			const deniedTicketDetail = await ticketApp.handle(new Request(`http://localhost/tickets/${allowedIncident}`, {
+				headers: { cookie: `__Host-dompis_session=${noPermissionToken}` }
+			}));
+			expect(deniedTicketDetail.status).toBe(403);
+			expect(deniedTicketDetail.headers.get('cache-control')).toBe('private, no-store');
 			const ticketResponse = await ticketApp.handle(new Request(`http://localhost/tickets/${allowedIncident.toLowerCase()}`, {
 				headers: { cookie: `__Host-dompis_session=${token}` }
 			}));

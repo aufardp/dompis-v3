@@ -1052,3 +1052,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: permission `tickets.read` masih candidate dan tidak diberi ke role mana pun; route akan 403 sampai grant owner-approved. Belum menjalankan `EXPLAIN` atau benchmark terhadap dataset besar karena tabel bisnis lokal kosong. Cursor perlu secret bersama bila API direplikasi. Department/jenis/flag filters dan reports/export/SSE tidak termasuk endpoint list ini.
 - Rollback: revert route/cursor files dan perubahan repository DB serta dokumentasi yang tercantum; tidak ada DB rollback karena seluruh data sintetis di-rollback dan tidak ada migration.
 - Langkah berikutnya: selesaikan review/approval matrix owner untuk `tickets.read` dan operasional user/admin. Tanpa approval, role grants dan admin mutations tetap ditahan; bagian Phase 2 lain dapat dilanjutkan hanya pada capability/kontrak yang disahkan.
+
+## 2026-11-26 — Verify list/detail deny-by-default responses
+
+- Tindakan: menambah synthetic authenticated user/session tanpa role permission, lalu membuktikan `GET /tickets` dan exact detail menolak akses dengan 403 serta `private, no-store`; request tanpa sesi ke list menghasilkan 401. Sesi, user, role, dan seluruh fixture berada dalam transaksi rollback yang sama.
+- File berubah: `apps/api/src/auth.test.ts`, `docs/Phase-2-Organization-Auth.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: PostgreSQL development lokal `dompis_v3` loopback; fixture sintetis saja, tidak ada data bisnis atau perubahan permanen.
+- Command tersanitasi: `bun run typecheck:api`; `bun --env-file=.env test apps/api/src/auth.test.ts`; `git diff --check`.
+- Hasil pengujian aktual: API typecheck lulus; integration test lulus 1 test / 66 expectations; diff check lulus. Test menggunakan sesi autentikasi palsu tanpa permission, bukan password login, dan semua row di-rollback.
+- Keputusan teknis: proteksi diuji pada endpoint Ticket Management aktual, selain macro generik. Authorization guard memeriksa capability sebelum handler melakukan query ticket.
+- Risiko/kendala: ini membuktikan boundary untuk `tickets.read`, tetapi tidak menguji endpoint admin/report yang belum dibuat. Tidak memberikan permission kepada role katalog.
+- Rollback: hapus tambahan fixture/assertion test dan catatan verifikasi; tidak ada rollback DB.
+- Langkah berikutnya: Phase 2 tetap menunggu keputusan owner pada role/capability, global scope, hak user-admin, audit visibility/retention, dan aktivasi account migration sebelum menyelesaikan API mutasi atau membuat grants.
