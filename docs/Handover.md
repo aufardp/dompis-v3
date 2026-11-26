@@ -668,3 +668,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: perilaku 401/no-DB untuk malformed cookie belum diuji lewat runtime; tidak mengubah sesi valid atau akses bisnis.
 - Rollback: hapus type guard bersama lalu kembalikan pemeriksaan lokal sebelumnya; tidak ada rollback database.
 - Langkah berikutnya: validasi kasus sesi malformed pada fixture auth terisolasi ketika test/DB target QA tersedia; endpoint produk dan migrasi tetap menunggu kontrak Phase 0C.
+
+## 2026-11-26 — Authentication origin readiness validation
+
+- Tindakan: memvalidasi `APP_ORIGIN` sebagai exact HTTP(S) origin sebelum memasangnya pada auth routes; readiness kini memeriksa konfigurasi tersebut setelah konektivitas database dan mengembalikan alasan `auth_origin_not_configured` atau `auth_origin_invalid` tanpa memuat nilai konfigurasi.
+- File berubah: `apps/api/src/app.ts`, `packages/contracts/src/index.ts`, `docs/Getting-Started.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: `bun run typecheck`; `bun run build`; `git diff --check`.
+- Hasil aktual: `bun run typecheck` lulus (Svelte 0 error/0 warning; API dan worker TypeScript lulus); `bun run build` lulus untuk web static dan API bundle; `git diff --check` lulus. Build web hanya mencetak warning environment `NO_COLOR`/`FORCE_COLOR`. Tidak ada runtime health request atau test suite.
+- Keputusan teknis: konfigurasi valid harus persis `URL.origin` dengan protocol HTTP(S), tanpa path/query/trailing slash. HTTP lokal tetap diterima sesuai Getting Started; kebijakan TLS deployment tidak berubah.
+- Risiko/blocker: alasan readiness baru belum diverifikasi melalui runtime probe; probe yang menganggap database saja sebagai readiness perlu disesuaikan. Tidak mengubah authorization atau data bisnis.
+- Rollback: kembalikan pass-through `Bun.env.APP_ORIGIN`, hapus pemeriksaan readiness, union reason baru, dan catatan ADR/handover; tidak ada rollback database.
+- Langkah berikutnya: pastikan typecheck/build selesai dan periksa diff; validasi readiness dengan env sintetis saat pemeriksaan runtime diizinkan.

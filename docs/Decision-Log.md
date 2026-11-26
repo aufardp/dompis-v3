@@ -18,6 +18,7 @@
 | ADR-015 | Propagate password verifier failures to sanitized API error handling | Implemented locally | Static error-path review; API typecheck/build |
 | ADR-016 | Expire session cookie using the same `__Host-` attributes as issuance | Implemented locally | Elysia 1.4.32 cookie implementation and API typecheck/build |
 | ADR-017 | Validate opaque session token format consistently before hashing or lookup | Implemented locally | Shared auth guard review; API typecheck/build |
+| ADR-018 | Include valid auth origin in API readiness | Implemented locally | APP_ORIGIN validation path; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -134,3 +135,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: valid issued tokens behave unchanged; malformed cookies fail closed without a DB operation, and token format cannot drift between auth and protected routes. No schema, dependency, or business policy change.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No automated test or runtime request was performed in this slice.
 - Rollback: restore the three local length/type checks and remove the shared type guard/ADR-017; no database or persistent state rollback is needed.
+
+## ADR-018 — Authentication origin readiness check (2026-11-26)
+
+- Status: implemented locally.
+- Context: login requires a configured exact Origin, but `/health/ready` checked only database connectivity and could report ready while authentication was unavailable due to missing or malformed `APP_ORIGIN`.
+- Evidence: `createAuthRoutes` returns 503 when the origin is absent and rejects all Origin values that do not exactly match; the readiness handler previously did not inspect that configuration.
+- Decision: accept `APP_ORIGIN` only when it is an exact HTTP(S) origin (`URL.origin` equals the configured value); pass only a valid value to auth routes. Readiness returns `auth_origin_not_configured` or `auth_origin_invalid` after the database check.
+- Consequences: an operational health probe no longer marks the API ready when login is disabled by origin configuration. The configured origin value is not exposed in the response/log. HTTP remains valid for documented local development; TLS policy is unchanged.
+- Validation: `bun run typecheck`, `bun run build`, and `git diff --check` passed. No runtime health request or automated test was performed in this slice.
+- Rollback: restore direct `Bun.env.APP_ORIGIN` pass-through and remove the readiness origin checks, contract variants, and ADR-018; no database or persistent state rollback is needed.

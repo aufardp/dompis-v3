@@ -5,7 +5,21 @@ import type { ReadinessState } from '@dompis/contracts';
 import { createAuthRoutes } from './auth';
 import { createTicketRoutes } from './tickets';
 
+function isValidAppOrigin(value: string | undefined): value is string {
+	if (!value) return false;
+	try {
+		const origin = new URL(value);
+		return (origin.protocol === 'http:' || origin.protocol === 'https:') && origin.origin === value;
+	} catch {
+		return false;
+	}
+}
+
 export function createApp() {
+	const configuredAppOrigin = Bun.env.APP_ORIGIN;
+	const appOrigin = isValidAppOrigin(configuredAppOrigin) ? configuredAppOrigin : undefined;
+	const appOriginFailure = configuredAppOrigin ? 'auth_origin_invalid' as const : 'auth_origin_not_configured' as const;
+
 	return new Elysia()
 		.onRequest(({ set }) => {
 			set.headers['x-request-id'] = randomUUID();
@@ -42,6 +56,10 @@ export function createApp() {
 				set.status = 503;
 				return { status: 'not_ready', reason: 'database_not_configured' };
 			}
+			if (!appOrigin) {
+				set.status = 503;
+				return { status: 'not_ready', reason: appOriginFailure };
+			}
 
 			try {
 				await pingDatabase(database);
@@ -57,7 +75,7 @@ export function createApp() {
 				return { status: 'not_ready', reason: 'database_unavailable' };
 			}
 		})
-		.use(createAuthRoutes(database, Bun.env.APP_ORIGIN))
+		.use(createAuthRoutes(database, appOrigin))
 		.use(createTicketRoutes(database))
 		.onStop(async () => {
 			await closeDatabase();
