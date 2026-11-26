@@ -19,12 +19,22 @@ interface LoginBucket {
 class LoginLimiter {
 	private readonly buckets = new Map<string, LoginBucket>();
 
-	blocked(keys: readonly string[], now: number): boolean {
+	retryAfterSeconds(keys: readonly string[], now: number): number | null {
 		this.prune(now);
-		return keys.some((key) => {
+		let blockedUntil = 0;
+		for (const key of keys) {
 			const bucket = this.buckets.get(key);
-			return bucket ? bucket.count >= LOGIN_ATTEMPT_LIMIT : this.buckets.size >= LOGIN_BUCKET_LIMIT;
-		});
+			if (bucket && bucket.count >= LOGIN_ATTEMPT_LIMIT) {
+				blockedUntil = Math.max(blockedUntil, bucket.resetAt);
+			}
+		}
+
+		if (this.buckets.size >= LOGIN_BUCKET_LIMIT && keys.some((key) => !this.buckets.has(key))) {
+			const nextCapacityAt = Math.min(...Array.from(this.buckets.values(), (bucket) => bucket.resetAt));
+			blockedUntil = Math.max(blockedUntil, nextCapacityAt);
+		}
+
+		return blockedUntil > now ? Math.max(1, Math.ceil((blockedUntil - now) / 1000)) : null;
 	}
 
 	failed(keys: readonly string[], now: number): void {
@@ -106,9 +116,10 @@ export function createAuthRoutes(database: AuthDatabase | undefined, appOrigin: 
 			const accountKey = `account:${username}`;
 			const limitKeys = [accountKey, `ip:${address}`];
 			const now = Date.now();
-			if (limiter.blocked(limitKeys, now)) {
+			const retryAfterSeconds = limiter.retryAfterSeconds(limitKeys, now);
+			if (retryAfterSeconds !== null) {
 				set.status = 429;
-				set.headers['retry-after'] = String(Math.max(1, Math.ceil(LOGIN_WINDOW_MS / 1000)));
+				set.headers['retry-after'] = String(retryAfterSeconds);
 				return { error: 'invalid_credentials' };
 			}
 

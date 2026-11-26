@@ -608,3 +608,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: browser automation executable tidak terpasang dan Chrome headless crash pada environment ini; kontrol tetap memerlukan pemeriksaan interaktif di sesi browser yang berfungsi.
 - Rollback: entri dokumentasi ini dapat direvert; tidak ada perubahan database. Dev server sudah dihentikan.
 - Langkah berikutnya: lanjutkan browser QA saat `agent-browser` atau Chrome headless berjalan normal; jangan menyatakan interaksi sudah teruji sebelum itu.
+
+## 2026-11-26 — Login throttle Retry-After correction
+
+- Tindakan: mengoreksi header `Retry-After` agar dihitung dari waktu reset bucket akun/IP yang benar-benar memblokir; pada kapasitas limiter penuh, interval juga memperhitungkan bucket pertama yang kedaluwarsa.
+- File berubah: `apps/api/src/auth.ts`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah.
+- Command tersanitasi: `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak menjalankan test suite atau runtime request pada slice ini.
+- Keputusan teknis: kebijakan ambang 10 kegagalan/15 menit tetap; hanya akurasi waktu tunggu 429 yang berubah. Nilai minimum tetap 1 detik dan detail bucket tidak diekspos.
+- Risiko/blocker: perubahan belum diverifikasi lewat test/runtime; limiter tetap in-memory per proses dan reset saat restart sesuai ADR-008.
+- Rollback: kembalikan limiter ke boolean `blocked` dan header tetap 900 detik, lalu hapus ADR-013/entri handover ini; tidak ada rollback database.
+- Langkah berikutnya: validasi kasus bucket dengan sisa waktu parsial serta limiter penuh pada sesi pengujian terotorisasi; pertahankan blocker Phase 0C pada endpoint/report/migration yang memerlukan keputusan owner.

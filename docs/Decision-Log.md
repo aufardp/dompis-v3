@@ -79,3 +79,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: API consumers can reference a stable per-request ID on successful and handled-error responses; no response payload, auth, business query, or DB schema change.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and loopback checks of a success route, 404, and invalid request confirmed an ID header on each; error body IDs match the header. No database request was made.
 - Rollback: remove request ID generation/reuse from app hooks and this ADR entry; no persistent state changes.
+
+## ADR-013 — Accurate login throttle retry interval (2026-11-26)
+
+- Status: implemented locally; production deployment remains subject to ADR-008's single-process limitation.
+- Context: the login limiter blocked a request when an account or IP bucket reached its threshold, but always returned `Retry-After: 900`, even when the affected bucket would reset sooner.
+- Evidence: static review of `LoginLimiter` showed each bucket already records its reset timestamp; the response discarded that timestamp and used the full configured window.
+- Decision: calculate the maximum remaining reset interval among blocked account/IP buckets. If the bounded in-memory bucket map is full and a new key cannot be admitted, also account for the earliest bucket expiration that frees capacity. Return a minimum of one second and expose no bucket keys or counters.
+- Consequences: rate limit policy and thresholds remain unchanged; clients receive a retry interval consistent with the limiter state. No dependency, database, schema, response body, or logging changes.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No automated test or runtime DB interaction was performed in this change.
+- Rollback: restore the fixed 900-second header calculation and boolean limiter check; no database or persistent state rollback is needed.
