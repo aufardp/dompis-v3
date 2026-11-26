@@ -500,3 +500,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: unexpected thrown 500 belum disimulasikan melalui runtime; review deployment tetap diperlukan. Error bisnis eksplisit per route bukan diseragamkan oleh hook.
 - Rollback: revert hook dan catatan Security/ADR/Handover; tidak ada data rollback.
 - Langkah berikutnya: tambahkan synthetic thrown-500 assertion pada test terisolasi saat permintaan test diberi scope; lanjutkan ticket list/user management hanya setelah approval permission dan contract tersedia.
+
+## 2026-11-26 — Request ID on every API response
+
+- Tindakan: menghasilkan UUID request ID di global `onRequest`, menyertakannya pada semua response sebagai `X-Request-ID`, memakai ID yang sama untuk body `onError`, dan menambahkan ID tersebut ke readiness failure log yang sudah disanitasi. Memperbarui Security.md dan ADR-012.
+- File berubah: `apps/api/src/app.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses/diubah; smoke menggunakan health live, route 404, dan payload login kosong yang gagal schema validation sebelum authentication/DB.
+- Command tersanitasi: `bun run typecheck:api`; `bun run build:api`; API lokal port 39871; GET `/health/live`, GET `/not-a-route`, POST `/auth/login` dengan body kosong; hentikan proses; `git diff --check`.
+- Hasil aktual: typecheck dan build API lulus. Respons 200, 404 dan 422 semuanya membawa `x-request-id`; respons 404/422 memiliki request ID body yang cocok dengan header. Security headers dasar tetap ada. API berhenti setelah smoke.
+- Keputusan teknis: ID dibuat server-side dan tidak menerima header request ID dari client; log readiness memakai nilai response header yang sama.
+- Risiko/blocker: synthetic thrown 500 belum dijalankan, jadi pemetaan internal-error/log redaction belum teruji lewat HTTP; tidak menjalankan test suite.
+- Rollback: revert perubahan app/security/ADR/handover; tidak ada DB atau data rollback.
+- Langkah berikutnya: jalankan kontrol internal 500 pada test terisolasi; lanjutkan endpoint produk hanya setelah owner-gated access/business contract siap.

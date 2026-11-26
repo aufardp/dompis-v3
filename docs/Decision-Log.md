@@ -12,6 +12,7 @@
 | ADR-009 | Vite development proxy target follows `API_PORT` with a default of 3000 | Implemented locally | Local port 3000 collision; proxy smoke check succeeded with API on 39871 |
 | ADR-010 | Apply baseline anti-sniffing, anti-framing, and no-referrer headers to every API request | Implemented locally; deployment CSP/TLS controls remain separate | `apps/api/src/app.ts`; API typecheck passed |
 | ADR-011 | Normalize unhandled API errors and correlate them with opaque request IDs | Implemented locally | Context7 Elysia error-hook docs; API typecheck/build passed |
+| ADR-012 | Attach one server-generated request ID to every API response and related operational logs | Implemented locally | Loopback HTTP smoke checks; API typecheck/build passed |
 
 ## ADR-007 details — 2026-11-26
 
@@ -67,3 +68,14 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: thrown errors, parsing/validation failures and unknown routes no longer reveal framework details through their response. Explicit business errors returned by route handlers keep their existing documented shape.
 - Validation: `bun run typecheck:api` and `bun run build:api` passed. Local API smoke checks on `127.0.0.1:39871` verified unknown route HTTP 404 returns only `not_found` and request ID, while invalid login body HTTP 422 returns only `invalid_request` and request ID. The process was stopped after the checks. No synthetic thrown-500 request was run.
 - Rollback: remove the global error hook and this ADR entry; no database change.
+
+## ADR-012 — Request correlation on every API response (2026-11-26)
+
+- Status: implemented locally.
+- Context: request ID existed only on errors handled by `onError`; handled readiness failures and successful requests lacked a response ID to correlate with operational records.
+- Evidence: global Elysia `onRequest` runs before route handlers and can assign response headers. The API's readiness failure handler logs a sanitized event and can reuse the same header value.
+- Alternatives: generate separate IDs in each endpoint (inconsistent); rely on proxy-generated IDs (not guaranteed in local execution).
+- Decision: generate a UUID in the global request hook, add `X-Request-ID` to every API response, reuse it in generic error body and sanitized readiness-failure log.
+- Consequences: API consumers can reference a stable per-request ID on successful and handled-error responses; no response payload, auth, business query, or DB schema change.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and loopback checks of a success route, 404, and invalid request confirmed an ID header on each; error body IDs match the header. No database request was made.
+- Rollback: remove request ID generation/reuse from app hooks and this ADR entry; no persistent state changes.

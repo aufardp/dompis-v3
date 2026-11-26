@@ -8,12 +8,14 @@ import { createTicketRoutes } from './tickets';
 export function createApp() {
 	return new Elysia()
 		.onRequest(({ set }) => {
+			set.headers['x-request-id'] = randomUUID();
 			set.headers['x-content-type-options'] = 'nosniff';
 			set.headers['x-frame-options'] = 'DENY';
 			set.headers['referrer-policy'] = 'no-referrer';
 		})
 		.onError(({ code, error, set }) => {
-			const requestId = randomUUID();
+			const responseRequestId = set.headers['x-request-id'];
+			const requestId = typeof responseRequestId === 'string' ? responseRequestId : randomUUID();
 			const statusCode = error instanceof Error && 'status' in error &&
 				typeof error.status === 'number' && error.status >= 400 && error.status <= 599
 				? error.status
@@ -45,8 +47,10 @@ export function createApp() {
 				await pingDatabase(database);
 				return { status: 'ready' };
 			} catch (error: unknown) {
+				const requestId = set.headers['x-request-id'];
 				console.error({
 					event: 'readiness_check_failed',
+					requestId: typeof requestId === 'string' ? requestId : 'unknown',
 					errorType: error instanceof Error ? error.name : 'unknown'
 				});
 				set.status = 503;
