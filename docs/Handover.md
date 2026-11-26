@@ -776,3 +776,27 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/blocker: header aktual belum diperiksa melalui HTTP/proxy; kebijakan cache ditinjau dari source dan type/build.
 - Rollback: hapus assignment cache-control readiness dan entri ADR/Security/Handover; tidak ada rollback database.
 - Langkah berikutnya: lanjutkan API hardening independen; kontrak data bisnis tetap menahan route ticket list/report dan ETL.
+
+## 2026-11-26 — Global API error no-store
+
+- Tindakan: menambahkan `Cache-Control: no-store` pada global `onError`, sehingga error parse/validasi sebelum route handler dan exception 4xx/5xx tidak disimpan downstream.
+- File berubah: `apps/api/src/app.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: review global Elysia `onError`; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak mengirim HTTP error request atau menjalankan test suite.
+- Keputusan teknis: no-store diterapkan hanya pada response error global; successful API responses tidak berubah.
+- Risiko/blocker: header pada error parse/validation belum diperiksa lewat HTTP runtime; perilakunya diverifikasi dari hook source dan type/build.
+- Rollback: hapus cache header pada onError dan entri ADR-025/Security/Handover; tidak ada rollback database.
+- Langkah berikutnya: validasi error header dengan request malformed pada API runtime QA; lanjutkan hanya pekerjaan produk di luar gate bisnis yang belum disetujui.
+
+## 2026-11-26 — API log error type normalization
+
+- Tindakan: mengganti logging `error.name` bebas pada API error/readiness failure menjadi label built-in yang terbatas (`TypeError`, `RangeError`, `SyntaxError`, `Error`, `unknown`); request ID dan Elysia error code tetap dipakai.
+- File berubah: `apps/api/src/app.ts`, `docs/Security.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah.
+- Command tersanitasi: review jalur `console.error` di app; `bun run typecheck:api`; `bun run build:api`; `git diff --check`.
+- Hasil aktual: typecheck API dan build API lulus; diff check lulus. Tidak memicu runtime error atau menjalankan test suite.
+- Keputusan teknis: log memakai label kelas stabil, bukan nama error yang dapat diubah; tidak mencatat message, stack, query, atau payload.
+- Risiko/blocker: log output aktual untuk tiap label belum diamati melalui runtime QA; SQL/database failure class yang bukan built-in dinormalisasi sebagai `Error`.
+- Rollback: kembalikan `error.name` pada dua lokasi logging dan hapus ADR-026/Security/Handover; tidak ada rollback database.
+- Langkah berikutnya: lakukan smoke check sanitasi log dengan error sintetis saat runtime QA tersedia; error detail produk tetap harus melalui handler global.

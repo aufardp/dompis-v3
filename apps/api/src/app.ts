@@ -17,6 +17,14 @@ function isValidAppOrigin(value: string | undefined): value is string {
 	}
 }
 
+function safeErrorType(error: unknown): 'TypeError' | 'RangeError' | 'SyntaxError' | 'Error' | 'unknown' {
+	if (error instanceof TypeError) return 'TypeError';
+	if (error instanceof RangeError) return 'RangeError';
+	if (error instanceof SyntaxError) return 'SyntaxError';
+	if (error instanceof Error) return 'Error';
+	return 'unknown';
+}
+
 export function createApp() {
 	const configuredAppOrigin = Bun.env.APP_ORIGIN;
 	const appOrigin = isValidAppOrigin(configuredAppOrigin) ? configuredAppOrigin : undefined;
@@ -42,12 +50,13 @@ export function createApp() {
 
 			set.status = statusCode;
 			set.headers['x-request-id'] = requestId;
+			set.headers['cache-control'] = 'no-store';
 			if (statusCode >= 500) {
 				console.error({
 					event: 'api_request_failed',
 					requestId,
 					errorCode: code,
-					errorType: error instanceof Error ? error.name : 'unknown'
+					errorType: safeErrorType(error)
 				});
 			}
 			return { error: publicError, requestId };
@@ -72,7 +81,7 @@ export function createApp() {
 				console.error({
 					event: 'readiness_check_failed',
 					requestId: typeof requestId === 'string' ? requestId : 'unknown',
-					errorType: error instanceof Error ? error.name : 'unknown'
+					errorType: safeErrorType(error)
 				});
 				set.status = 503;
 				return { status: 'not_ready', reason: 'database_unavailable' };

@@ -25,6 +25,8 @@
 | ADR-022 | Declare permission-guard error responses in ticket detail contract | Implemented locally | Route/guard response comparison; API typecheck/build |
 | ADR-023 | Declare global validation and internal-error responses on existing API routes | Implemented locally | App error-handler/route-schema comparison; API typecheck/build |
 | ADR-024 | Disable caching of dynamic API readiness responses | Implemented locally | Readiness state review; API typecheck/build |
+| ADR-025 | Prevent caching of all global API error responses | Implemented locally | Error-hook path review; API typecheck/build |
+| ADR-026 | Normalize logged error type to a fixed safe label | Implemented locally | Error log review; API typecheck/build |
 
 ## ADR-007 details — 2026-11-26
 
@@ -211,3 +213,23 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: readiness consumers must obtain current state from the API; no payload, status, DB behavior, or auth policy changes.
 - Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No HTTP cache-header request or automated test was performed in this slice.
 - Rollback: remove the readiness `cache-control` assignment and ADR-024/Security entry; no database rollback is needed.
+
+## ADR-025 — No-store policy for global API errors (2026-11-26)
+
+- Status: implemented locally.
+- Context: auth routes set `private, no-store` in handlers, but malformed JSON and schema validation can fail before those handlers and pass through the global `onError` response without a cache policy.
+- Evidence: Elysia parse/validation errors enter the application error hook; the hook previously set status and request ID but not `Cache-Control`.
+- Decision: set `Cache-Control: no-store` on every response produced by the global error handler.
+- Consequences: generic 4xx/5xx error payloads and request IDs are not stored by downstream caches; successful response behavior is unchanged.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No HTTP error response or automated test was performed in this slice.
+- Rollback: remove the global error cache header and ADR-025/Security entry; no database or persistent state rollback is needed.
+
+## ADR-026 — Stable error type labels in API logs (2026-11-26)
+
+- Status: implemented locally.
+- Context: the global error and readiness handlers logged `error.name`, a mutable free-form string on JavaScript errors.
+- Evidence: source inspection found both log paths emitted arbitrary `error.name` values despite the security rule to avoid raw/untrusted log content.
+- Decision: map errors through `instanceof` checks to fixed labels for TypeError, RangeError, SyntaxError, generic Error, or unknown; keep the framework error code and request ID as the other correlation fields.
+- Consequences: logs cannot include an attacker- or library-supplied custom error name; generic DB/runtime errors remain classed as `Error`. Response payloads and status handling do not change.
+- Validation: `bun run typecheck:api`, `bun run build:api`, and `git diff --check` passed. No runtime log event or automated test was produced in this slice.
+- Rollback: restore `error.name` usage in both log paths and remove ADR-026/Security entry; no database or persistent state rollback is needed.
