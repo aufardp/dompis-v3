@@ -1313,3 +1313,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: role non-superadmin tidak dapat menggunakan endpoint produk sampai grants bisnis disetujui; ini kondisi deny-by-default yang disengaja. Audit retention belum diputuskan sehingga tidak ada purge/export. Belum ada migration data legacy atau production/cutover. Operator bootstrap masih belum diverifikasi.
 - Rollback: fixture sudah dihapus; tidak ada database state QA tersisa dan tidak ada schema migration dari slice ini. Revert perubahan dokumen/ADR-046 bila bukti QA dibatalkan. Server lokal dan browser sudah dihentikan.
 - Langkah berikutnya: owner menetapkan capability set sama untuk `officer`, `team_leader`, dan `senior_leader`, atau secara eksplisit mempertahankan zero grants. Setelah keputusan itu, buat migration grant data-only dan tes role/scope parity; lanjutkan Phase 0C migration contracts sebelum Phase 3. Commit belum dibuat.
+
+## 2026-11-27 — Record explicit identifier naming standard and resume phase sequencing
+
+- Phase: Engineering standards update; next planned gate is Phase 0C contract and access validation before Phase 3A migration.
+- Tindakan: menambahkan standar engineering agar setiap nama variabel, function, class, type, dan constant menjelaskan tujuan domain/tindakannya; menolak singkatan lokal dan nama satu huruf; memberi contoh, aturan boolean/function, pengecualian identifier kontrak eksternal, dan batas refactor agar tidak menjadi churn massal. Meninjau kembali gate Phase 0C dan Phase 3A setelah Phase 2 technical gate ditutup.
+- File berubah: `docs/Engineering-Principles.md`, `docs/Handover.md`. `AGENTS.md` diabaikan oleh Git sesuai kebijakan `.gitignore` dan tidak menjadi bagian perubahan tersimpan.
+- Database target: tidak ada database diakses.
+- SQL/command tersanitasi: `git status --short`; pencarian status gate dengan `rg` pada dokumen Phase 0C/Phase 3A/authorization; `git diff --check`.
+- Hasil pengujian aktual: `git diff --check` lulus. Tidak ada code, schema, migration, API, atau UI yang diubah; build/typecheck tidak dijalankan karena perubahan hanya dokumentasi.
+- Keputusan teknis: naming standard berlaku bagi identifier baru dan identifier yang materially changed dalam scope task. Nama kontrak NOSSA/database dan API pihak ketiga tidak diubah. Hindari singkatan arbitrer; istilah domain mapan tetap diperbolehkan.
+- Risiko/kendala: Phase 0C tetap tertahan pada bukti/keputusan eksternal: fixture aktual `/nossa-closed` dan reopened incident, keputusan lifecycle/timezone/TTR, crosswalk Area/Workzone, capability set operasional tiga role setara, field/PII/archive retention, serta registrasi snapshot MySQL/read-only role. Phase 3A ETL belum aman dimulai sampai gate ini tersedia. Tidak melakukan live NOSSA request atau membaca/menulis database pada pekerjaan ini.
+- Rollback: revert hanya dua penambahan standar dan catatan handover ini bila kebijakan penamaan tidak lagi berlaku; tidak ada data/schema rollback.
+- Langkah berikutnya: lanjutkan Phase 0C hanya saat fixture/keputusan/crosswalk/registry tersedia; sampai itu diterima, batasi pekerjaan berikutnya pada discovery yang tidak membutuhkan data eksternal dan jangan mulai ETL atau memberi grant operasional. Pesan commit: `docs(engineering): require clear purpose-revealing identifier names`.
