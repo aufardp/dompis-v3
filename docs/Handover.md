@@ -1195,3 +1195,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: UI Organization Management dan mutation create/deactivate belum dibuat. Preview menampilkan username/display name hanya kepada global superadmin. Semantics reparent/historical reporting tetap belum disetujui; reparent tidak termasuk implementation slice ini.
 - Rollback: hapus route/test dan app composition, lalu revert entri ADR/docs; tidak memerlukan rollback DB karena semua fixture di-rollback dan tidak ada migration.
 - Langkah berikutnya: bangun halaman preview agar operator dapat meninjau daftar user terdampak; selanjutnya buat child-creation API yang mengunci/revalidasi scope dan menolak commit bila impact berubah dari preview yang telah dilihat.
+
+## 2026-11-27 — Add read-only Organization Management preview UI
+
+- Phase: Phase 2 — Organization and Authorization Foundation (partial; UI + preview only).
+- Tindakan: membuat halaman `/admin/organization` dengan permission-aware navigation dari home, pemeriksaan sesi/permission/global scope di UI, pemilihan level Area→Workzone dengan parent cascading, pencarian kode/nama, preview dampak user, ringkasan global/inherited, tabel user terdampak dan cursor pagination. Halaman menggunakan palette DOMPIS dan preferensi tema `dompis-theme`; tidak menyediakan aksi mutasi. Memperbarui ringkasan Phase 2 dan langkah selanjutnya.
+- File berubah: `apps/web/src/routes/admin/organization/+page.svelte`, `apps/web/src/routes/+page.svelte`, `docs/Phase-2-Organization-Auth.md`, `docs/Handover.md`.
+- Database target: tidak ada akses database pada pekerjaan UI ini; endpoint backend preview tetap diuji terpisah sebelumnya pada PostgreSQL 18 development `dompis_v3` dengan fixture yang seluruhnya rollback.
+- SQL/command tersanitasi: `bun run typecheck:web`; `bun run build:web`; `git diff --check`.
+- Hasil pengujian aktual: typecheck Svelte lulus dengan 0 error/0 warning; build web lulus dan menghasilkan output adapter-static. Build menampilkan warning environment `NO_COLOR` diabaikan karena `FORCE_COLOR` disetel. `git diff --check` lulus. Tidak dilakukan browser QA khusus untuk halaman Organization pada slice ini.
+- Keputusan teknis: UI hanya menyajikan snapshot read-only; API tetap otoritatif untuk authorization. Scope-options dibatasi 50 pilihan dan meminta pencarian jika target tidak muncul; daftar dampak memakai keyset pagination.
+- Risiko/kendala: hasil preview dapat berubah setelah snapshot; child-creation belum tersedia dan wajib menghitung ulang dampak dalam transaksi, mencatat audit, serta menginvalidasi sesi/scope terkait. Browser QA UI belum dijalankan. Tidak ada perubahan DB.
+- Rollback: hapus route UI, cabut link permission-aware dari halaman home, lalu revert ringkasan dokumen; tidak perlu rollback database.
+- Langkah berikutnya: lakukan browser QA route/permission/theme dan state cascading; kemudian desain child-creation dengan preview acknowledgement yang dapat diverifikasi server-side, transaction-bound impact recheck, audit atomik dan invalidasi akses. Phase 2 masih terbuka.
