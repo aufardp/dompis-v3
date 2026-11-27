@@ -1828,3 +1828,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert perubahan pada Phase-0B/0C, owner packet dan entry ini; tidak ada aplikasi/schema/data change.
 - Langkah berikutnya: lanjutkan verifikasi kontrak report menu lain yang masih dapat ditelusuri; setelah evidence lengkap, berikan pertanyaan owner yang tersisa dengan ilustrasi perbedaan hasil dan pilihan yang sederhana.
 - Pesan commit: `docs(phase-0c): audit semesta recurring semantics`.
+
+## 2026-11-27 — Reconcile PRD and owner-approved report/TTR rules
+
+- Phase: Phase 0C — C0C-02 requirement consistency review.
+- Tindakan: membandingkan keputusan eksplisit pemilik dan PRD v1.3 dengan checklist Phase 0B/0C dan Data Contract. Mengoreksi dokumentasi yang masih meminta ulang definisi lifecycle, compliance time basis, date/population defaults, capability roles, atau memperlakukan unit raw `TTR_Customer` sebagai blocker compliance. Memisahkan keputusan yang sudah ada dari gap teknis source fixture dan sisa Semesta/GAUL metric details.
+- File berubah: `docs/PRD.md`, `docs/README.md`, `docs/Phase-0A-Discovery.md`, `docs/Phase-0B-Discovery.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-TTR-Legacy-Path-Matrix.md`, `docs/Data-Contract.md`, `docs/Business-Rules.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah; tidak ada endpoint NOSSA dipanggil.
+- SQL/command tersanitasi: static doc/source review pada PRD, owner decisions, Data Contract, TTR matrix, legacy implementation notes dan discovery docs; `git diff --check`.
+- Hasil pemeriksaan aktual: laporan Semesta memakai `reported_date`; Rekap/Detail WO HI default active + closed today; hourly close memakai `closed_at` WIB; SLA compliance denominator terbatas pada closed lifecycle, threshold berlaku, `reported_date` dan `resolve_date` valid; numerator `resolve_date <= reported_date + threshold`. Raw NOSSA TTR units bukan input compliance. `git diff --check` lulus; tidak ada test/build/database/API execution.
+- Keputusan teknis: owner decision/PRD adalah requirement terbaru; perilaku source lama hanya comparator. Unknown lifecycle tidak dihitung open/closed; Max TTR, countdown, compliance, bucket totals dan recurring merupakan rule terpisah.
+- Risiko/kendala: Semesta default interval/granularity, membership/denominator untuk non-SLA KPIs yang belum tercakup PRD, GAUL lookback/grouping jika dipertahankan, offsetless source timestamp fixture, upstream closed→open/order/window proof, archive/PII retention, source snapshot provenance, least-privilege migration role dan isolated restore tetap belum selesai. Phase 0C tidak ditutup.
+- Rollback: revert perubahan dokumentasi di atas dan entry ini; tidak ada runtime/schema/dependency/data change.
+- Langkah berikutnya: lanjutkan Phase 0C pada bukti endpoint/window dan field/archive inventory; sajikan hanya keputusan owner yang benar-benar belum ditetapkan dengan bahasa sederhana. Jangan menjalankan ETL atau melakukan snapshot/write sebelum syarat sumber dan retensi dipenuhi.
+- Pesan commit: `docs(phase-0c): reconcile approved KPI and TTR contracts`.

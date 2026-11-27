@@ -2,6 +2,8 @@
 
 Tanggal: 2026-11-26. Status: **Phase 0A selesai**. Discovery dilakukan read-only, bukti source/DDL/data agregat dicatat, dan batasan/keputusan fase selanjutnya dipisahkan secara eksplisit. Environment MySQL lokal belum diklasifikasikan dan PostgreSQL lokal tidak tersedia; kedua hal tersebut dicatat sebagai keterbatasan discovery, bukan diasumsikan.
 
+Catatan waktu: laporan ini merekam temuan Phase 0A pada 26 November 2026. Owner decisions, sanitized NOSSA samples, serta pemeriksaan lokal setelah tanggal tersebut memperbarui sebagian gap di bawah. Untuk status saat ini, gunakan `Phase-0C-Contract-Access-Discovery.md`, `Decision-Log.md`, dan `Handover.md`; jangan menganggap daftar open blockers historis di laporan ini masih seluruhnya berlaku.
+
 ## Ruang lingkup dan sumber
 
 Target project adalah `/Users/pakbreng/Projects/dompis-v3`; blueprint berada di repo target, source legacy di `/Users/pakbreng/Projects/dompis_v2`. Source legacy tidak diubah. Repo legacy: branch `main`, HEAD `e786d6e49d5a35a3302d81c0d8c640c9da3dff9b`, working tree bersih.

@@ -44,9 +44,9 @@ These expected cases make the old behavior concrete. They are documentation fixt
 
 - The owner-approved v3 status groups supersede the legacy close-list values. Unknown v3 status remains unknown.
 - The owner-provided maximum-hour catalogue is known. Remaining work is exact golden parity for each separate path, not asking the owner for thresholds again.
-- The supplied NOSSA sample shows `TTR_Customer` 4.056 then 4.06 and `TTR_END_TO_END` as number then string. One sample does not define units, rounding, whether those are elapsed hours, or the clock reset behavior.
-- The old parser treats offsetless date strings as WIB; upstream meaning for each timestamp still requires an authoritative contract. The supplied ISO fields show `+07:00`; booking date is offsetless.
-- The legacy dashboard contains date-window and denominator logic beyond the rule functions. Each v3 report needs an approved metric definition and golden input/output before KPI parity is claimed. MTTR is explicitly deferred.
+- The supplied NOSSA sample shows `TTR_Customer` 4.056 then 4.06 and `TTR_END_TO_END` as number then string. These are not inputs to the owner-approved compliance calculation; preserve their source values and determine units/rounding only if v3 displays or consumes them.
+- The old parser treats offsetless date strings as WIB. Supplied `Reported_Date` and `C_RESOLVE_DATE` have `+07:00`; `C_BOOKING_DATE` is offsetless. Use explicit source offsets when present and preserve the legacy WIB interpretation for offsetless booking input, subject to a sanitized source fixture. This does not change compliance's explicit `reported_date`/`resolve_date` rule.
+- PRD and owner decisions define SLA compliance inputs, comparison, menu date basis/populations, and current lifecycle statuses. Remaining report contract work is Semesta default interval/granularity, any KPI membership/denominator not already defined by PRD, recurring/GAUL rules if retained, and golden input/output parity. MTTR is explicitly deferred.
 
 ## Source files inspected
 
