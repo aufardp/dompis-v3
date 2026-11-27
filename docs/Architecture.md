@@ -97,6 +97,7 @@ API `GET /api/v1/sync/status` and `GET /api/v1/events` SSE. Dedicated LISTEN con
 | GET /exports/tickets | bounded CSV scoped stream |
 | GET /sync/status, GET /events | freshness metadata and revision |
 | /api/admin/users, /api/admin/users/:id/scopes | privileged management; audit |
+| GET /api/admin/organization/child-impact | superadmin-only read-only preview of users whose parent/global scope would include a proposed child |
 | /organization/{areas,regions,branches,service-areas,workzones} | authorized cascading options |
 
 Response `{data, meta:{requestId,asOf,revision,nextCursor?,freshness}}`; errors `{error:{code,message},requestId}`. 400 invalid filter, 401 unauthenticated, 403 forbidden operation, 404 inaccessible record, 429 rate limit, 503 timeout/degraded with Retry-After. No raw SQL/stack. Request ID generated server; reject invalid untrusted forwarded headers.

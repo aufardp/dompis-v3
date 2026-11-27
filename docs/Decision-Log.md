@@ -387,6 +387,15 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Validation: workspace typecheck and build passed; `bun test apps/api/src/user-security.test.ts` passed (1 test, 5 expectations); rollback-only User Management PostgreSQL integration passed (1 test, 15 expectations). Browser verified role denial (API 403), inactive-parent scope rejection (400 `scope_target_unavailable`, zero inactive branch options), direct `/admin/users`, and light-theme persistence after reload. Temporary DB fixtures were removed and exact user/master counts verified zero. `git diff --check` passed.
 - Rollback: restore API route paths and frontend fetch URLs to `/admin/*`, restore Vite `/admin` proxy, and revert docs/this ADR. This reintroduces the page/proxy collision. No schema or persistent data rollback is needed.
 
+## ADR-043 — Preview inherited user impact before organization child creation (2026-11-27)
+
+- Status: implemented locally as read-only API; no organization mutation is available yet.
+- Context: creating a child beneath a scope-grant target implicitly expands that user's future data coverage because grants follow the active hierarchy. Organization mutations must show affected users before changing the hierarchy; no create/deactivate/reparent API existed.
+- Decision: add `GET /api/admin/organization/child-impact?level=<child-level>&parentId=<active-parent-id>` (parent omitted for new Area). Require `organization.manage`, explicit global scope, and current active `superadmin` identity. Resolve and validate the entire active parent path. Return distinct active-user counts split into explicit global and inherited-scope users, plus a bounded UUID keyset page of affected usernames/display names/role and the exact matching ancestor grant levels. Overlapping grants produce one user row. For a new Area, only existing global users are affected. Do not mutate state or audit a read-only preview.
+- Consequences: Superadmin can inspect the scope expansion footprint before a future create flow. Counts are a point-in-time snapshot and do not constitute a durable approval token. Any eventual mutation must recalculate the preview inside its transaction, compare the acknowledgement, serialize hierarchy/user-scope writes, audit the mutation, and invalidate affected scope versions/sessions. Do not implement reparenting without a reviewed reconciliation contract.
+- Validation: API typecheck passed; `bun --env-file=.env test apps/api/src/organization-impact.test.ts` passed (1 test, 15 expectations) against local PostgreSQL `dompis_v3` using rollback-only synthetic users and hierarchy; full workspace build passed; `git diff --check` passed. No persistent records or schema changes.
+- Rollback: remove `apps/api/src/organization-impact.ts`, its app composition and integration test, plus Security/Architecture/Phase 2/Handover docs. No database rollback is needed.
+
 ## ADR-035 — Add scoped ticket list with signed keyset cursors (2026-11-26)
 
 - Status: implemented locally; `tickets.read` remains an unseeded candidate pending owner approval.
