@@ -1800,3 +1800,31 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert perubahan pada dua dokumen discovery/decision packet dan catatan handover ini; tidak ada runtime, schema, dependency atau data change.
 - Langkah berikutnya: lanjutkan Phase 0C dengan menutup sisa bukti sumber yang dapat ditelusuri, lalu susun pertanyaan KPI tersisa dalam bentuk metrik dan contoh hasil yang mudah diverifikasi; tetap menunggu kebijakan archive/PII dan identitas snapshot sumber sebelum ETL.
 - Pesan commit: `docs(phase-0c): trace legacy report date contracts`.
+
+## 2026-11-27 — Trace legacy report status counting and KPI membership
+
+- Phase: Phase 0C — C0C-02 lifecycle/report contract discovery.
+- Tindakan: membandingkan status counting Semesta V1/V2, category ReKap, daily inclusion, dan bucket KPI classifier pada source legacy. Menambahkan evidence bahwa local `status_update` bukan fakta lifecycle NOSSA dan unknown status dapat jatuh ke kategori open di jalur lama. Memperbarui rule registry dan owner packet agar keputusan lifecycle pemilik tetap otoritatif.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Business-Rules.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: `rg`/`sed` read-only pada `dompis_v2/app/libs/ticket-utils.ts`, `app/libs/services/tickets.service.ts`, `app/libs/services/daily-ticket-where.ts`, `app/api/dashboard/rekap-workorder/aggregate.ts`, `queries.ts`, dan `lib/rekap/rekap-classify.ts`.
+- Hasil pemeriksaan aktual: Semesta V1 menganggap status_update `close`/`closed` sebagai close; V2 hanya `close`, sehingga nilai `closed` masuk on-progress di V2. ReKap close list legacy mencakup `CLOSE` tambahan; selain status close, `getTicketCategory` dapat default ke open; daily population juga memasukkan status di luar close list. ReKap enam bucket adalah hitungan membership dan bukan compliance percentage. `git diff --check` lulus; tidak ada test/build/DB query.
+- Keputusan teknis: gunakan status lifecycle yang telah disetujui pemilik untuk v3; nilai di luar daftar tetap unknown dan tidak diubah menjadi open/closed. Status update legacy dan operational bucket tetap konsep terpisah; compliance eligibility/numerator/denominator tidak disimpulkan dari label KPI.
+- Risiko/kendala: menyalin fallback legacy akan salah menghitung unknown sebagai beban open serta menghasilkan perbedaan V1/V2. Source lama punya classifier SQL/generated-column/JS yang berbeda; parity v3 harus diuji dengan fixture sintetis sebelum angka dirilis.
+- Rollback: revert dokumentasi Phase-0C, owner packet, Business-Rules, dan entry ini; tidak ada runtime/schema/dependency/data change.
+- Langkah berikutnya: lanjutkan source trace untuk numerator/denominator menu yang bisa dibuktikan dari PRD dan source, lalu pisahkan pertanyaan bisnis yang belum terjawab dari perilaku teknis legacy. C0C-01, C0C-05, C0C-06 tetap memerlukan evidence atau kebijakan owner sebelum migration.
+- Pesan commit: `docs(phase-0c): clarify legacy status and KPI counting`.
+
+## 2026-11-27 — Verify Semesta recurring/GAUL query semantics
+
+- Phase: Phase 0C — C0C-02 Semesta recurring contract discovery.
+- Tindakan: menelusuri query GAUL/recurring analytics V2 dan mencatat batas window, grouping, cap output, pemakaian hasil aggregate, serta LAPUL path yang disabled. Memperbarui Phase 0B/0C evidence dan owner packet.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0B-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada DB diakses/diubah; tidak ada API dipanggil.
+- SQL/command tersanitasi: `sed` read-only pada `dompis_v2/app/libs/services/tickets.service.ts:1090-1455`; review PRD dan discovery docs lokal.
+- Hasil pemeriksaan aktual: source mencari incident berbeda pada service number sama dalam ±60 hari, memerlukan kedua incident masuk rentang report, mengelompokkan service number/workzone, tidak mensyaratkan Workzone relasi sama, mengembalikan maksimum 100 grup tanpa tie-break order, lalu menjumlah hanya grup tersebut untuk total GAUL. LAPUL mengembalikan kosong. `git diff --check` lulus; tidak ada test/build/database/API execution.
+- Keputusan teknis: jangan menggunakan batas 100 detail sebagai batas KPI total v3. Jika fitur recurring disetujui, hitung agregat penuh secara terpisah dari daftar Top-N; jangan mengadopsi aturan legacy sebagai definisi bisnis. LAPUL tidak boleh dihidupkan dari asumsi source lama.
+- Risiko/kendala: perubahan range bisa menghilangkan recurrence yang melintasi batas awal/akhir; service number dapat muncul pada beberapa Workzone; top-N total legacy undercounts; belum ada business rule v3 untuk normalisasi, crossing, event/current-state dan lookback. PRD menyebut recurring bersyarat pada ketersediaan field dan persetujuan lookback.
+- Rollback: revert perubahan pada Phase-0B/0C, owner packet dan entry ini; tidak ada aplikasi/schema/data change.
+- Langkah berikutnya: lanjutkan verifikasi kontrak report menu lain yang masih dapat ditelusuri; setelah evidence lengkap, berikan pertanyaan owner yang tersisa dengan ilustrasi perbedaan hasil dan pilihan yang sederhana.
+- Pesan commit: `docs(phase-0c): audit semesta recurring semantics`.

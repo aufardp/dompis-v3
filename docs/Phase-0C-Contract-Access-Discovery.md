@@ -36,6 +36,26 @@ The following records what the old menu code actually filters; these are separat
 
 Legacy source evidence paths (read-only): `dompis_v2/app/libs/services/tickets.service.ts` (`getSemestaAnalytics` and `getSemestaAnalyticsV2`), `dompis_v2/app/api/dashboard/semesta-summary/route.ts`, `dompis_v2/app/api/dashboard/semesta-analytics/route.ts`, `dompis_v2/app/api/dashboard/rekap-workorder/route.ts`, `dompis_v2/app/api/dashboard/rekap-workorder/queries.ts`, `dompis_v2/app/api/dashboard/rekap-workorder/hourly-close/route.ts`, `dompis_v2/app/libs/services/daily-ticket-where.ts`, and `dompis_v2/app/api/tickets/daily/detail-wo-hi/route.ts`. No legacy endpoint or database was called in this trace. `Phase-0B-Discovery.md`'s report-date convention is compatible with the historical-detail paths, but it does not resolve close-volume versus active-snapshot metrics or define denominators.
 
+## 1B. Legacy status counting and KPI membership evidence
+
+The owner-provided lifecycle groups remain the v3 status source of truth. Static legacy reporting uses additional state fields and treats statuses outside its close list as open in some paths; that behavior must not override the owner's explicit unknown-status policy.
+
+| Legacy path | Observed status behavior | Consequence |
+|---|---|---|
+| Semesta V1 | Reads `status_update`: `close` or `closed` → closed; blank or `open` → open; every other value → on-progress. | This counts old DOMPIS workflow state, not the NOSSA `Status` lifecycle field. |
+| Semesta V2 | Reads `status_update`: only `close` → closed; blank or `open` → open; `closed` and all other values → on-progress. | V1 and V2 disagree for `closed`; neither should define v3 lifecycle counts. |
+| Rekap row category | External `status` values `CLOSED`, `CLOSE`, `FINALCHECK`, `MEDIACARE`, `SALAMSIM`, `RESOLVED` are closed. Otherwise `status_update` maps assigned/on_progress/pending; remaining values default to open. | Legacy accepts `CLOSE` as closed although it is not in the owner's explicit list, and unknown external statuses can fall through as open. |
+| Rekap daily inclusion | Includes every status not in the legacy close set, plus legacy-closed rows whose `closed_at` is today. | An unrecognized NOSSA status can enter the open workload. v3 must retain unknown as unknown and avoid silently treating it as open or closed. |
+| Rekap bucket KPI summary | Counts the current daily population into six operational buckets (`kpi_customer`, `kpi_proactive`, `non_kpi_unspec`, `non_technical`, `sqm_update`, `obsolete`) using a JS classifier that has different precedence from SQL/generated-column classification. | These are bucket counts, not an approved SLA-compliance percentage. Membership and numerator/denominator cannot be inferred from the label “KPI”. |
+
+For v3, lifecycle membership should use the owner's explicit status sets already recorded in ADR-048/050; unlisted values remain unknown. Keep operational bucket classification, lifecycle state, old local `status_update`, and any future SLA compliance metric as separate concepts. Do not migrate a legacy `status_update` value into a NOSSA lifecycle fact.
+
+## 1C. Semesta recurring/GAUL source behavior
+
+The V2 source query tests a valid nonblank `service_no` other than `NN` for at least one different incident within ±60 calendar days of a candidate incident's `reported_date_dt`. Both the candidate and related incident must also fall inside the selected report range. It groups by `(service_no, workzone)`, counts distinct candidate incidents, sorts by occurrence count and returns at most 100 groups. The current total sums those returned groups, so groups beyond the top 100 are omitted from the displayed GAUL total. The related-incident `EXISTS` comparison does not require the same Workzone, and ordering ties have no secondary deterministic key. The separate LAPUL path currently returns an empty list because its source comments state that duplicate rows cannot exist under the one-current-row-per-incident projection.
+
+This is implementation behavior only, not an approved GAUL definition. The PRD requires recurring only when the source fields exist and the lookback is approved. A v3 design must explicitly decide whether recurrence crosses Workzones, how service numbers are normalized, whether current-state incidents or event history are counted, whether filtering the report range should truncate the lookback, what minimum occurrence means, and whether the result is a complete count or a capped display list. Never reproduce the legacy top-100 undercount as the KPI total; if v3 needs top services, compute the aggregate total separately from the capped detail list.
+
 ## 2. Field and historical migration evidence
 
 - Read-only comparison of the legacy checkout's Prisma `ticket` model with `Legacy-Field-Mapping.md` found 84 scalar fields on each side, 84 unique names, no missing/extra/duplicate fields, and matching Prisma-declared type annotations for all 84 rows. This validates mapping inventory coverage and consistency with the checked-in Prisma model only, not deployed DDL/value semantics or retention approval.
