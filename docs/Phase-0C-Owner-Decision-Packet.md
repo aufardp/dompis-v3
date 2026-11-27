@@ -4,9 +4,19 @@ Status: **belum disetujui; lembar kerja untuk menutup gate Phase 0C**. Jangan is
 
 Paket ini mengonsolidasikan input yang masih kurang setelah discovery statis. Nilai yang kosong berarti belum diputuskan; agent tidak boleh mengisinya dengan asumsi. Keputusan bisnis dicatat pemilik aplikasi, sedangkan kontrak teknis harus didukung artefak upstream atau bukti dari snapshot yang terdaftar.
 
+## Ringkasan schema lama dengan bahasa sederhana
+
+- **Ticket:** tabel lama punya 84 kolom bercampur: fakta ticket, hasil hitung/report lama, catatan manual, data pelanggan, dan kolom teknisi. Di v3, kolom yang dipakai empat menu menjadi kolom ticket; nilai historis lain disimpan di archive terbatas sesuai retensi. Assignment teknisi tidak menjadi fitur operasional.
+- **Optimasi:** schema lama juga memiliki jalur raw/staging/projection dan banyak index ticket. v3 memakai satu tabel ticket kanonik dan hanya menambah index yang terbukti dibutuhkan query. Data historis tidak dibuang; tabel/worker raw permanen dan assignment teknisi tidak dibawa sebagai runtime dependency.
+- **Wilayah:** urutan lama `Region → Branch → Area lama → Service Area lama`. Di v3 menjadi `Area baru → Region → Branch → Service Area → Workzone`. Mapping `Area lama → Service Area baru` dan `Service Area lama → Workzone baru` sudah jelas. Yang tidak ada di schema lama hanyalah parent `Area baru → Region`.
+- **Hak akses:** schema lama menyimpan scope di kolom langsung `users` dan empat tabel grant. Migrasi akan menghitung Workzone yang boleh dilihat tiap user, menggabungkan grant tumpang tindih tanpa duplikasi, lalu membandingkannya. Ini bukan pekerjaan manual satu per satu; jika hasil tidak bisa dibuktikan, akun tetap nonaktif/tanpa akses.
+- **Jenis tiket:** tabel live `source_vlookup` adalah kamus classifier dan sumber resmi yang Anda tetapkan; hasil `jenis_tiket_1/2` disimpan pada ticket sebagai snapshot supaya perubahan kamus tidak mengubah sejarah diam-diam.
+
+Yang masih perlu keputusan sederhana: Area baru apa yang menjadi induk tiap Region lama; berapa lama archive historis/PII disimpan; dan apakah `dompis_db` lokal adalah sumber migrasi yang harus dibekukan sebagai snapshot. Ticket Workzone yang tidak cocok tidak perlu dibuang atau ditebak: tetap disimpan tanpa scope biasa sampai ada mapping tepat.
+
 ## A. NOSSA dan lifecycle — C0C-01 / C0C-02
 
-### Bukti kontrak yang diperlukan
+### Bukti teknis NOSSA yang diperlukan (bukan konfirmasi ulang aturan status)
 
 - Versi/tanggal authoritative OpenAPI atau dokumentasi kontrak yang digunakan:
 - Sanitized response `/nossa-closed` (minimal satu row, pertahankan nama/tipe field, null/missing, envelope, dan format timestamp):
@@ -17,18 +27,14 @@ Paket ini mengonsolidasikan input yang masih kurang setelah discovery statis. Ni
 
 Fixture tidak boleh memuat identifier pelanggan asli. Nilai yang disamarkan harus mempertahankan struktur, tipe, format, serta pola null/missing yang diperlukan untuk menguji parser.
 
-### Keputusan bisnis yang diperlukan
+### Aturan lifecycle yang sudah ditetapkan
 
 | Pertanyaan | Keputusan pemilik |
 |---|---|
-| Status upstream mana yang berarti lifecycle `open`, `closed`, atau `unknown`? Cantumkan seluruh status yang dikenal dan aturan status baru/tidak dikenal. | **Ditetapkan pemilik (2026-11-27):** `NEW`, `DRAFT`, `ANALYSIS`, `PENDING`, `BACKEND` = open; `FINALCHECK`, `RESOLVED`, `MEDIACARE`, `SALAMSIM`, `CLOSED` = closed. Daftar status ini adalah nilai yang diberikan pemilik; kelengkapan daftar dan perlakuan status lain belum ditetapkan. |
-| Field dan aturan apa yang menentukan waktu penutupan? Apakah `resolved_at` berbeda dari `closed_at`? |  |
-| Bagaimana tiket yang reopen direpresentasikan; kapan lifecycle kembali `open`; apakah riwayat status harus dibentuk dari sumber yang tersedia? | **Ditetapkan pemilik (2026-11-27):** incident yang sebelumnya berstatus kelompok closed lalu berubah ke status kelompok open dianggap reopen. Cara membuktikan/merekam transisi dari response NOSSA serta kebutuhan status-history tetap menunggu fixture dan kontrak upstream. |
-| Jika `/nossa` dan `/nossa-closed` berbeda, bukti/version/timestamp mana yang menang? Bagaimana tie atau versi yang tidak dapat dibandingkan diperlakukan? |  |
-| Apakah pencarian incident dapat mengembalikan parent/children, dan aturan mana yang mengidentifikasi incident canonical? |  |
-| Approver dan tanggal keputusan: |  |
+| Status lifecycle | **Ditetapkan:** daftar open dan closed di atas; status lain unknown dan tidak ditebak. `OPEN`/`CLOSE` dari kode legacy tidak ditambahkan ke daftar eksplisit v3. |
+| Reopen | **Ditetapkan:** incident yang sama berubah dari salah satu status closed yang disebut ke salah satu status open yang disebut berarti reopen. |
 
-**Discrepancy legacy untuk ditinjau:** `CLOSE_STATUS_VALUES` legacy memuat `CLOSE`, sedangkan `OPEN_STATUS_VALUES` juga memuat `OPEN`. Keduanya tidak ada di daftar status yang diberikan pemilik pada 2026-11-27. Jangan tambahkan otomatis ke mapping baru; pemilik perlu mengonfirmasi apakah `CLOSE` tetap closed dan `OPEN` termasuk open, atau keduanya dikeluarkan.
+Aturan lifecycle tidak perlu dijawab ulang. Yang belum tersedia adalah bukti bentuk response `/nossa-closed`, timestamp/version fields, pagination/tie behavior, dan cara dua endpoint menunjukkan incident yang reopen. Itu validasi kontrak teknis.
 
 ## B. Waktu, TTR, SLA dan KPI — C0C-02
 
@@ -47,33 +53,33 @@ Audit `dompis_v2` menemukan beberapa mekanisme waktu/TTR yang berbeda, bukan sat
 | MTTR / durasi resolve | Mean `reported_date → closed_at`, dengan sebagian dashboard memberi `resolve_date` precedence/fallback; negative/unparseable durations tidak dihitung. | `app/libs/tickets/mttr.ts`, `dashboard-overview.ts`; berbeda dari TTR compliance. |
 | Parsing timestamp | `parseWIBDateInput` menginterpretasikan string tanpa offset sebagai WIB (Asia/Jakarta), menghormati offset eksplisit, dan menangani format slash dengan asumsi DD/MM ketika ambigu. | `app/utils/datetime.ts`; parser lama membuktikan perilaku aplikasi, bukan bahwa tiap upstream field offsetless memang bermakna WIB. |
 
-Ada konflik langsung antara dokumen dan konfigurasi yang dipakai kode: `docs/sla-ttr-matrix.md` menyebut Indibiz 4 jam dan Reseller 6 jam, sedangkan `app/config/jenis-tiket.ts` memberi keduanya 24 jam. Matrix juga tidak mencakup seluruh override/exception yang diterapkan `ttr-comply.ts`. Rincian discovery dan rujukan tambahan ada di `Phase-0B-Discovery.md` bagian “SLA/TTR, denominator dan waktu”.
+Pemilik telah menetapkan bahwa semua kategori/kriteria lama bernama Reseller sekarang digabung sebagai Indibiz; `RESELLER` bukan jenis tiket terpisah di v3. Untuk perilaku waktu, kode yang benar-benar dijalankan (`app/config/jenis-tiket.ts`) memberi Indibiz dan Reseller lama 24 jam. Karena labelnya sekarang satu, gunakan 24 jam sebagai kandidat parity Indibiz; nilai 4 jam/6 jam pada matriks lama dicatat sebagai dokumentasi usang yang bertentangan. Empat jalur lama tetap berbeda: compliance, priority countdown, Max TTR tampilan, dan MTTR. Pada B2C, customer type kosong/tidak dikenal tidak dinilai oleh jalur compliance; fallback 24 jam hanya untuk tampilan. Parser legacy membaca timestamp tanpa offset sebagai WIB dan menghormati offset eksplisit; itu belum membuktikan timezone setiap field upstream NOSSA. Detail dan batas buktinya ada di [referensi classification/TTR](Phase-0C-Legacy-Classification-TTR-Reference.md).
 
 | Field/aturan | Keputusan pemilik; tulis `unknown` jika belum diketahui |
 |---|---|
-| Zona waktu untuk setiap timestamp NOSSA tanpa offset (reported, status, booking, resolved, closed, deadline): apakah aturan parser legacy WIB dipertahankan? |  |
-| Makna/unit TTR numerik NOSSA (`TTR_Customer`, `TTR_Nasional`, `TTR_Regional`, `TTR_Witel`, `TTR_Mitra`, `TTR_Agent`, `TTR_END_TO_END`, `C_SLG_TTR`, dll). Bedakan dari SLA threshold yang dihitung legacy. |  |
-| SLA threshold dan basis jam kalender/kerja per segmen/jenis layanan; mana yang berlaku saat matrix dan konfigurasi legacy bertentangan (khusus Indibiz/Reseller), atau apakah threshold diubah? |  |
-| Batas comply (misalnya inklusivitas equality), pause/pending, hari libur, dan kasus yang tidak eligible |  |
-| Pilih metric per penggunaan: compliance KPI, priority countdown, displayed Max TTR, dan MTTR; tetapkan timestamp basis dan eligible/denominator untuk tiap menu. Jangan satukan implementasi legacy yang berbeda. |  |
-| KPI numerator, denominator, tanggal basis, bucket/classifier version, serta unknown/null treatment untuk masing-masing menu |  |
-| Approver dan tanggal keputusan |  |
+| Legacy behavior yang akan dipertahankan untuk parity | **Sudah dipetakan dari kode:** compliance memakai `resolve_date` vs deadline dan equality dihitung comply; priority countdown memakai bucketnya sendiri; Max TTR punya urutan fallback tampilan sendiri; MTTR menghitung reported ke resolve/closed sesuai consumer. Jangan satukan jalur tersebut. |
+| Customer type B2C kosong/tidak dikenal | **Sudah dipetakan dari kode:** compliance = tidak dinilai/null; fallback tampilan 24 jam hanya display. |
+| Indibiz dan kategori lama Reseller | **Ditetapkan pemilik:** semua output kategori lama Reseller menjadi Indibiz. Kandidat threshold parity dari config executable = 24 jam; matriks 4h/6h usang dan tidak digunakan. |
+| TTR angka dari NOSSA | Unit field sumber tetap unknown sampai kontrak/fixture upstream menjelaskannya; jangan disamakan dengan threshold SLA hitungan aplikasi. |
+| Timestamp NOSSA tanpa offset dan response `/nossa-closed` | Bukti upstream/fixture masih dibutuhkan; perilaku parser legacy WIB hanya acuan untuk data legacy, bukan asumsi kontrak API. |
 
 Jangan menyetujui KPI berdasarkan nama field atau perilaku implementasi lama saja. Sampel golden input/output sintetis wajib dibuat setelah definisi disetujui.
 
 ## C. Master wilayah dan Workzone — C0C-03
 
-Lampirkan CSV/lembar crosswalk tanpa data tiket, dengan kolom minimal berikut:
+**Penjelasan sederhana:** di database lama urutannya sudah `Region → Branch → Area lama → Service Area lama`. Pada aplikasi baru, nama levelnya menjadi `Area baru → Region → Branch → Service Area → Workzone`. Jadi mapping yang sudah jelas adalah: `Area lama → Service Area baru` dan `Service Area lama → Workzone baru`. Satu hal yang memang tidak ada di schema lama adalah **Area baru yang menjadi induk setiap Region**. Schema lama tidak menyimpan hubungan itu. Yang dibutuhkan hanya daftar kecil: setiap Region masuk ke Area baru yang mana.
+
+Lampirkan crosswalk tanpa data ticket untuk hubungan yang memang baru tersebut:
 
 | Legacy region ID/code | Legacy region name | New area code | New area name | Approver/date |
 |---|---|---|---|---|
 |  |  |  |  |  |
 
-Lampirkan kamus resmi Workzone code/name dan aturan normalisasi yang disetujui. Untuk 74 normalized ticket keys yang sebelumnya unmatched (7.171 rows) dan 47 rows blank/null, berikan disposition per key/group: match ke ID resmi, tetap unmapped/isolated, atau pengecualian dengan alasan. Jangan gunakan fuzzy match atau menebak parent.
+Untuk Workzone, aturan aman tidak memerlukan keputusan tambahan: semua ticket tetap dimigrasikan dan nilai aslinya dipertahankan. **391 key** cocok tepat ke master yang unik dan dapat dipetakan langsung. Jika kode tidak cocok (74 key/7.171 ticket) atau kosong (47 ticket), `workzone_id` dibiarkan kosong dan diberi penanda belum terpetakan; ticket tidak dihapus, tidak dipasangkan dengan tebakan, dan tidak muncul pada laporan/scope user biasa sampai Superadmin memperbaiki mapping. Kamus resmi hanya diperlukan jika nanti ingin memperbaiki 74 key tersebut; ini tidak menghalangi penyimpanan history. Jangan gunakan fuzzy match.
 
-Bukti agregat terbaru (2026-11-27): 393/393 nonblank `service_area.nama_sa` unik setelah `UPPER(TRIM(...))` dengan perbandingan byte-exact; 391/465 distinct nonblank ticket Workzone keys match tepat satu master, 74 tidak match (7.171 ticket rows), dan 47 ticket rows blank/null. Ini membuktikan keunikan key master saat ini, bukan bahwa `nama_sa` adalah kode Workzone resmi. Konfirmasi semantic code/name dan lampirkan crosswalk/dictionary tetap dibutuhkan.
+Bukti agregat terbaru (2026-11-27): 393/393 nonblank `service_area.nama_sa` unik setelah `UPPER(TRIM(...))`; 391/465 distinct nonblank ticket Workzone keys cocok tepat satu master, 74 tidak cocok, dan 47 ticket rows blank/null. 391 direct exact matches dapat dipakai; yang tidak cocok tetap unmapped. Kamus Workzone hanya dibutuhkan untuk perbaikan lanjutan, bukan untuk menghapus/memblokir ticket migration.
 
-Acceptance: exact normalized key uniqueness dibuktikan; setiap mapped key menunjuk satu master Workzone dan satu parent chain yang disahkan; unmatched/blank mendapat disposition eksplisit; tidak ada scope grant yang melebar akibat mapping.
+Acceptance: exact normalized key uniqueness dibuktikan; setiap mapped key menunjuk satu master Workzone dan satu parent chain yang disahkan; unmatched/blank tetap tersimpan tanpa akses scope biasa; tidak ada scope grant yang melebar akibat mapping. Parent Area per Region masih perlu diisi dari struktur organisasi yang benar.
 
 ## D. Role, account, dan effective scope — C0C-04
 
@@ -81,20 +87,18 @@ Keputusan yang sudah tercatat dan tidak perlu diulang:
 
 - `superadmin` memiliki kontrol penuh; User Management hanya untuk `superadmin`.
 - `admin` berganti nama menjadi `team_leader`; `admin_branch` menjadi `officer`; role lainnya tetap memakai nama yang disetujui.
-- `officer`, `team_leader`, dan `senior_leader` harus setara satu sama lain, tetapi capability set bersama belum dipilih.
+- `officer`, `team_leader`, dan `senior_leader` satu kelompok dan saat ini sama-sama belum diberi capability operasional.
 - `helpdesk` dan `teknisi` ditunda; assignment teknisi tetap di luar scope.
 - Untuk scope v3 saat ini, capability catalog yang disetujui hanya diberikan kepada `superadmin`; peran lain belum mendapat operational grant. `superadmin` memegang explicit global data scope dan menjadi satu-satunya role yang dapat mengatur global/hierarchical scope; audit reader juga hanya `superadmin`.
 
-Keputusan/bukti yang masih diperlukan:
+Aturan akses untuk scope aplikasi saat ini sudah cukup jelas: Superadmin punya kontrol penuh dan global; User Management hanya Superadmin; `officer`, `team_leader`, `senior_leader` satu kelompok dengan hak yang sama (saat ini belum diberi capability operasional); `helpdesk` dan `teknisi` ditunda. Akun hasil migrasi tidak otomatis aktif sebelum scope dan password aman tervalidasi. Cakupan lama dihitung dari grant per-user dan dibandingkan saat snapshot; user tanpa scope tetap tanpa akses, bukan diberi akses global.
+
+Pekerjaan teknis berikut tidak meminta keputusan role baru:
 
 | Pertanyaan | Keputusan pemilik |
 |---|---|
-| Capability produk apa yang diberikan kepada cohort setara `officer`/`team_leader`/`senior_leader`? Daftar capability code secara eksplisit; kosong berarti deny. |  |
-| Akun legacy aktif otomatis? (default aman: tidak) |  |
-| Bagaimana 13 user yang tidak memperoleh leaf dari union direct FK+junction diperlakukan sampai role/global exceptions dan per-user parity selesai? (default aman: jangan aktifkan) |  |
-| Metadata audit yang boleh dibaca dan periode retensi |  |
-| Apakah role change/credential reset termasuk User Management? Reset harus memakai flow aman, bukan password berbasis username. |  |
-| Approver dan tanggal keputusan |  |
+| Validasi migrasi yang akan dijalankan pada snapshot terdaftar | Hitung union scope lama dari kolom langsung dan tabel grant, deduplikasi workzone, bandingkan per user dengan target, dan jangan aktifkan user jika ada scope yang tidak bisa dibuktikan. Ini pengujian parity, bukan minta pemilik memetakan setiap user satu per satu. |
+| Audit metadata dan retention | Periode penyimpanan audit masih mengikuti keputusan retensi terpisah; tidak mengubah role scope migration. |
 
 Acceptance migrasi: pada snapshot yang terdaftar, hitung effective leaf scope lama dari seluruh direct FK dan junction grants, role/global exceptions, lalu bandingkan per-user dengan target; semua privilege delta harus disetujui. Tidak ada aktivasi akun sebelum parity lolos.
 
@@ -108,7 +112,7 @@ Isi disposition eksplisit untuk setiap 84 scalar field pada `Legacy-Field-Mappin
 - `exclude`: alasan terdokumentasi dan bukti bahwa field tidak diperlukan oleh produk/histori; perlu persetujuan pemilik.
 - `derived`: aturan dan versi yang disetujui; jangan mengganti nilai historis secara diam-diam.
 
-Schema Drizzle untuk tabel mapping lokal `source_vlookup` kini tersedia pada `packages/db/src/schema.ts`; data belum di-seed/migrasikan. Aggregate lokal read-only menemukan 135 row/135 distinct `value_id`, 20 customer-type key, 40 realm key, dan tidak ada duplicate/conflicting output group pada key normalization yang diuji. Namun checked-in seed berisi 134 row/19 customer-type key, sehingga mapping aktual dan seed berbeda; provenance tabel tetap unclassified. Legacy lookup indexes non-unique dan cache Map akan menimpa duplicate key menurut urutan query jika duplicate ada; classifier juga memiliki override sebelum lookup. Sebelum classifier menghasilkan `jenis_tiket_1/2`, pemilik perlu menetapkan mapping yang otoritatif beserta provenance, normalisasi key, precedence/override, dan rule/mapping version. Baris `source_vlookup` adalah konfigurasi classifier lokal, bukan sumber fakta ticket NOSSA. Rincian ada di `Phase-0C-Legacy-Classification-TTR-Reference.md`.
+Schema Drizzle untuk tabel mapping lokal `source_vlookup` tersedia di `packages/db/src/schema.ts`. **Keputusan pemilik:** data tabel `source_vlookup` pada database legacy adalah sumber otoritatif untuk mengisi `jenis_tiket_1` dan `jenis_tiket_2` pada ticket, seperti aplikasi lama; checked-in seed bukan sumber pengganti jika berbeda. Hasil profiling lokal: 135 row, 20 customer-type key, 40 realm key, tanpa duplicate pada normalisasi yang diuji; seed berisi 134 row/19 customer-type key. Perbedaan itu akan diselesaikan dengan mengambil mapping dari snapshot database yang disetujui, bukan menebak baris tambahan. Hasil klasifikasi disimpan sebagai snapshot pada ticket agar perubahan mapping berikutnya tidak mengubah history diam-diam. Semua output lama `RESELLER` menjadi `INDIBIZ`. Rincian teknis ada di `Phase-0C-Legacy-Classification-TTR-Reference.md`.
 
 ### Bukti kebutuhan produk yang sudah ditemukan
 
@@ -121,16 +125,15 @@ Ini adalah jejak pemakaian/requirement candidate dari `PRD.md` dan `Phase-0B-Dis
 | Rekap Workorder | reported/operational date basis; workzone/master; status; bucket/segment dan filter/drilldown dimensions | Classifier SQL dan JS legacy berbeda; technician metrics dikeluarkan dari scope. Summary/cell/drilldown harus memakai rule dan scope yang sama. |
 | Detail WO HI | incident/status/workzone; reported, booking, resolved, closed timestamps; ticket type; age dan effective Max TTR | Legacy list/summary memakai builder berbeda dan offset paging. Date basis, lifecycle, SLA unit, dan Max TTR semantics perlu keputusan terpisah dari compliance KPI. |
 
-Field names pada kelompok di atas harus dicocokkan satu per satu ke inventaris 84 field dan kandidat target. Jejak consumer legacy membantu mengidentifikasi risiko bila field dihapus, tetapi tidak membuktikan bahwa field boleh dipertahankan, dipublikasikan, atau dijadikan fakta NOSSA.
+Rekomendasi sederhana: jangan buang ticket eligible. Simpan field yang dibutuhkan empat menu sebagai data ticket v3; simpan old-only/local/manual fields di `ticket_legacy_archive`; batasi PII/free-text ke archive Superadmin-only dan jangan tampilkan di API umum. Assignment teknisi dan tabel assignment lama tidak diaktifkan sebagai fitur.
 
 Daftar kandidat pada mapping saat ini belum merupakan izin untuk menyimpan atau membuang field. Periksa khusus PII, free text, user/technician references, local/manual annotations, validation, pending, SLA/TTR historis, dan generated fields. Tidak boleh menghapus field/data eligible tanpa alasan dan disposition yang disetujui.
 
 | Keputusan umum | Keputusan pemilik |
 |---|---|
-| Kriteria ticket historis yang eligible; termasuk manual/local-only |  |
-| Archive allowlist, reader roles, export prohibition/permission, retention, dan disposal evidence |  |
-| PII/free-text retention dan kebutuhan encrypted offline backup |  |
-| Dataset `source_vlookup` yang disetujui, key uniqueness/normalization, classifier precedence/override dan versioning untuk menghasilkan `jenis_tiket_1/2` |  |
+| Archive legacy dan PII | **Usulan aman:** semua ticket historis eligible tetap tersimpan; PII/free-text yang tidak dibutuhkan menu berada hanya di archive terbatas, Superadmin-only, tanpa export/API umum. Mohon berikan periode retensi organisasi (atau nama kebijakan internal). |
+| Ticket manual/incident invalid | Jangan hapus diam-diam; valid masuk `tickets`, invalid/collision tetap dihitung dalam archive/quarantine dengan alasan. |
+| Authoritative source mapping | **Ditetapkan pemilik:** tabel live `source_vlookup` legacy; bukan checked-in seed bila berbeda. Output `RESELLER` menjadi `INDIBIZ`. |
 | Approver dan tanggal keputusan |  |
 
 Acceptance: 84/84 row memiliki disposition dan transform yang dapat diuji; setiap field yang tidak disimpan memiliki alasan; data archive dibatasi sesuai policy; golden fixture menunjukkan exact row accounting tanpa kehilangan field eligible.
@@ -142,7 +145,7 @@ Jangan menaruh password, DSN, token, atau secret di lembar ini. Kirim secret mel
 | Registry item | Nilai non-secret yang diperlukan | Status/owner |
 |---|---|---|
 | Legacy MySQL discovery source | MySQL 8.0.46; loopback `127.0.0.1:3306`; database `dompis_db`; container label `mysql_baru`; environment/data provenance unclassified; owner is application owner; bounded allowlist is registered in `Database-Access.md`; observed principal `root@%` is overprivileged and is not a migration role | Registered for bounded read-only discovery only; migration source approval, least-privilege role, and owner environment classification remain open. No secret is recorded. |
-| Consistent source snapshot | Snapshot ID/time, source schema hash, row manifest/count method, isolation/consistency method, backup location/restore evidence, retention | Not provided; no consistent snapshot is registered. |
+| Consistent source snapshot | Snapshot ID/time, source schema hash, row manifest/count method, isolation/consistency method, backup location/restore evidence, retention | Not provided. Perlu menetapkan apakah `dompis_db` lokal adalah salinan sumber migrasi atau harus dibuat snapshot konsisten dari server produksi. |
 | PostgreSQL development target | PostgreSQL 18.7; local Unix socket (configured port 5432); database `dompis_v3`; development environment; application owner; `public` schema; observed role `pakbreng` | Identity registered for local development metadata/synthetic access only. Role privilege attributes and dedicated non-superuser migration role remain unverified. `dompis_v3_dev` is absent. |
 | Rollback/restore rehearsal | Procedure reference, backup verification, restore-test date/result, approver | Not performed on an isolated target; evidence and approver remain open. Do not reset the persistent `dompis_v3` database. |
 
@@ -150,11 +153,11 @@ Acceptance: source snapshot immutable dan dapat diidentifikasi; metadata/credent
 
 ## Exit checklist Phase 0C
 
-- [ ] C0C-01: authoritative API contract dan sanitized closed/reopened fixture tervalidasi; pagination, error, dan completeness behavior terdokumentasi.
-- [ ] C0C-02: status/lifecycle/reopen, source conflict, timezone, TTR/SLA, dan KPI decisions disetujui serta memiliki golden fixtures.
-- [ ] C0C-03: parent-area crosswalk, Workzone dictionary, uniqueness, unmatched/blank dispositions, dan scope implications tervalidasi.
-- [ ] C0C-04: role/capability policy, account activation, global grants, no-leaf treatment, dan exact per-user effective-scope parity disetujui.
-- [ ] C0C-05: 84/84 field disposition, eligibility, archive/PII access, retention dan exclusion rationale disetujui.
+- [ ] C0C-01: sanitized closed/reopen response contract and pagination behavior verified; owner lifecycle rule is already decided.
+- [ ] C0C-02: executable legacy TTR paths represented by sanitized golden cases; upstream timestamp and raw TTR contract verified.
+- [ ] C0C-03: new Area-to-Region parent map recorded; unmatched/blank Workzones preserved as NULL/out-of-scope. Optional dictionary may repair the 74 unmatched keys later.
+- [x] C0C-04: current role policy decided (Superadmin only operational/global grants; equal middle-role cohort has zero grants; Helpdesk/Technician deferred; imported users inactive until validated). Per-user scope parity remains migration QA.
+- [ ] C0C-05: 84/84 field disposition and historical eligibility validated; archive/PII access and retention policy approved.
 - [ ] C0C-06: source snapshot/read-only role dan isolated PostgreSQL target/restore terdaftar.
 - [ ] Security, rollback, test results, unresolved risks dan implementation plan diperbarui; pemilik menyetujui exit gate.
 

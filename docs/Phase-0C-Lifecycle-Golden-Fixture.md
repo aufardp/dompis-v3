@@ -1,6 +1,6 @@
 # Phase 0C — Synthetic lifecycle golden fixture
 
-Status: **owner-approved examples for the enumerated status labels only**. This fixture tests the business mapping supplied by the application owner; it does not validate NOSSA response shape, field names, timestamps, source ordering, or closed/reopen endpoint coverage.
+Status: **owner-approved examples for the enumerated status labels and fail-closed treatment of anything else**. This fixture tests the business mapping supplied by the application owner; it does not validate NOSSA response shape, field names, timestamps, source ordering, or closed/reopen endpoint coverage.
 
 ## Status-to-lifecycle cases
 
@@ -16,6 +16,10 @@ Status: **owner-approved examples for the enumerated status labels only**. This 
 | `closed_mediacare` | `MEDIACARE` | `closed` | none |
 | `closed_salamsim` | `SALAMSIM` | `closed` | none |
 | `closed_closed` | `CLOSED` | `closed` | none |
+| `legacy_open_unlisted` | `OPEN` | `unknown` | none |
+| `legacy_close_unlisted` | `CLOSE` | `unknown` | none |
+| `unrecognized_status` | `NEW_VENDOR_STATE` | `unknown` | none |
+| `missing_status` | `NULL` | `unknown` | none |
 
 ## Synthetic same-incident transition cases
 
@@ -29,7 +33,7 @@ Status: **owner-approved examples for the enumerated status labels only**. This 
 ## Deliberate coverage limits
 
 - Case/status values are the exact labels supplied by the owner. No case folding, trimming, aliasing, or additional status value is assumed.
-- Unlisted or null status behavior is not asserted because the owner has not yet decided it.
+- Unlisted or null status remains `unknown`; never infer lifecycle from a new label or endpoint name. `OPEN` and `CLOSE` are not added because they are absent from the owner's explicit sets.
 - A reopen requires observations for the same incident in closed then open groups. This fixture does not establish how either NOSSA endpoint exposes that transition or how to order conflicting source rows.
 - No closure timestamp is derived from status. `resolved_at`, `closed_at`, timezone, source version/conflict, history retention, TTR/SLA, and KPI eligibility are outside this fixture and remain open.
 

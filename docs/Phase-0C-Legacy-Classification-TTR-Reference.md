@@ -17,7 +17,7 @@ This differs materially from the registered local discovery read recorded in `Ph
 
 The old classifier is a chain of rules and lookups, not a direct one-column mapping. Legacy behavior reviewed in source indicates direct overrides can precede lookup. The lookup paths include channel/value ID to `jenis_tiket`; B2C `customer_type_key` to `jenis_tiket_2_val`; and B2B `service_type` through `realm_b2b`/flags before deriving the second type. The old application loaded mapping rows into in-memory Maps; that is evidence of implementation shape, not an instruction to reproduce it.
 
-The v3 `source_vlookup` Drizzle table is now represented in the schema as a local reference table. It is not yet populated, and its candidate columns/keys do not establish real-world uniqueness, precedence, or canonicalization. Tickets should retain approved classification snapshots so later lookup edits do not silently rewrite history. Before implementing classification, verify actual mapping rows, duplicate keys, normalization, null behavior, direct-override precedence, and the expected output for sanitized golden cases. No fuzzy lookup or guessed parent is allowed.
+The owner has selected the legacy database's `source_vlookup` table as authoritative for generating `jenis_tiket_1` and `jenis_tiket_2`, matching the old application. The checked-in seed is only a historical seed artifact and must not replace database rows when they differ. The v3 Drizzle table exists but is not populated; tickets should retain classification snapshots so later mapping edits do not silently rewrite history. The bounded profile found no duplicate keys under tested normalization, but precedence and golden outputs still need fixture coverage. No fuzzy lookup or guessed parent is allowed.
 
 ### Additional legacy source audit: mapping rows are not the whole classifier
 
@@ -94,7 +94,7 @@ The report estimates PL-TSEL at about 853,745 tickets, roughly 80% of that repor
 | INDIBIZ | 24h in executable config; legacy matrix says 4h | 33,081 |
 | NON NUMBERING | 24h display; neutral | 12,715 |
 | UNSPEC B2B | 24h | 11,093 |
-| RESELLER | 24h in executable config; legacy matrix says 6h | 9,569 |
+| Legacy `RESELLER` label → v3 `INDIBIZ` | 24h in executable config for both old labels; legacy matrix says Indibiz 4h / Reseller 6h. Owner says consolidate the old Reseller category into Indibiz; use executable 24h as parity candidate, keep matrix as stale conflict evidence. | 9,569 rows reported under the old label |
 | WIFI-ID | 24h | 3,006 |
 | TSEL / TSEL LOW | 24h | 5,407 / 4,971 |
 | TSEL MINOR / MAJOR / CRITICAL | 16h / 8h / 4h | 1,092 / 67 / 53 |
@@ -151,11 +151,12 @@ The upstream NOSSA numeric TTR field units remain unknown. A legacy parser inter
 - [ ] Identify which database/snapshot and exact row predicate produced the approximately 2.67m figure; reconcile with the local 1,108,814-row audit.
 - [ ] Obtain sanitized SQL/aggregate definitions for unique values, pairs, ticket counts, and every per-rule count.
 - [ ] Verify all 46 type-2 values and all 62 pairs, including null/blank handling; current relayed report lists only the rule-relevant subset.
-- [ ] Profile actual `source_vlookup` rows for duplicate lookup keys, casing, nulls, precedence, and unmapped values. Approve canonical output without mutating historical source values.
+- [x] Bounded local aggregate profile found no duplicate lookup keys or conflicting outputs under tested normalization; no raw mapping values were emitted. Actual table is the owner-selected authority; its content differs from the non-authoritative checked-in seed.
+- [ ] Capture exact authoritative mapping rows/hash/version from the approved consistent source snapshot; verify null and override outcomes with sanitized golden cases.
 - [ ] Confirm whether the deployed mapping is maintained by a source table, checked-in seed, or both; compare provenance and avoid running legacy seed code.
 - [ ] Prove deterministic results for duplicate normalized keys and override precedence; add only evidence-backed v3 uniqueness constraints and indexes.
 - [ ] Resolve executable-config vs documentation conflicts (at least INDIBIZ and RESELLER) with the application owner.
-- [ ] Resolve blank/unrecognized B2C customer type behavior separately for display, compliance eligibility, and KPI denominator.
+- [x] Legacy blank/unrecognized B2C customer type behavior is distinguished by path: compliance not-evaluated/null; display fallback 24h only. Add a synthetic parity fixture before implementation acceptance.
 - [ ] Approve the threshold/clock basis for each product surface; separate compliance, countdown, display Max TTR, and MTTR.
 - [ ] Confirm work-hour calendar, timezone, boundary inclusivity, booking/guarantee/GAMAS predicates, suffix parsing, and tier family membership.
 - [ ] Build sanitized golden fixtures and expected outputs after business rules are approved; record rule version and reclassification/rollback plan.

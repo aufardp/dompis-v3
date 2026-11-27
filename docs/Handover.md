@@ -1660,3 +1660,31 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: tidak ada database changes (read-only transaction rolled back); untuk dokumentasi, revert allowlist extension and aggregate notes if scope should be withdrawn.
 - Langkah berikutnya: pemilik menetapkan authoritative mapping source/versi dan normalization/override contract; validasi fixture golden; lanjutkan keputusan lain Phase 0C (NOSSA closed/reopen evidence, time/TTR/KPI, geography crosswalk, field retention and source snapshot/restore gates).
 - Pesan commit: `docs(phase-0c): profile registered vlookup aggregates`.
+
+## 2026-11-27 — Apply owner clarifications and simplify legacy schema gates
+
+- Phase: Phase 0C — C0C-01 through C0C-06 clarification and migration readiness.
+- Tindakan: menanggapi koreksi pemilik bahwa status/reopen, sumber `source_vlookup`, role policy, dan penggantian Reseller→Indibiz sudah ditetapkan. Menyelaraskan ADR-050, Business Rules, discovery/owner packet, TTR reference, lifecycle fixture, field mapping, dan Phase 0D readiness. Memeriksa model Prisma legacy untuk parent relation wilayah, kolom ticket, scope langsung/junction, source lookup, dan tabel lama raw/projection.
+- File berubah: `docs/Decision-Log.md`, `docs/Business-Rules.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Lifecycle-Golden-Fixture.md`, `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Legacy-Field-Mapping.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses pada pekerjaan koreksi dokumentasi ini; legacy Prisma/source code dibaca read-only. Profil MySQL `source_vlookup` yang sudah dicatat di entry sebelumnya tetap aggregate-only.
+- SQL/command tersanitasi: `sed`/`rg` read-only pada `dompis_v2/prisma/schema.prisma`, mapping docs, classifier docs, dan role scope helper; `git diff --check`.
+- Hasil pengujian aktual: schema menunjukkan old hierarchy `region → branch → area → service_area`, tetapi Region tidak memiliki parent-area FK; ticket `workzone` berupa string dan ticket menyimpan 84 scalar fields; user scope tersebar di direct FK dan empat junction tables; source lookup menjadi classifier input; old raw/projection objects tidak dibawa ke v3. Tidak ada test suite/DB query pada pekerjaan ini. `git diff --check` lulus setelah perubahan final.
+- Keputusan teknis: lifecycle exact lists and reopen rule are settled; unlisted statuses stay unknown; former Reseller output maps to Indibiz. Use executable 24h config as TTR parity candidate and retain 4h/6h matrix as stale discrepancy. `source_vlookup` live table is mapping authority; checked-in seed is secondary. All ticket rows with unmatched Workzone are retained with NULL FK/quality flag and excluded from ordinary scope; no user must manually disposition each row. Role decisions are settled; per-user scope parity is migration QA.
+- Risiko/kendala: Phase 0C is still gated by one new Area parent mapping per legacy Region, retention period/PII archive approval, source snapshot provenance and restore/least-privilege evidence, plus NOSSA closed/reopen response fixture and upstream timestamp/version contract. These are stated simply in the owner packet; no repeated decisions for status mapping, role names, Reseller rename, or source_vlookup authority are requested.
+- Rollback: revert ADR-050 and corresponding documentary clarifications; no source/schema/runtime/database change was made.
+- Langkah berikutnya: collect (1) parent Area mapping, (2) archive retention rule, (3) classification of `dompis_db` as source copy vs production-consistent snapshot, and (4) sanitized closed/reopen fixture or approved NOSSA validation budget. Then finish the relevant validation checklist; do not run live API or create a source snapshot until its access/runbook conditions are met.
+- Pesan commit: `docs(phase-0c): apply owner decisions and clarify migration gates`.
+
+## 2026-11-27 — Remove stale source_vlookup decision gate
+
+- Phase: Phase 0C — C0C-05 documentation consistency.
+- Tindakan: memperbarui konsekuensi ADR-049 agar tidak lagi meminta keputusan pemilik tentang sumber mapping; ADR-050 sudah menetapkan legacy `source_vlookup` sebagai sumber otoritatif. Gate yang tersisa adalah snapshot konsisten terdaftar dan golden fixture untuk perilaku classifier.
+- File berubah: `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi atau perubahan database.
+- SQL/command tersanitasi: edit dokumentasi; `git diff --check`.
+- Hasil pengujian aktual: `git diff --check` lulus; tidak ada test suite atau query database.
+- Keputusan teknis: keputusan authority mapping dianggap selesai; persetujuan akses/snapshot dan validasi teknis isi mapping tetap terpisah.
+- Risiko/kendala: provenance sumber lokal `dompis_db` belum disahkan sebagai snapshot migrasi yang konsisten.
+- Rollback: revert perubahan wording ADR-049 dan catatan ini; tidak ada perubahan runtime/schema/data.
+- Langkah berikutnya: lanjutkan Phase 0C dengan mengumpulkan hanya bukti yang benar-benar belum ada: parent Area per Region, retensi archive/PII, status snapshot sumber, dan fixture NOSSA closed/reopen.
+- Pesan commit: `docs(phase-0c): close stale vlookup authority gate`.
