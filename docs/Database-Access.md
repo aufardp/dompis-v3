@@ -1,6 +1,32 @@
 # Database access and change control
 Owner grants local agent MySQL and PostgreSQL read/write access. This is authorization, not a connection or credential. Register each target (engine, host, port, database, environment, allowed schemas, owner, role); verify identity before every write session using SELECT DATABASE(), @@hostname, @@port, CURRENT_USER() on MySQL or current_database(), inet_server_addr(), inet_server_port(), current_user on PG. Unknown target = stop writes. Never log DSN/password, commit secrets, export customer data to external services, or open public ports.
 
+## Registered target — legacy local discovery only (2026-11-27)
+
+| Attribute | Registration |
+|---|---|
+| Engine/address/database | MySQL 8.0.46, loopback `127.0.0.1:3306`, database `dompis_db`, container label `mysql_baru`; session identity was rechecked on 2026-11-27 |
+| Environment/data provenance | Local legacy database; underlying row provenance is **unclassified** and may contain production-derived records. It is not disposable and is not an approved consistent migration snapshot. |
+| Owner/authorization | DOMPIS application owner authorized local MySQL read/write access in the master engineering instruction; discovery task limits this registration to read-only. |
+| Permitted scope | Metadata and bounded aggregate `SELECT` only on `ticket`, `area`, `region`, `branch`, `service_area`, `users`, and `user_*` grant tables; read-only transaction, explicit statement timeout, no row-level PII output. |
+| Role/credential | Effective principal observed as `root@%` on 2026-11-27; use existing local secret injection without displaying or recording credentials. This role is broader than discovery needs and was used only in explicit read-only transactions; no separate least-privilege migration role is registered. |
+| Prohibited by this registration | DML/DDL, raw row exports, schema changes, migration, backup/cutover, ETL, or treating this live local database as a consistent snapshot. |
+
+This registration authorizes only low-impact discovery queries described above. It does not satisfy Phase 0C/3A source snapshot, read-only migration-role, backup/restore, or retention gates.
+
+## Registered target — local PostgreSQL development metadata (2026-11-27)
+
+| Attribute | Registration |
+|---|---|
+| Engine/address/database | PostgreSQL 18.7, local Unix socket (configured port 5432), database `dompis_v3`; session identity checked on 2026-11-27 |
+| Environment/data provenance | Local DOMPIS v3 development database. Treat as persistent/non-disposable; current row counts were not queried in this registration check. A separate `dompis_v3_dev` database is not present. |
+| Owner/authorization | DOMPIS application owner; local metadata and bounded synthetic test access only. |
+| Permitted scope | Metadata and rollback-only synthetic test transactions in `public`; no business-data migration or bulk operations under this registration. |
+| Role | Effective session role observed as `pakbreng`; privilege attributes and a dedicated least-privilege migration role have not been verified. |
+| Prohibited by this registration | Reset/drop/truncate, production migration, bulk writes, legacy import, or assuming the database is empty/disposable. |
+
+This registration confirms the current local development target identity only. It does not satisfy the isolated restore/rollback rehearsal or migration-role portion of C0C-06.
+
 | Operation | Dev / isolated restore / staging | Production |
 |---|---|---|
 | Metadata, bounded SELECT, EXPLAIN | Allowed | Allowed, time/row budget |

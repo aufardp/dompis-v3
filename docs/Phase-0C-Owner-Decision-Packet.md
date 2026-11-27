@@ -51,6 +51,8 @@ Lampirkan CSV/lembar crosswalk tanpa data tiket, dengan kolom minimal berikut:
 
 Lampirkan kamus resmi Workzone code/name dan aturan normalisasi yang disetujui. Untuk 74 normalized ticket keys yang sebelumnya unmatched (7.171 rows) dan 47 rows blank/null, berikan disposition per key/group: match ke ID resmi, tetap unmapped/isolated, atau pengecualian dengan alasan. Jangan gunakan fuzzy match atau menebak parent.
 
+Bukti agregat terbaru (2026-11-27): 393/393 nonblank `service_area.nama_sa` unik setelah `UPPER(TRIM(...))` dengan perbandingan byte-exact; 391/465 distinct nonblank ticket Workzone keys match tepat satu master, 74 tidak match (7.171 ticket rows), dan 47 ticket rows blank/null. Ini membuktikan keunikan key master saat ini, bukan bahwa `nama_sa` adalah kode Workzone resmi. Konfirmasi semantic code/name dan lampirkan crosswalk/dictionary tetap dibutuhkan.
+
 Acceptance: exact normalized key uniqueness dibuktikan; setiap mapped key menunjuk satu master Workzone dan satu parent chain yang disahkan; unmatched/blank mendapat disposition eksplisit; tidak ada scope grant yang melebar akibat mapping.
 
 ## D. Role, account, dan effective scope — C0C-04
@@ -69,7 +71,7 @@ Keputusan/bukti yang masih diperlukan:
 |---|---|
 | Capability produk apa yang diberikan kepada cohort setara `officer`/`team_leader`/`senior_leader`? Daftar capability code secara eksplisit; kosong berarti deny. |  |
 | Akun legacy aktif otomatis? (default aman: tidak) |  |
-| Bagaimana akun dengan nol junction-derived leaf diperlakukan sampai direct FK/global exception direkonsiliasi? (default aman: jangan aktifkan) |  |
+| Bagaimana 13 user yang tidak memperoleh leaf dari union direct FK+junction diperlakukan sampai role/global exceptions dan per-user parity selesai? (default aman: jangan aktifkan) |  |
 | Metadata audit yang boleh dibaca dan periode retensi |  |
 | Apakah role change/credential reset termasuk User Management? Reset harus memakai flow aman, bukan password berbasis username. |  |
 | Approver dan tanggal keputusan |  |

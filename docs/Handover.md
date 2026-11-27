@@ -1455,3 +1455,42 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: exact query-level usage dan actual row/value semantics belum diverifikasi pada snapshot MySQL terdaftar. C0C-05 tetap belum lulus; C0C-01–04 dan source registration C0C-06 juga terbuka.
 - Rollback: revert tabel tambahan dalam packet dan entry handover; tidak ada source/schema/data effect.
 - Langkah berikutnya: pemilik memilih disposition dan field policy berdasar bukti; lakukan query-level dependency/data reconciliation hanya pada target source terdaftar. Pesan commit: `docs(phase-0c): map product field dependencies for owner review`.
+
+## 2026-11-27 — Profile registered local MySQL aggregates for Phase 0C
+
+- Phase: Phase 0C — Workzone identity and legacy effective-scope aggregate validation.
+- Tindakan: meregistrasikan `dompis_db` lokal sebagai target discovery read-only dengan provenance data tidak diketahui, batas tabel/query, larangan DML/DDL, dan penegasan bukan snapshot migrasi. Memverifikasi sesi MySQL dan menjalankan metadata/aggregate SELECT untuk enam drift kolom, seluruh key Workzone, serta union grant junction + direct FK. Output hanya berisi metadata dan angka agregat; tidak ada nilai ticket, nama user, atau identifier yang ditampilkan. Memperbarui status C0C-03/04/06, paket keputusan, Database Access, dan ADR-047.
+- File berubah: `docs/Database-Access.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: MySQL 8.0.46 lokal loopback `127.0.0.1:3306/dompis_db`, container `mysql_baru`; identity efektif `root@%`. Data provenance belum diklasifikasi. Seluruh query dalam `START TRANSACTION READ ONLY`, session max execution time 8 detik, lalu `ROLLBACK`; tidak ada write/schema effect.
+- SQL/command tersanitasi: `node /private/tmp/dompis-phase0c-profile.js`; identity `SELECT DATABASE(), @@hostname, @@port, CURRENT_USER(), VERSION()`; `INFORMATION_SCHEMA.COLUMNS` untuk enam kolom; grouped normalized-key aggregate pada `ticket.workzone` dan `service_area.nama_sa`; CTE leaf expansion dari empat junction + direct user FKs. Script memuat credential dari local env internal, tidak mencetaknya, dan memaksa guard protocol/loopback/port/database.
+- Hasil pengujian aktual: target identity cocok. MySQL type drift terkonfirmasi: `reported_date_dt` DATETIME, `classification_flag` VARCHAR(50), `onu_rx` VARCHAR(50), `status_manja` VARCHAR(100), `validation_flagged_at` DATETIME(6), `ttr_deadline_at` DATETIME. Seluruh 393 normalized nonblank master keys unik; 391/465 ticket keys match, 74 unmatched (7.171 ticket rows), 47 blank/null. Scope: 17.969 junction pairs, 611.066 direct-FK pairs, 16.139 overlap, union 612.896 pairs/4.085 users; 13/4.098 users tidak memiliki leaf pada gabungan tersebut. `git diff --check` lulus. Ini bukan benchmark atau test suite.
+- Keputusan teknis: byte-exact normalized direct matching tampak cukup untuk master keys yang ada; alias table tidak dibutuhkan untuk key unik. Tetap jangan menganggap `nama_sa` sebagai kode Workzone resmi tanpa dictionary/owner confirmation. User scope counts adalah baseline agregat semua akun; bukan authorization parity dan bukan izin aktivasi.
+- Risiko/kendala: koneksi menggunakan `root@%` yang overprivileged, dibatasi lewat target guard dan read-only transaction; buat role read-only khusus sebelum ETL. Sumber bukan snapshot konsisten yang terdaftar, role/global exceptions dan per-user target parity belum direkonsiliasi. Tidak ada database row yang berubah.
+- Rollback: query sudah di-rollback; hapus target discovery registration/ADR dan catatan angka agregat jika hasil dianggap invalid. Tidak ada DB rollback. Skrip sementara `/private/tmp/dompis-phase0c-profile.js` tidak berisi secret atau data hasil query.
+- Langkah berikutnya: owner mengesahkan Workzone dictionary/crosswalk dan privilege/account policy; sediakan source snapshot konsisten plus least-privilege migration role; lengkapi field disposition dan NOSSA closed/reopen/time/TTR evidence sebelum exit gate. Pesan commit: `docs(phase-0c): profile workzone and legacy scope aggregates`.
+
+## 2026-11-27 — Reconcile current PostgreSQL development target registration
+
+- Phase: Phase 0C/3A — C0C-06 PostgreSQL target identity revalidation.
+- Tindakan: menjalankan read-only `psql` metadata query ke `dompis_v3` dan `dompis_v3_dev`. Memastikan `dompis_v3` aktif sebagai PostgreSQL 18.7 lokal dengan role `pakbreng`; `dompis_v3_dev` tidak ada. Memperbarui target registry dan readiness docs agar probe lama tidak disalahartikan sebagai keadaan database sekarang.
+- File berubah: `docs/Database-Access.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Phase-3A-Migration-Readiness.md`, `docs/Handover.md`.
+- Database target: metadata saja pada local PostgreSQL socket/database `dompis_v3`, role `pakbreng`; koneksi ke nama DB yang tidak ada `dompis_v3_dev` gagal sebelum query. Tidak ada row count, DDL, atau DML dijalankan.
+- SQL/command tersanitasi: `psql -X -d dompis_v3 -Atc 'SELECT current_database(), inet_server_addr(), inet_server_port(), current_user, version()'`; query sama pada `dompis_v3_dev` menghasilkan `database does not exist`; `git diff --check`.
+- Hasil pengujian aktual: identitas `dompis_v3`, PostgreSQL 18.7, role `pakbreng` terkonfirmasi; `dompis_v3_dev` absent. `git diff --check` lulus. Tidak ada test suite dijalankan.
+- Keputusan teknis: dokumentasikan `dompis_v3` sebagai persistent local dev target; jangan reset dan jangan anggap empty/disposable. PostgreSQL role privilege, dedicated migration role, current row counts, dan restore rehearsal belum diverifikasi.
+- Risiko/kendala: readiness record lama menyebut `dompis_v3_dev` sebagai target probe; catatan historis dipertahankan namun diklarifikasi addendum. C0C-06 tetap partial.
+- Rollback: revert perubahan registry/readiness docs; tidak ada database rollback karena hanya SELECT metadata.
+- Langkah berikutnya: verifikasi backup/restore pada target terisolasi dan least-privilege migration role setelah snapshot source/owner policy tersedia. Pesan commit: `docs(phase-0): register current local PostgreSQL target`.
+
+## 2026-11-27 — Carry verified geography and scope evidence into migration gates
+
+- Phase: Phase 0C/3A — consolidate current read-only aggregate evidence.
+- Tindakan: memperbarui owner packet dengan hasil uniqueness/matching Workzone terakhir serta memperbarui Phase 3A readiness untuk memakai baseline direct-FK + junction scope, bukan hanya junction-only count lama. Tetap menandai official code identity, parent crosswalk, unmatched keys, role exceptions, dan per-user parity sebagai unresolved.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-3A-Migration-Readiness.md`, `docs/Handover.md`.
+- Database target: tidak ada query baru; merujuk hasil read-only MySQL 8.0.46 lokal `dompis_db` yang dicatat pada entry Handover sebelumnya.
+- SQL/command tersanitasi: pembandingan dokumentasi Phase 0C/3A; `git diff --check`.
+- Hasil pengujian aktual: konsistensi angka dan label blockers direview; `git diff --check` lulus. Tidak ada test/build dijalankan.
+- Keputusan teknis: bukti uniqueness/matching adalah aggregate profile, bukan owner crosswalk. Scope union mencakup semua user row tanpa active filter dan belum mengimplementasikan global/role exceptions; jangan menggunakannya untuk migrasi atau aktivasi.
+- Risiko/kendala: Phase 3A tetap diblokir snapshot, role, retention, lifecycle, crosswalk, serta authorization parity gates.
+- Rollback: revert perubahan readiness/paket dan entry Handover; tidak ada DB/source-code rollback.
+- Langkah berikutnya: tunggu dictionary/crosswalk, account/capability decisions, per-field disposition, sanitized NOSSA closed/reopen fixture, dan source snapshot terdaftar. Pesan commit: `docs(phase-3a): refresh geography and scope readiness evidence`.

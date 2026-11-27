@@ -49,3 +49,7 @@ A new empty local database `dompis_v3_dev` was created on PostgreSQL 18.7 and ve
 - This confirms syntax/application on this local PG18 version and current Drizzle-schema synchronization. It does not validate approved business semantics, production plans, legacy data, archive retention, restore, Bun SQL runtime connectivity, or reapplication/idempotency.
 - The database contains schema only and remains disposable development infrastructure. No business rows, secrets, production target or legacy data were involved.
 - PG18 satisfies only the PostgreSQL target part of C0C-06. The legacy audit previously identified local `dompis_db` in container `mysql_baru`, but its environment/owner is unclassified and it is not registered as an approved consistent migration snapshot/read-only source. Contract fixtures and owner decisions remain blockers; final DDL and Phase 1 gates remain open.
+
+## Addendum — current PostgreSQL target identity (2026-11-27)
+
+The earlier `dompis_v3_dev` compatibility-probe database is no longer present. Current local identity was checked with a read-only `psql` query: PostgreSQL 18.7 database `dompis_v3`, reached over the local Unix socket, effective role `pakbreng`. Current business-table row counts and role privilege attributes were not queried. Register `dompis_v3` as a persistent development target; do not infer that it is empty or disposable from the earlier probe. No DDL/DML was run in this recheck. Dedicated migration-role and isolated restore/rollback evidence remain open.
