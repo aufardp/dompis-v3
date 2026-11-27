@@ -1856,3 +1856,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert perubahan dokumentasi mapping/owner packet/C0C-05 dan entry ini; tidak ada runtime/schema/database change.
 - Langkah berikutnya: lanjutkan Phase 0C dengan menyusun per-field review berdasarkan actual PRD usage dan source mapping, kemudian tampilkan hanya keputusan retensi/snapshot yang memang memerlukan owner. Jangan jalankan ETL sebelum snapshot dan archive policy terdaftar.
 - Pesan commit: `docs(phase-0c): clarify legacy field disposition draft`.
+
+## 2026-11-27 — Consolidate documentation execution readiness
+
+- Phase: documentation quality gate for Phase 0C/0D handoff.
+- Tindakan: memperbarui indeks `docs/README.md` agar hanya merujuk dokumen yang tersedia dan menyelaraskan status Phase 0B/0C/0D/1/2. Menambahkan `Execution-Readiness.md` berisi keputusan owner yang tidak perlu ditanyakan ulang, status tiap phase, urutan gate tersisa, kegiatan aman yang dapat berjalan, serta batas ETL/cutover. Menyelaraskan `Implementation-Plan.md`, menandai bagian gate PRD v1.0 sebagai historis/superseded, dan memperbaiki pernyataan Workzone yang sebelumnya menyiratkan pemilik harus memberi crosswalk sebelum migration design.
+- File berubah: `docs/README.md`, `docs/Implementation-Plan.md`, `docs/PRD.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Execution-Readiness.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: pemeriksaan tautan lokal markdown menggunakan Python terhadap 44 file `.md`; `git diff --check`.
+- Hasil pengujian aktual: 44 file Markdown diperiksa, 0 broken local links; `git diff --check` lulus. Tidak ada test suite, build, aplikasi, DB query, atau live API call.
+- Keputusan teknis: dokumentasi dapat menjadi acuan pekerjaan engineering berikutnya, tetapi Phase 0C tetap belum complete, Phase 0D final design gate masih terbuka, dan Phase 3A ETL belum aman. Owner mapping struktur dan keputusan bisnis yang telah diberikan dinyatakan settled; outstanding work ditulis sebagai bukti teknis/kebijakan retensi, bukan permintaan mengulang keputusan.
+- Risiko/kendala: NOSSA closed→open/order/window evidence, definisi interval/membership report yang belum tercakup PRD, offsetless timestamp evidence, archive field eligibility/PII retention, provenance snapshot, least-privilege migration role, dan isolated restore rehearsal masih diperlukan sebelum migration gate. Tidak ada perubahan runtime/schema/data.
+- Rollback: revert enam file dokumentasi di atas sebagai satu perubahan; tidak ada rollback database/runtime.
+- Langkah berikutnya: mulai pekerjaan berikutnya dari `Execution-Readiness.md`: lanjutkan static/synthetic design dan kumpulkan bukti yang terdaftar; jangan jalankan snapshot, ETL, live NOSSA call, produksi DDL/DML, atau cutover sebelum gate dan persetujuan runbook terkait terpenuhi.
+- Pesan commit: `docs: consolidate execution readiness and phase gates`.
