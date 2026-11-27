@@ -12,7 +12,7 @@ Paket ini mengonsolidasikan input yang masih kurang setelah discovery statis. Ni
 - **Hak akses:** schema lama menyimpan scope di kolom langsung `users` dan empat tabel grant. Migrasi akan menghitung Workzone yang boleh dilihat tiap user, menggabungkan grant tumpang tindih tanpa duplikasi, lalu membandingkannya. Ini bukan pekerjaan manual satu per satu; jika hasil tidak bisa dibuktikan, akun tetap nonaktif/tanpa akses.
 - **Jenis tiket:** tabel live `source_vlookup` adalah kamus classifier dan sumber resmi yang Anda tetapkan; hasil `jenis_tiket_1/2` disimpan pada ticket sebagai snapshot supaya perubahan kamus tidak mengubah sejarah diam-diam.
 
-Yang masih perlu keputusan sederhana: Area baru apa yang menjadi induk tiap Region lama; berapa lama archive historis/PII disimpan; dan apakah `dompis_db` lokal adalah sumber migrasi yang harus dibekukan sebagai snapshot. Ticket Workzone yang tidak cocok tidak perlu dibuang atau ditebak: tetap disimpan tanpa scope biasa sampai ada mapping tepat.
+Klarifikasi pemilik: struktur master mengikuti pemetaan tabel yang sudah diberikan; tabel/level yang ada dipetakan dengan mengganti nama sesuai mapping, bukan meminta crosswalk Area–Region per baris. Jadi crosswalk Area–Region bukan keputusan pemilik yang masih tertunda. Yang tersisa adalah memastikan implementasi skema dan data master mengikuti mapping tersebut. Keputusan lain yang masih diperlukan: berapa lama archive historis/PII disimpan dan apakah `dompis_db` lokal merupakan sumber migrasi yang harus dibekukan sebagai snapshot. Ticket Workzone yang tidak cocok tetap disimpan tanpa scope biasa sampai mapping tepat tersedia.
 
 ## A. NOSSA dan lifecycle — C0C-01 / C0C-02
 
@@ -67,19 +67,14 @@ Jangan menyetujui KPI berdasarkan nama field atau perilaku implementasi lama saj
 
 ## C. Master wilayah dan Workzone — C0C-03
 
-**Penjelasan sederhana:** di database lama urutannya sudah `Region → Branch → Area lama → Service Area lama`. Pada aplikasi baru, nama levelnya menjadi `Area baru → Region → Branch → Service Area → Workzone`. Jadi mapping yang sudah jelas adalah: `Area lama → Service Area baru` dan `Service Area lama → Workzone baru`. Satu hal yang memang tidak ada di schema lama adalah **Area baru yang menjadi induk setiap Region**. Schema lama tidak menyimpan hubungan itu. Yang dibutuhkan hanya daftar kecil: setiap Region masuk ke Area baru yang mana.
-
-Lampirkan crosswalk tanpa data ticket untuk hubungan yang memang baru tersebut:
-
-| Legacy region ID/code | Legacy region name | New area code | New area name | Approver/date |
-|---|---|---|---|---|
+**Pemetaan master yang sudah ditetapkan pemilik:** `region → region`, `branch → branch`, `area lama → service_area`, dan `service_area lama → workzone`; target v3 mengikuti susunan `Area → Region → Branch → Service Area → Workzone`. Tidak perlu meminta pemilik membuat crosswalk satu per satu untuk mengganti nama tabel/level. Implementasi harus memakai relasi parent yang ada dan mapping ini secara konsisten; jika schema atau data aktual menunjukkan perbedaan, catat sebagai temuan teknis untuk diperiksa, bukan meminta ulang keputusan struktur.
 |  |  |  |  |  |
 
 Untuk Workzone, aturan aman tidak memerlukan keputusan tambahan: semua ticket tetap dimigrasikan dan nilai aslinya dipertahankan. **391 key** cocok tepat ke master yang unik dan dapat dipetakan langsung. Jika kode tidak cocok (74 key/7.171 ticket) atau kosong (47 ticket), `workzone_id` dibiarkan kosong dan diberi penanda belum terpetakan; ticket tidak dihapus, tidak dipasangkan dengan tebakan, dan tidak muncul pada laporan/scope user biasa sampai Superadmin memperbaiki mapping. Kamus resmi hanya diperlukan jika nanti ingin memperbaiki 74 key tersebut; ini tidak menghalangi penyimpanan history. Jangan gunakan fuzzy match.
 
 Bukti agregat terbaru (2026-11-27): 393/393 nonblank `service_area.nama_sa` unik setelah `UPPER(TRIM(...))`; 391/465 distinct nonblank ticket Workzone keys cocok tepat satu master, 74 tidak cocok, dan 47 ticket rows blank/null. 391 direct exact matches dapat dipakai; yang tidak cocok tetap unmapped. Kamus Workzone hanya dibutuhkan untuk perbaikan lanjutan, bukan untuk menghapus/memblokir ticket migration.
 
-Acceptance: exact normalized key uniqueness dibuktikan; setiap mapped key menunjuk satu master Workzone dan satu parent chain yang disahkan; unmatched/blank tetap tersimpan tanpa akses scope biasa; tidak ada scope grant yang melebar akibat mapping. Parent Area per Region masih perlu diisi dari struktur organisasi yang benar.
+Acceptance: exact normalized key uniqueness dibuktikan; setiap mapped key menunjuk satu master Workzone dan parent chain sesuai mapping pemilik; unmatched/blank tetap tersimpan tanpa akses scope biasa; tidak ada scope grant yang melebar akibat mapping.
 
 ## D. Role, account, dan effective scope — C0C-04
 
@@ -155,7 +150,7 @@ Acceptance: source snapshot immutable dan dapat diidentifikasi; metadata/credent
 
 - [ ] C0C-01: sanitized closed/reopen response contract and pagination behavior verified; owner lifecycle rule is already decided.
 - [ ] C0C-02: executable legacy TTR paths represented by sanitized golden cases; upstream timestamp and raw TTR contract verified.
-- [ ] C0C-03: new Area-to-Region parent map recorded; unmatched/blank Workzones preserved as NULL/out-of-scope. Optional dictionary may repair the 74 unmatched keys later.
+- [ ] C0C-03: implement and verify the owner-provided master table mapping; unmatched/blank Workzones preserved as NULL/out-of-scope. Optional dictionary may repair the 74 unmatched keys later. No per-Region owner crosswalk is required.
 - [x] C0C-04: current role policy decided (Superadmin only operational/global grants; equal middle-role cohort has zero grants; Helpdesk/Technician deferred; imported users inactive until validated). Per-user scope parity remains migration QA.
 - [ ] C0C-05: 84/84 field disposition and historical eligibility validated; archive/PII access and retention policy approved.
 - [ ] C0C-06: source snapshot/read-only role dan isolated PostgreSQL target/restore terdaftar.

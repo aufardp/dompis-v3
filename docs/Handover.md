@@ -1688,3 +1688,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert perubahan wording ADR-049 dan catatan ini; tidak ada perubahan runtime/schema/data.
 - Langkah berikutnya: lanjutkan Phase 0C dengan mengumpulkan hanya bukti yang benar-benar belum ada: parent Area per Region, retensi archive/PII, status snapshot sumber, dan fixture NOSSA closed/reopen.
 - Pesan commit: `docs(phase-0c): close stale vlookup authority gate`.
+
+## 2026-11-27 — Apply organization mapping clarification
+
+- Phase: Phase 0C — C0C-03 organization mapping.
+- Tindakan: mengikuti koreksi pemilik bahwa mapping struktur organisasi sudah diberikan dan yang dilakukan adalah pemetaan/rename level tabel. Menghapus permintaan crosswalk Area–Region per baris dari paket owner; mencatat ketiadaan `region.area_id` pada schema legacy sebagai discrepancy teknis yang harus direkonsiliasi dengan data master dan mapping yang telah disetujui.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Master-Data-Migration.md`, `docs/Handover.md`.
+- Database target: tidak ada database dikoneksikan atau diubah.
+- SQL/command tersanitasi: perubahan dokumentasi; `git diff --check`.
+- Hasil pengujian aktual: `git diff --check` lulus; pencarian memastikan permintaan crosswalk per Region sudah dihapus; tidak ada test suite atau query database.
+- Keputusan teknis: jangan meminta pemilik mengulang crosswalk; verifikasi tabel/parent aktual saat migration discovery dan laporkan discrepancy tanpa menebak grants atau relasi.
+- Risiko/kendala: target hierarchy lima tingkat tetap harus konsisten dengan relasi master aktual; source Prisma lama tidak memiliki FK `region.area_id`.
+- Rollback: revert klarifikasi dokumen ini; tidak ada perubahan data/schema/runtime.
+- Langkah berikutnya: lanjutkan discovery menggunakan table mapping yang telah disetujui; crosswalk Workzone unmatched bukan syarat untuk menyimpan ticket history.
+- Pesan commit: `docs(phase-0c): apply organization table mapping clarification`.
