@@ -24,7 +24,7 @@ The sample summary in `Data-Contract.md` reports 100 rows/100 distinct incident 
 
 ## 2. Field and historical migration evidence
 
-- Legacy scalar model and `Legacy-Field-Mapping.md` both contain 84 fields; names match 84/84 with no missing/extra/duplicate mapping rows. This validates mapping inventory coverage only, not value semantics or retention approval.
+- Read-only comparison of the legacy checkout's Prisma `ticket` model with `Legacy-Field-Mapping.md` found 84 scalar fields on each side, 84 unique names, no missing/extra/duplicate fields, and matching Prisma-declared type annotations for all 84 rows. This validates mapping inventory coverage and consistency with the checked-in Prisma model only, not deployed DDL/value semantics or retention approval.
 - A read-only repository consistency check on 2026-11-27 parsed 84 unique legacy mapping rows; all 38 explicit `tickets.*` target references exist in the checked-in candidate PostgreSQL migration, with no duplicate source field or missing target column. The remaining 46 rows target archive/restricted/optional disposition. This verifies inventory-to-candidate-schema references only; it does not approve field promotion, eligibility, PII retention, or archive policy.
 - Actual local MySQL `ticket` has the same 84 field names but six type drifts against Prisma (`reported_date_dt`, `classification_flag`, `onu_rx`, `status_manja`, `validation_flagged_at`, `ttr_deadline_at`); exact types/counts are in `Phase-0A-Discovery.md`.
 - MySQL `ticket` exact row count is 1,108,814; incident scan found 28 noncanonical keys and zero blank/normalized duplicates with trim+uppercase. This is a source baseline, not a migration eligibility count.

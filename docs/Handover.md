@@ -1403,3 +1403,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: Phase 0C tidak dapat ditutup sampai input yang ditandai di exit checklist tervalidasi. Tidak ada perubahan database, endpoint, source code, atau aplikasi.
 - Rollback: hapus file paket dan revert tautan Phase 0C serta entry handover ini bila format paket diganti; tidak ada data/schema rollback.
 - Langkah berikutnya: pemilik mengisi/menyediakan paket input; setelah tersedia, agent menjalankan validasi fixture, parity, dan restore pada target yang terdaftar, lalu mengajukan Phase 0C exit review. Pesan commit: `docs(phase-0c): add owner decision and evidence packet`.
+
+## 2026-11-27 — Recheck legacy Prisma scalar/type mapping coverage
+
+- Phase: Phase 0C — static legacy field contract validation.
+- Tindakan: membandingkan field scalar model `ticket` di legacy `prisma/schema.prisma` terhadap baris inventaris `Legacy-Field-Mapping.md`, termasuk Prisma native type annotations. Membetulkan catatan Phase 0C agar hasil komparasi eksplisit dan membatasi klaim pada checkout model, bukan deployed DDL/data.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; hanya schema source dan mapping dokumentasi dibaca.
+- SQL/command tersanitasi: parser lokal read-only (`node -e`) membandingkan scalar names dan tipe deklaratif pada `dompis_v2/prisma/schema.prisma` dengan tabel mapping; `git diff --check`.
+- Hasil pengujian aktual: 84 scalar Prisma; 84 mapping rows unik; tidak ada missing/extra/duplicate field; 84/84 deklarasi tipe Prisma sama dengan tipe yang ditulis di mapping. `git diff --check` lulus. Tidak ada test suite dijalankan.
+- Keputusan teknis: bukti ini menutup hanya konsistensi inventory terhadap model Prisma yang checked in. Enam drift tipe terhadap DDL MySQL aktual yang sudah dicatat Phase 0A tetap harus ditangani dari snapshot/schema terdaftar.
+- Risiko/kendala: Prisma model bukan bukti keadaan database aktif atau nilai data. Source environment belum terklasifikasi; tidak dilakukan query. Seluruh owner decisions/fixtures Phase 0C masih diperlukan.
+- Rollback: revert dua perubahan dokumentasi; tidak ada code/schema/database effect.
+- Langkah berikutnya: tunggu bukti sanitized/approval pemilik yang diminta di `Phase-0C-Owner-Decision-Packet.md`; sesudah terima, validasi semantik, crosswalk, access parity dan snapshot sebelum Phase 0C exit. Pesan commit: `docs(phase-0c): validate legacy scalar mapping inventory`.
