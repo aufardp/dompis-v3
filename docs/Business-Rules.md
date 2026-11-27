@@ -3,7 +3,7 @@ Status: **Phase 0B candidate inventory completed against the read-only legacy ch
 
 | ID | Candidate / question | Evidence | Gate |
 |---|---|---|---|
-| BR-01 | identity normalized incident; endpoint not lifecycle | payload /nossa has CLOSED rows; contract | approved conflict/reopen rules; test identical, stale, equal-conflict |
+| BR-01 | Identity is normalized incident; owner-provided lifecycle map: `NEW`, `DRAFT`, `ANALYSIS`, `PENDING`, `BACKEND` → open; `FINALCHECK`, `RESOLVED`, `MEDIACARE`, `SALAMSIM`, `CLOSED` → closed; an observed transition from a closed-group status to an open-group status for the same incident means reopen. Endpoint label is not lifecycle. | Supplied `/nossa` sample plus owner decision recorded 2026-11-27 | Partial validation only: confirm status list completeness/unknown-status handling, source conflict/version, closure timestamp/timezone and reopen fixture; test identical, stale, equal-conflict and closed→open transition |
 | BR-02 | Customer: source CUSTOMER + TECHNICAL + allowed types | app/config/operational-buckets.ts | confirm classification and eligibility |
 | BR-03 | Proactive: PROACTIVE, TECHNICAL, channel 50/83, SQM/SQM-CCAN | same config | verify PREMAN migration and overlap precedence |
 | BR-04 | Unspec: PROACTIVE channel 28 and technical unspec types | same config | verify non-KPI, B2B rules |
@@ -11,7 +11,7 @@ Status: **Phase 0B candidate inventory completed against the read-only legacy ch
 | BR-06 | SQM Update requires local sqm_update_reason | same config | legacy-only fact availability and future source-only policy |
 | BR-07 | Obsolete candidate classification_path Z_PERMINTAAN_044 | same config + NOSSA ISOBSOLETE | verify precedence and divergence |
 | BR-08 | B2C candidates DCS, PL-TSEL | same config | validate B2B/netral/unknown; source Segment != KPI segment |
-| BR-09 | legacy KPI statuses ANALYSIS/BACKEND/DRAFT/FINALCHECK/PENDING; open/closed status distinct from KPI eligibility | same config | verify RESOLVED/MEDIACARE/FINALCHECK and unknown statuses |
+| BR-09 | Legacy KPI status predicates remain separate from lifecycle. Owner lifecycle map above does not define KPI eligibility. | Legacy configuration plus owner lifecycle decision 2026-11-27 | Verify all KPI statuses, metrics/date basis, `RESOLVED`/`MEDIACARE`/`FINALCHECK` eligibility and unknown statuses; no KPI behavior approved by this mapping |
 | BR-10 | daily board active + closed today, old customer sync_date/pending exceptions | daily-ticket-where.ts | remove sync_date dependency; approve carry-over and local pending behavior |
 | BR-11 | TTR/SLA and compliance, booking and work-hour exclusions | app/libs/priority/ttr.ts, app/libs/tickets/ttr-comply.ts (inspect locally) | raw TTR unit, timezone, clock basis and threshold signed off; don't infer closed_at from resolve |
 | BR-12 | Semesta by reported range; historical KPI baseline | Source-Audit.md / old report paths | compare per-date/scope/bucket; approve legacy vs new classification differences |

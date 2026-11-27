@@ -21,9 +21,9 @@ Fixture tidak boleh memuat identifier pelanggan asli. Nilai yang disamarkan haru
 
 | Pertanyaan | Keputusan pemilik |
 |---|---|
-| Status upstream mana yang berarti lifecycle `open`, `closed`, atau `unknown`? Cantumkan seluruh status yang dikenal dan aturan status baru/tidak dikenal. |  |
+| Status upstream mana yang berarti lifecycle `open`, `closed`, atau `unknown`? Cantumkan seluruh status yang dikenal dan aturan status baru/tidak dikenal. | **Ditetapkan pemilik (2026-11-27):** `NEW`, `DRAFT`, `ANALYSIS`, `PENDING`, `BACKEND` = open; `FINALCHECK`, `RESOLVED`, `MEDIACARE`, `SALAMSIM`, `CLOSED` = closed. Daftar status ini adalah nilai yang diberikan pemilik; kelengkapan daftar dan perlakuan status lain belum ditetapkan. |
 | Field dan aturan apa yang menentukan waktu penutupan? Apakah `resolved_at` berbeda dari `closed_at`? |  |
-| Bagaimana tiket yang reopen direpresentasikan; kapan lifecycle kembali `open`; apakah riwayat status harus dibentuk dari sumber yang tersedia? |  |
+| Bagaimana tiket yang reopen direpresentasikan; kapan lifecycle kembali `open`; apakah riwayat status harus dibentuk dari sumber yang tersedia? | **Ditetapkan pemilik (2026-11-27):** incident yang sebelumnya berstatus kelompok closed lalu berubah ke status kelompok open dianggap reopen. Cara membuktikan/merekam transisi dari response NOSSA serta kebutuhan status-history tetap menunggu fixture dan kontrak upstream. |
 | Jika `/nossa` dan `/nossa-closed` berbeda, bukti/version/timestamp mana yang menang? Bagaimana tie atau versi yang tidak dapat dibandingkan diperlakukan? |  |
 | Apakah pencarian incident dapat mengembalikan parent/children, dan aturan mana yang mengidentifikasi incident canonical? |  |
 | Approver dan tanggal keputusan: |  |

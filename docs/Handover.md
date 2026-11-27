@@ -1534,3 +1534,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: hapus entry Handover ini; tidak ada database/source/runtime effect.
 - Langkah berikutnya: pemilik menambahkan atau menunjuk versi OpenAPI resmi beserta fixture closed/reopen yang disanitasi. Setelah diterima, validasi schema, null/missing, envelope, timestamps, paging, dan completeness tanpa memakai fixture berisi PII.
 - Pesan commit: `docs(phase-0c): record contract artifact search result`.
+
+## 2026-11-27 — Record owner status lifecycle and reopen rule
+
+- Phase: Phase 0C — C0C-02 owner decision update.
+- Tindakan: mencatat keputusan pemilik bahwa `NEW`, `DRAFT`, `ANALYSIS`, `PENDING`, `BACKEND` berarti lifecycle open; `FINALCHECK`, `RESOLVED`, `MEDIACARE`, `SALAMSIM`, `CLOSED` berarti closed; status closed yang kemudian berubah ke status open untuk incident yang sama berarti reopen. Memperbarui aturan bisnis, packet pemilik, Phase 0C status dan ADR-048. Daftar dianggap enumerasi yang diberikan, bukan jaminan exhaustive.
+- File berubah: `docs/Business-Rules.md`, `docs/Decision-Log.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses.
+- SQL/command tersanitasi: review silang docs terkait dan `git diff --check`.
+- Hasil pengujian aktual: mapping status dan reopen rule konsisten tercatat; `git diff --check` lulus. Tidak ada test suite atau golden fixture dibuat karena respons upstream untuk membuktikan transisi belum tersedia.
+- Keputusan teknis: status/resource endpoint tidak dicampur; perubahan ke lifecycle closed/open mengikuti mapping owner hanya untuk status yang disebut. Status lain, casing/normalisasi, closure timestamp, timezone, source conflict/version, history representation dan KPI eligibility tetap unknown/unapproved.
+- Risiko/kendala: C0C-02 baru partially approved; C0C-01 fixture/OpenAPI dan aturan waktu/TTR/SLA/KPI serta gate phase lainnya masih memblokir completion.
+- Rollback: revert ADR-048 dan mapping pada empat dokumen keputusan/requirement; tidak ada code/database rollback.
+- Langkah berikutnya: validasi mapping dengan sanitized open/closed/reopen fixtures; minta definisi timestamp, unknown/new status handling dan source conflict sebelum aturan diterapkan atau dipakai menghitung report.
+- Pesan commit: `docs(phase-0c): record owner lifecycle status mapping`.

@@ -441,3 +441,13 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Consequences: C0C-03 and C0C-04 aggregate evidence is stronger, but official Workzone identity/crosswalk, role/global exceptions, per-user new-scope parity, owner policy and account activation are unresolved. A root credential was used only inside guarded read-only transactions; move future discovery to a least-privilege read role if available.
 - Validation: identity/session verified; each query ran with MySQL `MAX_EXECUTION_TIME`, in `START TRANSACTION READ ONLY`, then rolled back. No database row/schema was written. Aggregate query was not a performance benchmark and did not create a durable snapshot.
 - Rollback: remove this target registration and discovery-only query scope from `Database-Access.md`; no database rollback is needed. Do not revoke/change any shared credential as part of rollback without a separate approved operation.
+
+## ADR-048 — Record owner-provided ticket lifecycle status groups (2026-11-27)
+
+- Status: approved business mapping for the enumerated status values; source validation and remaining lifecycle/KPI rules remain open.
+- Context: Phase 0C had no owner-approved mapping from upstream status to open/closed lifecycle or definition for a ticket returning from closed status to open status.
+- Decision: map `NEW`, `DRAFT`, `ANALYSIS`, `PENDING`, and `BACKEND` to open; map `FINALCHECK`, `RESOLVED`, `MEDIACARE`, `SALAMSIM`, and `CLOSED` to closed. For the same incident, a transition from a listed closed status to a listed open status is a reopen. Preserve the exact listed labels as provided; do not infer case normalization, additional statuses, KPI eligibility, timestamps, source priority, or history representation.
+- Evidence: explicit business rule provided by the application owner in the conversation on 2026-11-27.
+- Consequences: this resolves only the enumerated status classification and conceptual reopen rule. Unknown/unlisted values remain unresolved; closure timestamp/timezone, source version/conflict and authoritative response-level transition evidence still require sanitized fixtures and owner decisions. KPI and reporting predicates remain separate and unapproved.
+- Validation: documentation consistency review and `git diff --check`; no code, database, endpoint, or test suite was run.
+- Rollback: revert this ADR and the corresponding owner-provided mapping entries in `Business-Rules.md`, `Phase-0C-Contract-Access-Discovery.md`, `Phase-0C-Owner-Decision-Packet.md`, and `Handover.md`. No data migration or database rollback is required.
