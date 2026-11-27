@@ -1507,3 +1507,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: C0C-06 belum lulus; `root@%` terlalu luas untuk proses migrasi, source provenance belum terklasifikasi, dan target dev bersifat persisten sehingga tidak boleh di-reset sebagai latihan.
 - Rollback: revert perubahan pada tabel C0C-06 dan entry Handover; tidak ada database rollback.
 - Langkah berikutnya: pemilik/DBA menyediakan snapshot konsisten dan role read-only terbatas, role migrasi PostgreSQL non-superuser, serta target restore terisolasi dengan bukti backup/restore. Pesan commit: `docs(phase-0c): reconcile database registration evidence`.
+
+## 2026-11-27 — Recheck legacy NOSSA evidence for Phase 0C
+
+- Phase: Phase 0C — C0C-01 static evidence review.
+- Tindakan: mencari ulang kontrak, fixture, dan implementasi NOSSA pada checkout legacy secara read-only. Mengonfirmasi bahwa kode bridge dan dokumentasi teknis legacy hanya membuktikan asumsi/perilaku client terdahulu, bukan kontrak server berwenang; temuan overflow replay yang sudah ada di `Technical-Debt-Audit.md` sesuai dengan urutan implementasi (`yield` halaman sebelum overflow check dan recursive split). Tidak ditemukan artefak OpenAPI versioned atau fixture closed/reopen baru.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada database diakses.
+- SQL/command tersanitasi: `rg -n -i "nossa-closed|nossa_closed|/nossa|nossa" ...` dan pembacaan read-only `dompis_v2/lib/external-db/qosmic-bridge/{nossa,types,window-planner,client}.ts`; pencarian artifact OpenAPI/fixture pada legacy checkout dan v3 docs.
+- Hasil pengujian aktual: audit file berhasil; beberapa path pencarian opsional tidak ada pada checkout legacy dan `rg` melaporkannya, lalu pencarian dilakukan pada path yang benar. Tidak ada test suite atau endpoint call dijalankan. Tidak ada kontrak/fixture berwenang baru yang ditemukan.
+- Keputusan teknis: perilaku client lama tidak dipromosikan menjadi fakta kontrak upstream dan tidak akan dipindahkan ke v3. C0C-01 tetap terbuka sampai tersedia OpenAPI resmi/fixture sanitasi dari pemilik atau upstream.
+- Risiko/kendala: tanpa fixture closed/reopen, pagination tie/page drift, completeness, dan lifecycle tidak dapat divalidasi; Phase 0C exit gate tetap tertahan.
+- Rollback: hapus entry Handover ini; tidak ada source, database, atau runtime effect.
+- Langkah berikutnya: pemilik menyediakan versi OpenAPI resmi dan fixture `/nossa-closed` serta incident reopen yang sudah disanitasi, atau menautkan lokasi artefak otoritatif yang telah disetujui. Pesan commit: `docs(phase-0c): revalidate legacy NOSSA contract evidence`.
