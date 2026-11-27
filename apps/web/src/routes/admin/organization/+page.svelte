@@ -8,6 +8,7 @@
 		summary: { total: number; global: number; inheritedScope: number };
 		users: Array<{ id: string; username: string; displayName: string; roleCode: string; accessMode: 'global' | 'inherited_scope'; scopeLevels: string[] }>;
 		nextCursor: string | null;
+		previewToken: string;
 	};
 	type Session = { globalScope?: boolean; permissions?: string[] };
 	const levels: { id: Level; label: string }[] = [
@@ -20,6 +21,7 @@
 	let loading = $state(true);
 	let busy = $state(false);
 	let error = $state('');
+	let successNotice = $state('');
 	let searchDraft = $state('');
 	let appliedSearch = $state('');
 	let level = $state<Level>('area');
@@ -30,6 +32,10 @@
 	let nextCursor = $state<string | null>(null);
 	let cursorStack = $state<(string | null)[]>([null]);
 	let currentPage = $state(0);
+	let unitCode = $state('');
+	let unitName = $state('');
+	let currentPassword = $state('');
+	let saving = $state(false);
 
 	onMount(() => {
 		let stored: string | null = null;
@@ -61,7 +67,11 @@
 			allowed = session.globalScope === true && session.permissions?.includes('organization.manage') === true;
 			if (!allowed) { error = 'Akses Organization Management memerlukan superadmin dengan cakupan global.'; return; }
 			await loadOptions('area');
-		} catch { error = 'Sesi berakhir atau layanan belum tersedia. Masuk kembali lalu coba lagi.'; }
+		} catch (cause) {
+			error = cause instanceof Error && cause.message === 'http_401'
+				? 'Sesi tidak aktif. Masuk kembali untuk mengelola organisasi.'
+				: 'Layanan belum tersedia. Coba lagi beberapa saat.';
+		}
 		finally { loading = false; }
 	}
 	function parentLevel(child: Level): Level | null {
@@ -134,6 +144,36 @@
 		const cursors = cursorStack.slice(0, -1); cursorStack = cursors;
 		await loadImpact(cursors.at(-1) ?? null, Math.max(0, currentPage - 1));
 	}
+	async function createChild(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		if (!impact || saving) return;
+		saving = true; error = ''; successNotice = '';
+		try {
+			const csrfResponse = await fetch('/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
+			if (!csrfResponse.ok) throw new Error('csrf');
+			const csrf = await csrfResponse.json() as { csrfToken?: unknown };
+			if (typeof csrf.csrfToken !== 'string') throw new Error('csrf');
+			const parent = parentLevel(level);
+			const response = await fetch('/api/admin/organization/children', {
+				method: 'POST', credentials: 'same-origin', cache: 'no-store',
+				headers: { 'content-type': 'application/json', 'x-csrf-token': csrf.csrfToken },
+				body: JSON.stringify({ level, ...(parent ? { parentId: selected[parent] } : {}), code: unitCode, name: unitName,
+					previewToken: impact.previewToken, currentPassword })
+			});
+			if (response.status === 409) throw new Error('impact_changed');
+			if (response.status === 403) throw new Error('forbidden');
+			if (!response.ok) throw new Error('create_failed');
+			const result = await response.json() as { affectedUsers: number };
+			successNotice = `Unit berhasil dibuat. ${result.affectedUsers} sesi user terdampak dicabut. Masuk kembali untuk melanjutkan administrasi.`;
+			impact = null; unitCode = ''; unitName = ''; currentPassword = '';
+		} catch (cause) {
+			error = cause instanceof Error && cause.message === 'impact_changed'
+				? 'Daftar user terdampak berubah atau pratinjau kedaluwarsa. Muat pratinjau baru sebelum menyimpan.'
+				: cause instanceof Error && cause.message === 'forbidden'
+					? 'Permintaan ditolak. Periksa ulang sesi, Origin, CSRF, dan password superadmin.'
+					: 'Unit belum dapat dibuat. Periksa kode unik, data, dan koneksi lalu coba lagi.';
+		} finally { saving = false; }
+	}
 	function levelLabel(value: string): string { return levels.find((item) => item.id === value)?.label ?? value; }
 </script>
 
@@ -147,7 +187,7 @@
 <main id="main-content" class="shell">
 	<header class="topbar">
 		<a class="brand" href="/" aria-label="DOMPIS, kembali ke halaman utama"><span class="brand-mark">D</span><span>DOMPIS</span></a>
-		<nav aria-label="Administrasi"><a href="/admin/users">Pengguna</a><a class="active" href="/admin/organization" aria-current="page">Organisasi</a></nav>
+		{#if allowed}<nav aria-label="Administrasi"><a href="/admin/users">Pengguna</a><a class="active" href="/admin/organization" aria-current="page">Organisasi</a><a href="/admin/organization/move">Pindah unit</a></nav>{/if}
 		<button class="theme-button" type="button" onclick={toggleTheme} aria-label="Ganti tema">{theme === 'dark' ? 'Mode terang' : 'Mode gelap'}</button>
 	</header>
 	<section class="intro">
@@ -158,6 +198,7 @@
 	{:else if !allowed}<section class="panel denied" role="alert"><strong>Akses tidak tersedia</strong><p>{error || 'Halaman ini hanya tersedia untuk superadmin global.'}</p><a href="/">Kembali ke halaman utama</a></section>
 	{:else}
 		{#if error}<p class="notice" role="alert">{error}</p>{/if}
+		{#if successNotice}<p class="success-notice" role="status">{successNotice} <a href="/">Kembali ke halaman masuk</a></p>{/if}
 		<div class="layout">
 			<section class="panel controls" aria-labelledby="preview-title">
 				<div class="panel-heading"><span class="step">01</span><div><h2 id="preview-title">Atur konteks pratinjau</h2><p>Semua pilihan hanya membaca data.</p></div></div>
@@ -182,6 +223,11 @@
 						{:else}<tr><td colspan="3" class="no-users">Tidak ada user aktif dengan grant yang mencakup parent ini.</td></tr>{/each}
 					</tbody></table></div>
 					<div class="pagination"><span>Halaman {currentPage + 1} · {impact.users.length} user ditampilkan pada halaman ini</span><div><button class="secondary" type="button" disabled={currentPage === 0 || busy} onclick={previousPage}>Sebelumnya</button><button class="secondary" type="button" disabled={!nextCursor || busy} onclick={nextPage}>Berikutnya</button></div></div>
+					<form class="create-form" onsubmit={createChild}>
+						<div><p class="eyebrow">KONFIRMASI MUTASI</p><h3>Buat {levelLabel(level)}</h3><p>Pratinjau berlaku lima menit. User yang terdampak akan diminta masuk kembali.</p></div>
+						<div class="create-fields"><label class="field"><span>Kode unit</span><input bind:value={unitCode} maxlength="80" required autocomplete="off" /></label><label class="field"><span>Nama unit</span><input bind:value={unitName} maxlength="120" required autocomplete="off" /></label><label class="field"><span>Password superadmin untuk konfirmasi</span><input bind:value={currentPassword} type="password" maxlength="1024" required autocomplete="current-password" /></label></div>
+						<button class="primary" type="submit" disabled={saving || !unitCode.trim() || !unitName.trim() || !currentPassword}>{saving ? 'Menyimpan…' : 'Konfirmasi dan buat unit'}</button>
+					</form>
 				{/if}
 			</section>
 		</div>
@@ -193,6 +239,7 @@
 	:global(:root){--canvas:#101220;--surface:#181A29;--ink:#FFFFFF;--muted:#C5CAD3;--line:#34384a;--accent:#AD0E27;--accent-strong:#750A1C;--soft:#2A2F45;--shadow:0 18px 55px #07081166}
 	:global(:root[data-theme="light"]){--canvas:#f4f5f8;--surface:#FFFFFF;--ink:#181A29;--muted:#596071;--line:#dfe2e9;--accent:#AD0E27;--accent-strong:#750A1C;--soft:#eef0f5;--shadow:0 18px 55px #24283b12}
 	.skip-link{position:absolute;left:-9999px;top:1rem;background:var(--surface);padding:.75rem;z-index:5}.skip-link:focus{left:1rem}.shell{max-width:1440px;margin:auto;padding:0 48px 56px}.topbar{height:78px;display:flex;align-items:center;border-bottom:1px solid var(--line);gap:48px}.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:800;letter-spacing:.09em}.brand-mark{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--accent);color:white}.topbar nav{display:flex;align-self:stretch;gap:28px}.topbar nav a{display:flex;align-items:center;color:var(--muted);text-decoration:none;font-size:14px;border-bottom:2px solid transparent}.topbar nav a.active{color:var(--ink);border-color:var(--accent)}.theme-button{margin-left:auto;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:9px 13px;cursor:pointer}.intro{padding:34px 0 27px}.eyebrow{font-size:11px;letter-spacing:.15em;font-weight:700;color:var(--muted)}.eyebrow span{color:var(--accent);padding:0 7px}.title-row{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.title-row h1{font-size:clamp(28px,3vw,38px);letter-spacing:-.04em;margin:12px 0 8px}.title-row p,.panel-heading p{margin:0;color:var(--muted);font-size:14px}.back-link{color:var(--muted);font-size:13px;text-decoration:none;padding-bottom:4px}.layout{display:grid;grid-template-columns:minmax(310px,390px) minmax(0,1fr);gap:22px;align-items:start}.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}.controls,.results{padding:24px}.panel-heading{display:flex;gap:13px;align-items:flex-start;margin-bottom:24px}.step{display:grid;place-items:center;border-radius:8px;width:31px;height:31px;background:color-mix(in srgb,var(--accent) 17%,var(--surface));color:#db586d;font:700 11px ui-monospace,monospace;flex:none}.panel-heading h2{font-size:17px;letter-spacing:-.02em;margin:2px 0 5px}.panel-heading p{font-size:12px;line-height:1.5}.field{display:grid;gap:8px;margin:0 0 16px}.field>span{font-size:12px;font-weight:650}.field input,.field select{width:100%;min-height:42px;background:var(--canvas);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:0 11px;font:inherit;font-size:13px}.field input:focus,.field select:focus,button:focus-visible,a:focus-visible{outline:2px solid #d7465e;outline-offset:2px}.search-row{display:flex;gap:8px}.search-row input{min-width:0}.secondary,.primary{border-radius:8px;padding:10px 13px;border:1px solid var(--line);font:600 12px inherit;cursor:pointer;white-space:nowrap}.secondary{color:var(--ink);background:var(--soft)}.primary{width:100%;margin-top:14px;color:white;background:var(--accent);border-color:var(--accent);font-size:13px;padding:13px}.primary:hover:not(:disabled){background:var(--accent-strong)}button:disabled{opacity:.45;cursor:not-allowed}.hint{font-size:11px;color:var(--muted);line-height:1.5;margin:-7px 0 18px}.read-only-note{display:flex;gap:10px;padding:12px;background:var(--soft);border-radius:9px;margin-top:22px}.read-only-note>span{display:grid;place-items:center;width:19px;height:19px;border:1px solid var(--muted);border-radius:50%;font-size:12px;flex:none}.read-only-note p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}.read-only-note strong{color:var(--ink)}.empty{min-height:310px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--muted)}.empty-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:var(--soft);color:#db586d;font-size:23px;margin-bottom:15px}.empty strong{color:var(--ink);font-size:14px}.empty p{max-width:330px;font-size:12px;line-height:1.6}.context{padding:14px 16px;border-left:3px solid var(--accent);background:var(--soft);border-radius:0 9px 9px 0}.context span,.metrics article span{font-size:9px;letter-spacing:.12em;color:var(--muted);font-weight:700}.context strong{display:block;margin:6px 0 3px;font-size:14px}.context p{color:var(--muted);font-size:12px;margin:0;line-height:1.5}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:17px 0}.metrics article{padding:14px;background:var(--canvas);border:1px solid var(--line);border-radius:10px}.metrics article strong{display:block;font-size:25px;letter-spacing:-.04em;margin-top:8px}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;text-align:left}th{padding:10px 12px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}td{padding:13px 12px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:top}td strong,td small{display:block}td small{color:var(--muted);font-size:10px;margin-top:4px}.role{display:inline-block;border:1px solid var(--line);border-radius:30px;padding:4px 8px;font-size:10px;color:var(--muted)}.no-users{text-align:center;color:var(--muted);padding:28px}.pagination{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:14px;color:var(--muted);font-size:11px}.pagination>div{display:flex;gap:7px}.notice,.denied{padding:17px 20px;margin:0 0 18px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));border-radius:12px;color:var(--ink);background:var(--surface)}.denied p{color:var(--muted)}.denied a{color:#db586d}.loading{padding:28px;color:var(--muted)}
+	.create-form{margin-top:25px;padding:19px;background:var(--canvas);border:1px solid var(--line);border-radius:12px}.create-form h3{font-size:15px;margin:3px 0 5px}.create-form>div:first-child>p:last-child{font-size:11px;color:var(--muted);margin:0 0 16px}.create-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}.create-fields .field:last-child{grid-column:1/-1}.success-notice{padding:17px 20px;margin:0 0 18px;border:1px solid #2b8b63;border-radius:12px;color:var(--ink);background:var(--surface);font-size:13px}.success-notice a{display:inline-block;margin-left:8px;color:#69d1a2;font-weight:650}
 	@media(max-width:900px){.shell{padding:0 24px 36px}.layout{grid-template-columns:1fr}.controls{order:0}.results{order:1}}
-	@media(max-width:600px){.shell{padding:0 16px 28px}.topbar{height:66px;gap:18px}.topbar nav{gap:13px}.topbar nav a{font-size:12px}.brand{font-size:13px}.theme-button{padding:8px;font-size:11px}.title-row{align-items:flex-start}.title-row p{line-height:1.5}.back-link{display:none}.controls,.results{padding:17px}.metrics{gap:6px}.metrics article{padding:10px}.metrics article span{font-size:8px}.metrics article strong{font-size:21px}.pagination{align-items:flex-start;flex-direction:column}.pagination>div{width:100%}.pagination button{flex:1}}
+	@media(max-width:600px){.shell{padding:0 16px 28px}.topbar{height:66px;gap:18px}.topbar nav{gap:13px}.topbar nav a{font-size:12px}.brand{font-size:13px}.theme-button{padding:8px;font-size:11px}.title-row{align-items:flex-start}.title-row p{line-height:1.5}.back-link{display:none}.controls,.results{padding:17px}.metrics{gap:6px}.metrics article{padding:10px}.metrics article span{font-size:8px}.metrics article strong{font-size:21px}.pagination{align-items:flex-start;flex-direction:column}.pagination>div{width:100%}.pagination button{flex:1}.create-fields{grid-template-columns:1fr}}
 </style>

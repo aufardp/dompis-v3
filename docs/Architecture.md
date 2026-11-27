@@ -98,6 +98,9 @@ API `GET /api/v1/sync/status` and `GET /api/v1/events` SSE. Dedicated LISTEN con
 | GET /sync/status, GET /events | freshness metadata and revision |
 | /api/admin/users, /api/admin/users/:id/scopes | privileged management; audit |
 | GET /api/admin/organization/child-impact | superadmin-only read-only preview of users whose parent/global scope would include a proposed child |
+| POST /api/admin/organization/children | superadmin-only child creation after signed impact preview, transactional recheck, audit and affected-session invalidation |
+| GET /api/admin/organization/nodes, GET /api/admin/organization/move-impact, PATCH /api/admin/organization/move | bounded active-node search and reparent with signed impact preview, transaction recheck, audit and affected-session invalidation |
+| GET /api/admin/audit-events | superadmin-only bounded audit projection; excludes free-form metadata |
 | /organization/{areas,regions,branches,service-areas,workzones} | authorized cascading options |
 
 Response `{data, meta:{requestId,asOf,revision,nextCursor?,freshness}}`; errors `{error:{code,message},requestId}`. 400 invalid filter, 401 unauthenticated, 403 forbidden operation, 404 inaccessible record, 429 rate limit, 503 timeout/degraded with Retry-After. No raw SQL/stack. Request ID generated server; reject invalid untrusted forwarded headers.

@@ -33,6 +33,7 @@
 	let currentUser = $state<string | null>(null);
 	let canManageUsers = $state(false);
 	let canManageOrganization = $state(false);
+	let canReadAudit = $state(false);
 	let checkingSession = $state(true);
 	let submitting = $state(false);
 	let retryAfterSeconds = $state(0);
@@ -101,6 +102,7 @@
 					: 'Pengguna DOMPIS';
 				canManageUsers = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('users.manage');
 				canManageOrganization = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('organization.manage');
+				canReadAudit = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('audit.read');
 			}
 			else if (response.status >= 500) {
 				const requestId = readRequestId(response);
@@ -199,7 +201,8 @@
 			const payload = await response.json() as SessionResponse;
 			canManageUsers = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('users.manage');
 			canManageOrganization = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('organization.manage');
-		} catch { canManageUsers = false; canManageOrganization = false; }
+			canReadAudit = payload.globalScope === true && Array.isArray(payload.permissions) && payload.permissions.includes('audit.read');
+		} catch { canManageUsers = false; canManageOrganization = false; canReadAudit = false; }
 	}
 
 	async function logout(): Promise<void> {
@@ -220,6 +223,7 @@
 			currentUser = null;
 			canManageUsers = false;
 			canManageOrganization = false;
+			canReadAudit = false;
 			username = '';
 			password = '';
 			showPassword = false;
@@ -309,6 +313,9 @@
 					{/if}
 					{#if canManageOrganization}
 						<a class="primary-button" href="/admin/organization">Kelola organisasi</a>
+					{/if}
+					{#if canReadAudit}
+						<a class="primary-button" href="/admin/audit">Audit log</a>
 					{/if}
 					<button class="primary-button" type="button" onclick={logout} disabled={submitting}>
 						{#if submitting}Memproses…{:else}Keluar dari DOMPIS{/if}

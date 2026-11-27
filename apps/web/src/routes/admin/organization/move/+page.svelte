@@ -1,0 +1,90 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	type Level = 'region' | 'branch' | 'service_area' | 'workzone';
+	type ParentLevel = 'area' | 'region' | 'branch' | 'service_area';
+	type Node = { id: string; code: string; name: string; parentId: string | null };
+	type MovePreview = { node: { id: string; level: Level; code: string }; oldParentId: string; newParentId: string;
+		summary: { affectedUsers: number }; users: Array<{ id: string; username: string; displayName: string; roleCode: string }>;
+		nextCursor: string | null; previewToken: string };
+	const levels: { id: Level; label: string; parent: ParentLevel }[] = [
+		{ id: 'region', label: 'Region', parent: 'area' }, { id: 'branch', label: 'Branch', parent: 'region' },
+		{ id: 'service_area', label: 'Service Area', parent: 'branch' }, { id: 'workzone', label: 'Workzone', parent: 'service_area' }
+	];
+	let loading = $state(true); let allowed = $state(false); let theme = $state<'light' | 'dark'>('dark');
+	let level = $state<Level>('region'); let sourceSearch = $state(''); let parentSearch = $state('');
+	let sourceNodes = $state<Node[]>([]); let parentNodes = $state<Node[]>([]); let source = $state(''); let destination = $state('');
+	let sourceMore = $state(false); let parentMore = $state(false); let preview = $state<MovePreview | null>(null);
+	let page = $state(0); let cursors = $state<(string | null)[]>([null]); let busy = $state(false); let saving = $state(false);
+	let currentPassword = $state(''); let message = $state(''); let success = $state('');
+	onMount(() => { let stored: string | null = null; try { stored = localStorage.getItem('dompis-theme'); } catch { /* Optional preference. */ }
+		const systemLight = matchMedia('(prefers-color-scheme: light)').matches; applyTheme(stored === 'light' || stored === 'dark' ? stored : systemLight ? 'light' : 'dark'); void initialize(); });
+	function applyTheme(value: 'light' | 'dark'): void { theme = value; document.documentElement.dataset.theme = value; const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]'); if (meta) meta.content = value === 'light' ? '#FFFFFF' : '#101220'; }
+	function toggleTheme(): void { const value = theme === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('dompis-theme', value); } catch { /* Optional preference. */ } applyTheme(value); }
+	async function get<T>(url: string): Promise<T> { const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' }); if (!response.ok) throw new Error(`http_${response.status}`); return await response.json() as T; }
+	async function initialize(): Promise<void> { try { const session = await get<{ globalScope: boolean; permissions: string[] }>('/auth/me'); allowed = session.globalScope && session.permissions.includes('organization.manage'); if (allowed) await loadNodes(); else message = 'Akses pemindahan wilayah hanya untuk superadmin global.'; }
+		catch (cause) { message = cause instanceof Error && cause.message === 'http_401' ? 'Sesi tidak aktif. Masuk kembali untuk melanjutkan.' : 'Layanan belum tersedia.'; } finally { loading = false; } }
+	async function loadNodes(): Promise<void> { const parentLevel = levels.find((item) => item.id === level)!.parent;
+		const [sourceResult, parentResult] = await Promise.all([
+			get<{ nodes: Node[]; nextCursor: string | null }>(`/api/admin/organization/nodes?${new URLSearchParams({ level, limit: '50', ...(sourceSearch.trim() ? { search: sourceSearch.trim() } : {}) })}`),
+			get<{ nodes: Node[]; nextCursor: string | null }>(`/api/admin/organization/nodes?${new URLSearchParams({ level: parentLevel, limit: '50', ...(parentSearch.trim() ? { search: parentSearch.trim() } : {}) })}`)
+		]);
+		sourceNodes = sourceResult.nodes; parentNodes = parentResult.nodes; sourceMore = sourceResult.nextCursor !== null; parentMore = parentResult.nextCursor !== null;
+	}
+	async function changeLevel(value: Level): Promise<void> { level = value; source = ''; destination = ''; preview = null; message = ''; try { await loadNodes(); } catch { message = 'Pilihan unit gagal dimuat.'; } }
+	async function loadImpact(after: string | null, pageNumber: number): Promise<void> { if (!source || !destination) { message = 'Pilih unit dan parent tujuan terlebih dahulu.'; return; }
+		const moving = sourceNodes.find((node) => node.id === source); if (moving?.parentId === destination) { message = 'Unit sudah berada di parent tujuan.'; return; }
+		busy = true; message = '';
+		try { const params = new URLSearchParams({ level, id: source, newParentId: destination }); if (after) params.set('after', after);
+			preview = await get<MovePreview>(`/api/admin/organization/move-impact?${params}`); page = pageNumber;
+		} catch (cause) { preview = null; message = cause instanceof Error && cause.message === 'http_404' ? 'Unit atau parent tidak aktif/tidak ditemukan.' : 'Pratinjau dampak gagal dimuat.'; }
+		finally { busy = false; }
+	}
+	async function showPreview(): Promise<void> { cursors = [null]; await loadImpact(null, 0); }
+	async function nextPage(): Promise<void> { if (!preview?.nextCursor) return; const value = [...cursors, preview.nextCursor]; cursors = value; await loadImpact(preview.nextCursor, page + 1); }
+	async function previousPage(): Promise<void> { if (cursors.length < 2) return; const value = cursors.slice(0, -1); cursors = value; await loadImpact(value.at(-1) ?? null, Math.max(0, page - 1)); }
+	async function confirmMove(event: SubmitEvent): Promise<void> { event.preventDefault(); if (!preview || saving) return; saving = true; message = ''; success = '';
+		try { const csrfResponse = await fetch('/auth/csrf', { credentials: 'same-origin', cache: 'no-store' }); if (!csrfResponse.ok) throw new Error('csrf');
+			const csrf = await csrfResponse.json() as { csrfToken?: unknown }; if (typeof csrf.csrfToken !== 'string') throw new Error('csrf');
+			const response = await fetch('/api/admin/organization/move', { method: 'PATCH', credentials: 'same-origin', cache: 'no-store',
+				headers: { 'content-type': 'application/json', 'x-csrf-token': csrf.csrfToken }, body: JSON.stringify({ level, id: source, newParentId: destination, previewToken: preview.previewToken, currentPassword }) });
+			if (response.status === 409) throw new Error('stale'); if (response.status === 403) throw new Error('denied'); if (!response.ok) throw new Error('failed');
+			const result = await response.json() as { affectedUsers: number }; success = `Unit berhasil dipindahkan. ${result.affectedUsers} sesi user terdampak dicabut; masuk kembali untuk melanjutkan.`; preview = null; currentPassword = '';
+		} catch (cause) { message = cause instanceof Error && cause.message === 'stale' ? 'Dampak berubah atau pratinjau kedaluwarsa. Muat pratinjau baru.' : cause instanceof Error && cause.message === 'denied' ? 'Akses ditolak. Periksa sesi, Origin, CSRF, dan password superadmin.' : 'Unit belum dapat dipindahkan. Kode unit mungkin sudah digunakan pada parent tujuan.'; }
+		finally { saving = false; } }
+	function label(value: Level | ParentLevel): string { return ({ area: 'Area', region: 'Region', branch: 'Branch', service_area: 'Service Area', workzone: 'Workzone' })[value]; }
+</script>
+
+<svelte:head><title>Pindah Unit · DOMPIS</title><meta name="description" content="Pratinjau perubahan scope sebelum memindahkan unit organisasi." /><meta name="theme-color" content="#101220" /></svelte:head>
+<a class="skip-link" href="#main">Lewati ke konten utama</a><main id="main" class="shell">
+	<header class="topbar"><a class="brand" href="/" aria-label="DOMPIS, halaman utama"><span class="mark">D</span>DOMPIS</a>{#if allowed}<nav aria-label="Administrasi"><a href="/admin/users">Pengguna</a><a href="/admin/organization">Organisasi</a><a class="active" href="/admin/organization/move" aria-current="page">Pindah unit</a></nav>{/if}<button class="theme" type="button" onclick={toggleTheme}>{theme === 'dark' ? 'Mode terang' : 'Mode gelap'}</button></header>
+	<section class="intro"><p class="eyebrow">ADMINISTRASI <span>/</span> PERUBAHAN HIERARKI</p><div class="title-row"><div><h1>Pindah unit organisasi</h1><p>Pindahkan unit ke parent lain setelah memeriksa user yang aksesnya berubah.</p></div><a class="back" href="/admin/organization">← Organisasi</a></div></section>
+	{#if loading}<section class="panel">Memeriksa sesi…</section>{:else if !allowed}<section class="panel denied"><strong>Akses tidak tersedia</strong><p>{message}</p><a href="/">Kembali ke halaman utama</a></section>{:else}
+		{#if message}<p class="notice" role="alert">{message}</p>{/if}{#if success}<p class="success" role="status">{success}<a href="/">Kembali ke halaman masuk</a></p>{/if}
+		<div class="layout"><section class="panel controls"><div class="heading"><span>01</span><div><h2>Pilih unit dan parent baru</h2><p>Hanya unit aktif dengan ancestry aktif yang tersedia.</p></div></div>
+			<label class="field"><span>Tingkat unit</span><select value={level} onchange={(event) => changeLevel(event.currentTarget.value as Level)}>{#each levels as item}<option value={item.id}>{item.label}</option>{/each}</select></label>
+			<label class="field"><span>Cari unit yang dipindah</span><div class="search"><input bind:value={sourceSearch} maxlength="80" placeholder="Kode atau nama unit" /><button type="button" onclick={loadNodes}>Cari</button></div></label>
+			<label class="field"><span>{label(level)} yang dipindah</span><select bind:value={source} onchange={() => preview = null}><option value="">Pilih unit</option>{#each sourceNodes as node}<option value={node.id}>{node.code} · {node.name}</option>{/each}</select></label>
+			{#if sourceMore}<p class="hint">Lebih dari 50 unit cocok. Persempit pencarian.</p>{/if}
+			<label class="field"><span>Cari parent tujuan ({label(levels.find((item) => item.id === level)!.parent)})</span><div class="search"><input bind:value={parentSearch} maxlength="80" placeholder="Kode atau nama parent" /><button type="button" onclick={loadNodes}>Cari</button></div></label>
+			<label class="field"><span>Parent tujuan</span><select bind:value={destination} onchange={() => preview = null}><option value="">Pilih parent baru</option>{#each parentNodes as node}<option value={node.id}>{node.code} · {node.name}</option>{/each}</select></label>
+			{#if parentMore}<p class="hint">Lebih dari 50 parent cocok. Persempit pencarian.</p>{/if}
+			<div class="read-note"><strong>Pratinjau wajib</strong><span>Perpindahan mengubah coverage mengikuti jalur hierarki baru. User terdampak perlu login kembali.</span></div>
+			<button class="primary" type="button" disabled={!source || !destination || busy} onclick={showPreview}>{busy ? 'Memuat…' : 'Lihat dampak perpindahan'}</button>
+		</section>
+		<section class="panel results"><div class="heading"><span>02</span><div><h2>Dampak dan konfirmasi</h2><p>Preview adalah snapshot yang ditautkan ke transaksi.</p></div></div>
+			{#if !preview}<div class="empty"><strong>Belum ada pratinjau</strong><p>Pilih unit dan parent tujuan, lalu periksa user terdampak.</p></div>{:else}
+				<div class="summary"><span>USER TERDAMPAK</span><strong>{preview.summary.affectedUsers}</strong><p>{preview.node.code} dipindah dari <code>{preview.oldParentId}</code> ke <code>{preview.newParentId}</code></p></div>
+				<div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>ID</th></tr></thead><tbody>{#each preview.users as user (user.id)}<tr><td><strong>{user.displayName}</strong><small>@{user.username}</small></td><td>{user.roleCode}</td><td class="mono">{user.id}</td></tr>{:else}<tr><td colspan="3" class="empty">Tidak ada user dengan scope yang terdampak.</td></tr>{/each}</tbody></table></div>
+				<div class="pagination"><span>Halaman {page + 1} · {preview.users.length} user</span><div><button type="button" disabled={!page || busy} onclick={previousPage}>Sebelumnya</button><button type="button" disabled={!preview.nextCursor || busy} onclick={nextPage}>Berikutnya</button></div></div>
+				<form onsubmit={confirmMove}><label class="field"><span>Password superadmin untuk konfirmasi</span><input type="password" bind:value={currentPassword} required autocomplete="current-password" /></label><button class="primary" type="submit" disabled={saving || !currentPassword}>{saving ? 'Memindahkan…' : 'Konfirmasi perpindahan'}</button></form>
+			{/if}
+		</section></div>
+	{/if}
+</main>
+
+<style>
+	:global(*){box-sizing:border-box}:global(body){margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}:global(:root){--bg:#101220;--surface:#181A29;--ink:#fff;--muted:#C5CAD3;--line:#36394a;--soft:#2A2F45;--red:#AD0E27;--deep:#750A1C;--shadow:0 18px 55px #07081166}:global(:root[data-theme="light"]){--bg:#f4f5f8;--surface:#fff;--ink:#181A29;--muted:#596071;--line:#dfe2e9;--soft:#eef0f5;--shadow:0 18px 55px #24283b12}
+	.skip-link{position:absolute;left:-999px;top:1rem}.skip-link:focus{left:1rem;z-index:4;background:var(--surface);padding:10px}.shell{max-width:1440px;margin:auto;padding:0 46px 54px}.topbar{height:76px;display:flex;align-items:center;gap:42px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;color:var(--ink);font-weight:800;letter-spacing:.08em;text-decoration:none}.mark{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--red);color:#fff}.topbar nav{align-self:stretch;display:flex;gap:24px}.topbar nav a{display:flex;align-items:center;color:var(--muted);text-decoration:none;font-size:13px;border-bottom:2px solid transparent}.topbar nav a.active{color:var(--ink);border-color:var(--red)}.theme{margin-left:auto;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--muted);padding:9px 12px}.intro{padding:32px 0 25px}.eyebrow{font-size:10px;letter-spacing:.15em;font-weight:700;color:var(--muted)}.eyebrow span{color:var(--red);padding:0 7px}.title-row{display:flex;align-items:end;justify-content:space-between}.title-row h1{font-size:clamp(28px,3vw,38px);letter-spacing:-.04em;margin:10px 0 7px}.title-row p,.heading p{color:var(--muted);font-size:13px;margin:0}.back{color:var(--muted);text-decoration:none;font-size:13px}.layout{display:grid;grid-template-columns:minmax(310px,400px) minmax(0,1fr);gap:22px;align-items:start}.panel{background:var(--surface);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);padding:23px}.heading{display:flex;gap:12px;margin-bottom:23px}.heading>span{display:grid;place-items:center;width:30px;height:30px;background:var(--soft);color:#e36578;border-radius:8px;font:700 11px ui-monospace,monospace;flex:none}.heading h2{margin:2px 0 5px;font-size:17px}.heading p{font-size:11px;line-height:1.5}.field{display:grid;gap:8px;margin-bottom:15px}.field>span{font-size:12px;font-weight:650}.field select,.field input{min-height:42px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:0 11px;font:inherit;font-size:12px}.field :focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #db5065;outline-offset:2px}.search{display:flex;gap:7px}.search input{min-width:0;flex:1}.search button,.pagination button{background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 11px;cursor:pointer;font-size:11px}.hint{font-size:10px;color:var(--muted);margin:-7px 0 14px}.read-note{display:grid;gap:5px;background:var(--soft);border-radius:9px;padding:12px;margin-top:22px;font-size:11px}.read-note span{color:var(--muted);line-height:1.5}.primary{width:100%;margin-top:15px;background:var(--red);color:white;border:0;border-radius:8px;padding:12px;font-weight:650;cursor:pointer}.primary:hover:not(:disabled){background:var(--deep)}button:disabled{opacity:.45;cursor:not-allowed}.empty{min-height:240px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:var(--muted);font-size:12px}.empty strong{color:var(--ink)}.empty p{max-width:300px;line-height:1.5}.summary{background:var(--soft);border-left:3px solid var(--red);padding:14px;border-radius:0 9px 9px 0;margin-bottom:15px}.summary>span{font-size:9px;letter-spacing:.13em;color:var(--muted);font-weight:700}.summary strong{display:block;font-size:26px;margin:4px 0}.summary p{font-size:11px;color:var(--muted);overflow-wrap:anywhere}.summary code{font-size:10px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;text-align:left}th{font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line);padding:10px}td{font-size:11px;border-bottom:1px solid var(--line);padding:11px 10px;vertical-align:top}td strong,td small{display:block}td small{font-size:10px;color:var(--muted);margin-top:4px}.mono{font:9px ui-monospace,monospace;color:var(--muted)}.pagination{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);padding:12px 0}.pagination>div{display:flex;gap:6px}.pagination button:disabled{opacity:.45}.notice,.denied{padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:0 0 18px}.denied p{color:var(--muted)}.denied a{color:#e36578}.success{padding:16px 20px;border:1px solid #348b66;border-radius:10px;background:var(--surface);font-size:12px}.success a{color:#71d2a6;margin-left:8px}form{margin-top:18px}
+	@media(max-width:900px){.shell{padding:0 22px 35px}.layout{grid-template-columns:1fr}}
+	@media(max-width:600px){.shell{padding:0 15px 28px}.topbar{height:65px;gap:15px}.topbar nav{gap:12px}.topbar nav a{font-size:11px}.brand{font-size:12px}.theme{padding:7px;font-size:10px}.back{display:none}.panel{padding:17px}.pagination{align-items:flex-start;flex-direction:column;gap:8px}.pagination>div{width:100%}.pagination button{flex:1}}
+</style>

@@ -1,7 +1,9 @@
-import { and, asc, eq, gt, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import { database, schema } from '@dompis/db';
+import { appendAuditEvent, database, schema } from '@dompis/db';
+import { validateMutationSecurity } from './auth';
 import { createPermissionGuard } from './permission-guard';
 
 type OrganizationDatabase = NonNullable<typeof database>;
@@ -9,6 +11,9 @@ type HierarchyLevel = 'area' | 'region' | 'branch' | 'service_area' | 'workzone'
 type ParentNode = { id: string; level: HierarchyLevel; code: string; name: string };
 type HierarchyPath = Partial<Record<HierarchyLevel, string>>;
 type ScopeMatch = { level: HierarchyLevel; predicate: ReturnType<typeof sql<boolean>> };
+type ImpactClaims = { actorId: string; level: HierarchyLevel; parentId: string | null; total: number; fingerprint: string; expiresAt: number };
+const impactSigningKey = randomBytes(32);
+const csrfCookie = '__Host-dompis_csrf';
 
 const levelSchema = t.Union([
 	t.Literal('area'), t.Literal('region'), t.Literal('branch'), t.Literal('service_area'), t.Literal('workzone')
@@ -22,6 +27,38 @@ function scopeExists(column: AnyPgColumn, targetId: string) {
 		WHERE ${schema.userScopes.userId} = ${schema.users.id}
 		AND ${column} = ${targetId}
 	)`;
+}
+
+function sealImpact(claims: ImpactClaims): string {
+	const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+	const signature = createHmac('sha256', impactSigningKey).update(payload).digest('base64url');
+	return `${payload}.${signature}`;
+}
+
+function readImpactToken(token: string, actorId: string, level: HierarchyLevel, parentId: string | null): ImpactClaims | null {
+	const [payload, signature, extra] = token.split('.');
+	if (!payload || !signature || extra !== undefined) return null;
+	const expected = createHmac('sha256', impactSigningKey).update(payload).digest();
+	let actual: Buffer;
+	try { actual = Buffer.from(signature, 'base64url'); } catch { return null; }
+	if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+	try {
+		const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as ImpactClaims;
+		if (claims.actorId !== actorId || claims.level !== level || claims.parentId !== parentId ||
+			!Number.isSafeInteger(claims.total) || typeof claims.fingerprint !== 'string' ||
+			!Number.isSafeInteger(claims.expiresAt) || claims.expiresAt <= Date.now()) return null;
+		return claims;
+	} catch { return null; }
+}
+
+function databaseConstraint(error: unknown): string | undefined {
+	let candidate: unknown = error;
+	for (let depth = 0; depth < 3; depth += 1) {
+		if (typeof candidate !== 'object' || candidate === null) return undefined;
+		if ('constraint' in candidate && typeof candidate.constraint === 'string') return candidate.constraint;
+		candidate = 'cause' in candidate ? candidate.cause : undefined;
+	}
+	return undefined;
 }
 
 async function resolveActiveParent(
@@ -70,7 +107,7 @@ async function resolveActiveParent(
 		path: { area: serviceArea.areaId, region: serviceArea.regionId, branch: serviceArea.branchId, service_area: serviceArea.id } } : null;
 }
 
-export function createOrganizationImpactRoutes(database: OrganizationDatabase | undefined) {
+export function createOrganizationImpactRoutes(database: OrganizationDatabase | undefined, appOrigin?: string) {
 	return new Elysia({ name: 'dompis-organization-impact-preview' })
 		.use(createPermissionGuard(database))
 		.get('/api/admin/organization/child-impact', async ({ authorization, query, set }) => {
@@ -115,6 +152,12 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 				total: sql<number>`count(*)::int`,
 				global: sql<number>`count(*) FILTER (WHERE ${schema.users.globalScope})::int`
 			}).from(schema.users).innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id)).where(basePredicate);
+			const fingerprintUsers = await database.select({ id: schema.users.id }).from(schema.users)
+				.innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id)).where(basePredicate).orderBy(asc(schema.users.id));
+			const total = Number(summary?.total ?? 0);
+			const global = Number(summary?.global ?? 0);
+			const previewToken = sealImpact({ actorId: authorization.userId, level: query.level, parentId: query.parentId ?? null,
+				total, fingerprint: createHash('sha256').update(fingerprintUsers.map((user) => user.id).join(',')).digest('hex'), expiresAt: Date.now() + 5 * 60 * 1000 });
 
 			const limit = query.limit ?? 50;
 			const pagePredicates = [basePredicate, query.after ? gt(schema.users.id, query.after) : undefined];
@@ -143,10 +186,10 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 			return {
 				childLevel: query.level,
 				parent: resolved.parent,
-				summary: { total: Number(summary?.total ?? 0), global: Number(summary?.global ?? 0),
-					inheritedScope: Number(summary?.total ?? 0) - Number(summary?.global ?? 0) },
+				summary: { total, global, inheritedScope: total - global },
 				users: page,
-				nextCursor: hasMore ? page.at(-1)?.id ?? null : null
+				nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
+				previewToken
 			};
 		}, {
 			query: t.Object({
@@ -163,9 +206,119 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 					summary: t.Object({ total: t.Number(), global: t.Number(), inheritedScope: t.Number() }),
 					users: t.Array(t.Object({ id: t.String(), username: t.String(), displayName: t.String(), roleCode: t.String(),
 						accessMode: t.Union([t.Literal('global'), t.Literal('inherited_scope')]), scopeLevels: t.Array(t.String()) })),
-					nextCursor: t.Nullable(t.String())
+					nextCursor: t.Nullable(t.String()), previewToken: t.String()
 				}),
 				400: apiError, 401: apiError, 403: apiError, 404: apiError, 503: apiError, 422: invalidRequest, 500: apiError
 			}
+		})
+		.post('/api/admin/organization/children', async ({ authorization, body, cookie, request, set }) => {
+			set.headers['cache-control'] = 'private, no-store';
+			const mutationSecurity = validateMutationSecurity(request, cookie[csrfCookie]?.value, appOrigin);
+			if (mutationSecurity !== 'allowed') {
+				set.status = 403;
+				return { error: mutationSecurity === 'origin_rejected' ? 'request_origin_rejected' as const : 'csrf_rejected' as const };
+			}
+			if (!database) {
+				set.status = 503;
+				return { error: 'organization_unavailable' as const };
+			}
+			if (!authorization.globalScope) {
+				set.status = 403;
+				return { error: 'global_scope_required' as const };
+			}
+			const parentId = body.parentId ?? null;
+			const claims = readImpactToken(body.previewToken, authorization.userId, body.level, parentId);
+			if (!claims) {
+				set.status = 409;
+				return { error: 'preview_expired_or_invalid' as const };
+			}
+			const code = body.code.trim().toUpperCase();
+			const name = body.name.trim();
+			if (!code || code.length > 80 || !name || name.length > 120) {
+				set.status = 400;
+				return { error: 'invalid_organization_input' as const };
+			}
+			const [actor] = await database.select({ passwordHash: schema.users.passwordHash }).from(schema.users)
+				.where(and(eq(schema.users.id, authorization.userId), eq(schema.users.active, true))).limit(1);
+			if (!actor || !(await Bun.password.verify(body.currentPassword, actor.passwordHash))) {
+				set.status = 403;
+				return { error: 'reauthentication_required' as const };
+			}
+			try {
+				const result = await database.transaction(async (tx) => {
+					await tx.execute(sql`LOCK TABLE ${schema.users} IN SHARE ROW EXCLUSIVE MODE`);
+					const [currentActor] = await tx.select({ active: schema.users.active, globalScope: schema.users.globalScope,
+						roleCode: schema.roles.code, roleActive: schema.roles.active }).from(schema.users)
+						.innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id))
+						.where(eq(schema.users.id, authorization.userId)).limit(1);
+					const permissions = await tx.select({ code: schema.permissions.code }).from(schema.rolePermissions)
+						.innerJoin(schema.permissions, eq(schema.rolePermissions.permissionId, schema.permissions.id))
+						.innerJoin(schema.roles, eq(schema.rolePermissions.roleId, schema.roles.id))
+						.where(and(eq(schema.roles.code, 'superadmin'), eq(schema.roles.active, true), eq(schema.permissions.code, 'organization.manage'))).limit(1);
+					if (currentActor?.active !== true || currentActor.roleActive !== true || currentActor.roleCode !== 'superadmin' ||
+						currentActor.globalScope !== true || permissions.length !== 1) throw new Error('actor_authorization_changed');
+					const resolved = await resolveActiveParent(tx, body.level, parentId ?? undefined);
+					if (!resolved) throw new Error('active_parent_not_found');
+					const matches: ScopeMatch[] = [];
+					if (resolved.path.area) matches.push({ level: 'area', predicate: scopeExists(schema.userScopes.areaId, resolved.path.area) });
+					if (resolved.path.region) matches.push({ level: 'region', predicate: scopeExists(schema.userScopes.regionId, resolved.path.region) });
+					if (resolved.path.branch) matches.push({ level: 'branch', predicate: scopeExists(schema.userScopes.branchId, resolved.path.branch) });
+					if (resolved.path.service_area) matches.push({ level: 'service_area', predicate: scopeExists(schema.userScopes.serviceAreaId, resolved.path.service_area) });
+					const inherited = matches.length ? or(...matches.map((match) => match.predicate)) : undefined;
+					const impacted = inherited ? or(eq(schema.users.globalScope, true), inherited) : eq(schema.users.globalScope, true);
+					const activeUsers = and(eq(schema.users.active, true), eq(schema.roles.active, true), impacted);
+					const [currentSummary] = await tx.select({ total: sql<number>`count(*)::int` })
+						.from(schema.users).innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id)).where(activeUsers);
+					const currentUsers = await tx.select({ id: schema.users.id }).from(schema.users)
+						.innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id)).where(activeUsers).orderBy(asc(schema.users.id));
+					const currentFingerprint = createHash('sha256').update(currentUsers.map((user) => user.id).join(',')).digest('hex');
+					if (Number(currentSummary?.total ?? 0) !== claims.total || currentFingerprint !== claims.fingerprint) throw new Error('impact_changed');
+					let inserted: { id: string } | undefined;
+					if (body.level === 'area') {
+						[inserted] = await tx.insert(schema.areas).values({ code, name }).returning({ id: schema.areas.id });
+					} else if (body.level === 'region') {
+						[inserted] = await tx.insert(schema.regions).values({ areaId: parentId!, code, name }).returning({ id: schema.regions.id });
+					} else if (body.level === 'branch') {
+						[inserted] = await tx.insert(schema.branches).values({ regionId: parentId!, code, name }).returning({ id: schema.branches.id });
+					} else if (body.level === 'service_area') {
+						[inserted] = await tx.insert(schema.serviceAreas).values({ branchId: parentId!, code, name }).returning({ id: schema.serviceAreas.id });
+					} else {
+						[inserted] = await tx.insert(schema.workzones).values({ serviceAreaId: parentId!, code, name }).returning({ id: schema.workzones.id });
+					}
+					if (!inserted) throw new Error('organization_create_failed');
+					const affectedIds = currentUsers.map((user) => user.id);
+					if (affectedIds.length) {
+						const now = new Date();
+						await tx.update(schema.users).set({ scopeVersion: sql`${schema.users.scopeVersion} + 1`, updatedAt: now })
+							.where(inArray(schema.users.id, affectedIds));
+						await tx.update(schema.sessions).set({ revokedAt: now })
+							.where(and(inArray(schema.sessions.userId, affectedIds), sql`${schema.sessions.revokedAt} IS NULL`, gt(schema.sessions.expiresAt, now)));
+					}
+					const requestId = set.headers['x-request-id'];
+					await appendAuditEvent(tx, {
+						actorId: authorization.userId, action: 'organization.child_created', targetId: inserted.id,
+						requestId: typeof requestId === 'string' ? requestId : 'unknown',
+						metadata: { level: body.level, code, parentId, affectedUsers: affectedIds.length }
+					});
+					return { id: inserted.id, affectedUsers: affectedIds.length };
+				});
+				set.status = 201;
+				return result;
+			} catch (error: unknown) {
+				if (error instanceof Error && error.message === 'actor_authorization_changed') { set.status = 403; return { error: 'forbidden' as const }; }
+				if (error instanceof Error && error.message === 'active_parent_not_found') { set.status = 404; return { error: 'active_parent_not_found' as const }; }
+				if (error instanceof Error && error.message === 'impact_changed') { set.status = 409; return { error: 'impact_changed_refresh_preview' as const }; }
+				if (databaseConstraint(error)?.endsWith('_code_unique') || databaseConstraint(error) === 'areas_code_unique') {
+					set.status = 409;
+					return { error: 'organization_code_already_exists' as const };
+				}
+				throw error;
+			}
+		}, {
+			body: t.Object({ level: levelSchema, parentId: t.Optional(t.String({ format: 'uuid' })), code: t.String({ minLength: 1, maxLength: 80 }),
+				name: t.String({ minLength: 1, maxLength: 120 }), previewToken: t.String({ minLength: 20, maxLength: 2048 }), currentPassword: t.String({ minLength: 1, maxLength: 1024 }) }),
+			cookie: t.Cookie({ [csrfCookie]: t.Optional(t.String()) }), requirePermission: 'organization.manage',
+			response: { 201: t.Object({ id: t.String(), affectedUsers: t.Number() }), 400: apiError, 401: apiError, 403: apiError, 404: apiError,
+				409: apiError, 422: invalidRequest, 500: apiError, 503: apiError }
 		});
 }

@@ -6,6 +6,8 @@ import { createAuthRoutes } from './auth';
 import { createTicketRoutes } from './tickets';
 import { createUserRoutes } from './users';
 import { createOrganizationImpactRoutes } from './organization-impact';
+import { createAuditRoutes } from './audit';
+import { createOrganizationMoveRoutes } from './organization-move';
 
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 
@@ -92,7 +94,9 @@ export function createApp() {
 		.use(createAuthRoutes(database, appOrigin))
 		.use(createTicketRoutes(database))
 		.use(createUserRoutes(database, appOrigin))
-		.use(createOrganizationImpactRoutes(database))
+		.use(createOrganizationImpactRoutes(database, appOrigin))
+		.use(createAuditRoutes(database))
+		.use(createOrganizationMoveRoutes(database, appOrigin))
 		.onStop(async () => {
 			await closeDatabase();
 		});

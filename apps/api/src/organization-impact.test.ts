@@ -40,9 +40,10 @@ test('child impact preview deduplicates inherited scope users and denies roles w
 				.where(and(eq(schema.users.active, true), eq(schema.roles.active, true), eq(schema.users.globalScope, true)));
 
 			const suffix = crypto.randomUUID().replaceAll('-', '').slice(0, 16);
+			const actorPassword = `Impact-test-${suffix}-password`;
 			const actor = firstInserted(await tx.insert(schema.users).values({
 				username: `impact_admin_${suffix}`, displayName: 'Synthetic Impact Administrator',
-				passwordHash: 'synthetic-not-used-for-login', roleId: superadminRole.id, globalScope: true
+				passwordHash: await Bun.password.hash(actorPassword), roleId: superadminRole.id, globalScope: true
 			}).returning({ id: schema.users.id }), 'admin');
 			const scopedUser = firstInserted(await tx.insert(schema.users).values({
 				username: `impact_user_${suffix}`, displayName: 'Synthetic Scoped User',
@@ -53,8 +54,11 @@ test('child impact preview deduplicates inherited scope users and denies roles w
 				passwordHash: 'synthetic-not-used-for-login', roleId: officerRole.id
 			}).returning({ id: schema.users.id }), 'denied_user');
 			const actorToken = randomBytes(32).toString('base64url');
+			const scopedToken = randomBytes(32).toString('base64url');
 			const deniedToken = randomBytes(32).toString('base64url');
+			const csrfToken = randomBytes(32).toString('base64url');
 			await createSession(tx, actor.id, hashSessionToken(actorToken), new Date(Date.now() + 60 * 60 * 1000));
+			await createSession(tx, scopedUser.id, hashSessionToken(scopedToken), new Date(Date.now() + 60 * 60 * 1000));
 			await createSession(tx, deniedUser.id, hashSessionToken(deniedToken), new Date(Date.now() + 60 * 60 * 1000));
 
 			const area = firstInserted(await tx.insert(schema.areas).values({
@@ -72,7 +76,7 @@ test('child impact preview deduplicates inherited scope users and denies roles w
 				{ userId: deniedUser.id, areaId: otherArea.id }
 			]);
 
-			const app = createOrganizationImpactRoutes(tx);
+			const app = createOrganizationImpactRoutes(tx, 'http://localhost:5173');
 			const preview = await app.handle(new Request(`http://localhost/api/admin/organization/child-impact?level=branch&parentId=${region.id}&limit=1`, {
 				headers: { cookie: `__Host-dompis_session=${actorToken}` }
 			}));
@@ -81,13 +85,14 @@ test('child impact preview deduplicates inherited scope users and denies roles w
 				childLevel: string; parent: { id: string; level: string; code: string; name: string };
 				summary: { total: number; global: number; inheritedScope: number };
 				users: Array<{ id: string; accessMode: string; scopeLevels: string[] }>;
-				nextCursor: string | null;
+				nextCursor: string | null; previewToken: string;
 			};
 			expect(page.childLevel).toBe('branch');
 			expect(page.parent).toEqual({ id: region.id, level: 'region', code: region.code, name: 'Synthetic Impact Region' });
 			expect(page.summary).toEqual({ total: Number(baseline?.globalUsers ?? 0) + 2, global: Number(baseline?.globalUsers ?? 0) + 1, inheritedScope: 1 });
 			expect(page.users).toHaveLength(1);
 			expect(page.nextCursor).not.toBeNull();
+			const firstPreview = { previewToken: page.previewToken };
 
 			const nextPage = await app.handle(new Request(`http://localhost/api/admin/organization/child-impact?level=branch&parentId=${region.id}&limit=1&after=${actor.id}`, {
 				headers: { cookie: `__Host-dompis_session=${actorToken}` }
@@ -108,11 +113,52 @@ test('child impact preview deduplicates inherited scope users and denies roles w
 			expect(newArea.parent).toBeNull();
 			expect(newArea.summary).toEqual({ total: Number(baseline?.globalUsers ?? 0) + 1, global: Number(baseline?.globalUsers ?? 0) + 1, inheritedScope: 0 });
 
+			await tx.insert(schema.userScopes).values({ userId: deniedUser.id, regionId: region.id });
+			const mutationHeaders = {
+				'content-type': 'application/json', origin: 'http://localhost:5173', 'x-csrf-token': csrfToken,
+				'x-request-id': crypto.randomUUID(), cookie: `__Host-dompis_session=${actorToken}; __Host-dompis_csrf=${csrfToken}`
+			};
+			const staleCreate = await app.handle(new Request('http://localhost/api/admin/organization/children', {
+				method: 'POST', headers: mutationHeaders,
+				body: JSON.stringify({ level: 'branch', parentId: region.id, code: `BR-${suffix}`, name: 'Synthetic Branch',
+					previewToken: firstPreview.previewToken, currentPassword: actorPassword })
+			}));
+			expect(staleCreate.status).toBe(409);
+			expect(await staleCreate.json()).toEqual({ error: 'impact_changed_refresh_preview' });
+
+			const currentPreview = await app.handle(new Request(`http://localhost/api/admin/organization/child-impact?level=branch&parentId=${region.id}`, {
+				headers: { cookie: `__Host-dompis_session=${actorToken}` }
+			}));
+			const currentPreviewBody = await currentPreview.json() as { previewToken: string; summary: { total: number } };
+			const rejectedCsrf = await app.handle(new Request('http://localhost/api/admin/organization/children', {
+				method: 'POST', headers: { ...mutationHeaders, 'x-csrf-token': `${csrfToken.slice(1)}x` },
+				body: JSON.stringify({ level: 'branch', parentId: region.id, code: `BR2-${suffix}`, name: 'Rejected Branch',
+					previewToken: currentPreviewBody.previewToken, currentPassword: actorPassword })
+			}));
+			expect(rejectedCsrf.status).toBe(403);
 			const denied = await app.handle(new Request(`http://localhost/api/admin/organization/child-impact?level=branch&parentId=${region.id}`, {
 				headers: { cookie: `__Host-dompis_session=${deniedToken}` }
 			}));
 			expect(denied.status).toBe(403);
-
+			const created = await app.handle(new Request('http://localhost/api/admin/organization/children', {
+				method: 'POST', headers: mutationHeaders,
+				body: JSON.stringify({ level: 'branch', parentId: region.id, code: `BR-${suffix}`, name: 'Synthetic Branch',
+					previewToken: currentPreviewBody.previewToken, currentPassword: actorPassword })
+			}));
+			expect(created.status).toBe(201);
+			const createdBody = await created.json() as { id: string; affectedUsers: number };
+			expect(createdBody.affectedUsers).toBe(currentPreviewBody.summary.total);
+			const [createdBranch] = await tx.select({ code: schema.branches.code, regionId: schema.branches.regionId }).from(schema.branches)
+				.where(eq(schema.branches.id, createdBody.id)).limit(1);
+			expect(createdBranch).toEqual({ code: `BR-${suffix}`.toUpperCase(), regionId: region.id });
+			const [updatedUser] = await tx.select({ scopeVersion: schema.users.scopeVersion }).from(schema.users).where(eq(schema.users.id, scopedUser.id)).limit(1);
+			expect(updatedUser?.scopeVersion).toBe(2);
+			const [revokedSession] = await tx.select({ revokedAt: schema.sessions.revokedAt }).from(schema.sessions)
+				.where(eq(schema.sessions.tokenHash, hashSessionToken(scopedToken))).limit(1);
+			expect(revokedSession?.revokedAt).toBeInstanceOf(Date);
+			const audit = await tx.select({ action: schema.auditEvents.action }).from(schema.auditEvents)
+				.where(eq(schema.auditEvents.targetId, createdBody.id));
+			expect(audit.map((event) => event.action)).toEqual(['organization.child_created']);
 			throw new RollbackFixture('rollback_synthetic_organization_impact_fixtures');
 		});
 	} catch (error: unknown) {
