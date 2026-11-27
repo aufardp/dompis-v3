@@ -28,7 +28,7 @@ erDiagram
  SYNC_RUNS ||--o{ SYNC_QUARANTINE : rejects
  USERS ||--o{ AUDIT_EVENTS : acts
 ```
-Area → region → branch → service_area → workzone is an approved master hierarchy, not a second ticket source. Code uniqueness is per parent, except area. Prefer direct normalized Workzone matching after uniqueness proof; candidate fallback uses exact normalized NOSSA region/witel/workzone via workzone_source_aliases, never code alone. Unknown mapping stays NULL and requires privileged remediation. `tickets` is current state, history records transitions; optionally separate restricted PII payload table if profiling/access requires, not mandatory. The schema includes `sync_revision`, singleton logical key unique, and `sync_checkpoints` per stream/window. Local notes not in MVP. Rule config versioned TS + fixtures, not dynamic unreviewed SQL.
+Area → region → branch → service_area → workzone is an approved master hierarchy, not a second ticket source. Code uniqueness is per parent, except area. Prefer direct normalized Workzone matching after uniqueness proof; candidate fallback uses exact normalized NOSSA region/witel/workzone via workzone_source_aliases, never code alone. Unknown mapping stays NULL and requires privileged remediation. `tickets` is current state, history records transitions; optionally separate restricted PII payload table if profiling/access requires, not mandatory. The schema includes `sync_revision`, singleton logical key unique, and `sync_checkpoints` per stream/window. Local notes not in MVP. `source_vlookup` is a local classification reference table: `value_id → jenis_tiket`, `customer_type_key → jenis_tiket_2_val`, and `realm_b2b → flag_1/flag_2` feed the shared classifier for `jenis_tiket_1/2`; tickets retain the resulting values as snapshots and do not FK to mutable mapping rows. Mapping uniqueness, canonical key normalization, row content, and classifier rule version must be validated before loading/using a mapping set. Do not add speculative lookup indexes; the legacy reader loads this small reference set as one bounded collection, and query-plan evidence is not yet available.
 
 ## 2. DDL candidate
 ```sql
@@ -92,6 +92,13 @@ CREATE TABLE sessions (
  token_hash bytea NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(),
  expires_at timestamptz NOT NULL, revoked_at timestamptz,
  CHECK(expires_at>created_at)
+);
+-- Local classification reference mapping; ticket rows store classified values, not a runtime FK.
+-- Lookup-key uniqueness/indexes remain deferred until the registered legacy mapping is profiled.
+CREATE TABLE source_vlookup (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), value_id integer NOT NULL,
+ description varchar(100), jenis_tiket varchar(50), customer_type_key varchar(50),
+ jenis_tiket_2_val varchar(50), realm_b2b varchar(50), flag_1 varchar(50), flag_2 varchar(50)
 );
 CREATE TABLE tickets (
  id uuid PRIMARY KEY DEFAULT uuidv7(),

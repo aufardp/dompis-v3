@@ -8,11 +8,13 @@ Owner grants local agent MySQL and PostgreSQL read/write access. This is authori
 | Engine/address/database | MySQL 8.0.46, loopback `127.0.0.1:3306`, database `dompis_db`, container label `mysql_baru`; session identity was rechecked on 2026-11-27 |
 | Environment/data provenance | Local legacy database; underlying row provenance is **unclassified** and may contain production-derived records. It is not disposable and is not an approved consistent migration snapshot. |
 | Owner/authorization | DOMPIS application owner authorized local MySQL read/write access in the master engineering instruction; discovery task limits this registration to read-only. |
-| Permitted scope | Metadata and bounded aggregate `SELECT` only on `ticket`, `area`, `region`, `branch`, `service_area`, `users`, and `user_*` grant tables; read-only transaction, explicit statement timeout, no row-level PII output. |
+| Permitted scope | Metadata and bounded aggregate `SELECT` only on `ticket`, `source_vlookup`, `area`, `region`, `branch`, `service_area`, `users`, and `user_*` grant tables; read-only transaction, explicit statement timeout, no row-level PII output. For `source_vlookup`, output only aggregate counts/duplicate-conflict counts and column metadata; do not emit mapping values. |
 | Role/credential | Effective principal observed as `root@%` on 2026-11-27; use existing local secret injection without displaying or recording credentials. This role is broader than discovery needs and was used only in explicit read-only transactions; no separate least-privilege migration role is registered. |
 | Prohibited by this registration | DML/DDL, raw row exports, schema changes, migration, backup/cutover, ETL, or treating this live local database as a consistent snapshot. |
 
 This registration authorizes only low-impact discovery queries described above. It does not satisfy Phase 0C/3A source snapshot, read-only migration-role, backup/restore, or retention gates.
+
+The `source_vlookup` addition is a bounded Phase 0C/C0C-05 discovery allowance based on the application owner's standing database-access authorization. Its purpose is to compare deployed mapping-key integrity with the checked-in legacy seed. It does not authorize exporting mapping rows, executing the legacy seed, DML/DDL, or treating the live database as an approved migration snapshot. Record only sanitized aggregates in `Handover.md`.
 
 ## Registered target — local PostgreSQL development metadata (2026-11-27)
 

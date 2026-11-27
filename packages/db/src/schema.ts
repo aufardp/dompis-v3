@@ -1,19 +1,20 @@
 import { sql } from 'drizzle-orm';
 import {
-	 bigint,
-	 boolean,
-	 check,
+	bigint,
+	boolean,
+	check,
 	customType,
-	 index,
-	 integer,
-	 jsonb,
-	 numeric,
-	 pgTable,
-	 smallint,
-	 text,
-	 timestamp,
-	 unique,
-	 uuid
+	index,
+	integer,
+	jsonb,
+	numeric,
+	pgTable,
+	smallint,
+	text,
+	timestamp,
+	unique,
+	uuid,
+	varchar
 } from 'drizzle-orm/pg-core';
 
 const id = () => uuid('id').primaryKey().default(sql`uuidv7()`);
@@ -79,6 +80,30 @@ export const roles = pgTable('roles', {
 	createdAt: timestamptz('created_at').notNull().defaultNow(),
 	updatedAt: timestamptz('updated_at').notNull().defaultNow()
 });
+
+/**
+ * Locally curated source mapping used to classify ticket type fields.
+ * `value_id` is required; `customer_type_key` and `realm_b2b` are optional
+ * lookup keys consumed by separate classifier paths. Keep this table
+ * independent from NOSSA ticket facts and load it as a bounded reference set.
+ */
+export const sourceVlookup = pgTable('source_vlookup', {
+	id: id(),
+	/** Legacy channel/service mapping value used by the classifier. */
+	sourceValueId: integer('value_id').notNull(),
+	sourceDescription: varchar('description', { length: 100 }),
+	ticketType: varchar('jenis_tiket', { length: 50 }),
+	/** Customer type key mapped to `secondTicketTypeValue`. */
+	customerTypeKey: varchar('customer_type_key', { length: 50 }),
+	secondTicketTypeValue: varchar('jenis_tiket_2_val', { length: 50 }),
+	/** NOSSA business realm key used for B2B type and flag classification. */
+	businessRealm: varchar('realm_b2b', { length: 50 }),
+	firstFlagValue: varchar('flag_1', { length: 50 }),
+	secondFlagValue: varchar('flag_2', { length: 50 })
+});
+
+export type SourceVlookup = typeof sourceVlookup.$inferSelect;
+export type NewSourceVlookup = typeof sourceVlookup.$inferInsert;
 
 export const permissions = pgTable('permissions', {
 	id: id(),

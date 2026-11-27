@@ -59,6 +59,13 @@ CREATE TABLE sessions (
  expires_at timestamptz NOT NULL, revoked_at timestamptz,
  CHECK(expires_at>created_at)
 );
+-- Local classification reference mapping; ticket rows store classified values, not a runtime FK.
+-- Lookup-key uniqueness/indexes remain deferred until the registered legacy mapping is profiled.
+CREATE TABLE source_vlookup (
+ id uuid PRIMARY KEY DEFAULT uuidv7(), value_id integer NOT NULL,
+ description varchar(100), jenis_tiket varchar(50), customer_type_key varchar(50),
+ jenis_tiket_2_val varchar(50), realm_b2b varchar(50), flag_1 varchar(50), flag_2 varchar(50)
+);
 CREATE TABLE tickets (
  id uuid PRIMARY KEY DEFAULT uuidv7(),
  incident text NOT NULL UNIQUE CHECK(incident=upper(btrim(incident)) AND incident ~ '^[A-Z0-9_-]{1,100}$'),

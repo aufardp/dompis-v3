@@ -25,3 +25,4 @@ export { appendAuditEvent, type AuditEventInput } from './audit';
 export { createSession, findActiveLoginIdentity, revokeSession } from './authentication';
 export { findTicketDetail, listTickets, type TicketListFilters, type TicketListPosition } from './tickets';
 export { schema };
+export type { NewSourceVlookup, SourceVlookup } from './schema';

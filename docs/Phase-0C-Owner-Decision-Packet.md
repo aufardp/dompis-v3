@@ -34,7 +34,7 @@ Fixture tidak boleh memuat identifier pelanggan asli. Nilai yang disamarkan haru
 
 ### Aturan yang memang sudah ada di aplikasi lama (observasi implementasi, bukan persetujuan aturan v3)
 
-Audit `dompis_v2` menemukan beberapa mekanisme waktu/TTR yang berbeda, bukan satu rule engine tunggal:
+Audit `dompis_v2` menemukan beberapa mekanisme waktu/TTR yang berbeda, bukan satu rule engine tunggal. Rincian terstruktur classification, daftar threshold yang dilaporkan, anomali, provenance dan rekonsiliasi ada di [Legacy Classification and Time/TTR Reference](Phase-0C-Legacy-Classification-TTR-Reference.md). Distribusi jumlah jenis tiket di sana hanya profil snapshot yang dilaporkan, bukan target jumlah permanen; ia hanya dapat dipakai untuk merekonsiliasi populasi snapshot yang sama setelah predicate dan provenance tervalidasi.
 
 | Jalur legacy | Perilaku yang ditemukan | Sumber dan batas bukti |
 |---|---|---|
@@ -108,6 +108,8 @@ Isi disposition eksplisit untuk setiap 84 scalar field pada `Legacy-Field-Mappin
 - `exclude`: alasan terdokumentasi dan bukti bahwa field tidak diperlukan oleh produk/histori; perlu persetujuan pemilik.
 - `derived`: aturan dan versi yang disetujui; jangan mengganti nilai historis secara diam-diam.
 
+Schema Drizzle untuk tabel mapping lokal `source_vlookup` kini tersedia pada `packages/db/src/schema.ts`; data belum di-seed/migrasikan. Aggregate lokal read-only menemukan 135 row/135 distinct `value_id`, 20 customer-type key, 40 realm key, dan tidak ada duplicate/conflicting output group pada key normalization yang diuji. Namun checked-in seed berisi 134 row/19 customer-type key, sehingga mapping aktual dan seed berbeda; provenance tabel tetap unclassified. Legacy lookup indexes non-unique dan cache Map akan menimpa duplicate key menurut urutan query jika duplicate ada; classifier juga memiliki override sebelum lookup. Sebelum classifier menghasilkan `jenis_tiket_1/2`, pemilik perlu menetapkan mapping yang otoritatif beserta provenance, normalisasi key, precedence/override, dan rule/mapping version. Baris `source_vlookup` adalah konfigurasi classifier lokal, bukan sumber fakta ticket NOSSA. Rincian ada di `Phase-0C-Legacy-Classification-TTR-Reference.md`.
+
 ### Bukti kebutuhan produk yang sudah ditemukan
 
 Ini adalah jejak pemakaian/requirement candidate dari `PRD.md` dan `Phase-0B-Discovery.md`, bukan keputusan retensi atau business rule baru:
@@ -128,6 +130,7 @@ Daftar kandidat pada mapping saat ini belum merupakan izin untuk menyimpan atau 
 | Kriteria ticket historis yang eligible; termasuk manual/local-only |  |
 | Archive allowlist, reader roles, export prohibition/permission, retention, dan disposal evidence |  |
 | PII/free-text retention dan kebutuhan encrypted offline backup |  |
+| Dataset `source_vlookup` yang disetujui, key uniqueness/normalization, classifier precedence/override dan versioning untuk menghasilkan `jenis_tiket_1/2` |  |
 | Approver dan tanggal keputusan |  |
 
 Acceptance: 84/84 row memiliki disposition dan transform yang dapat diuji; setiap field yang tidak disimpan memiliki alasan; data archive dibatasi sesuai policy; golden fixture menunjukkan exact row accounting tanpa kehilangan field eligible.

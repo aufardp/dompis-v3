@@ -1576,3 +1576,87 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert ringkasan bukti pada owner packet, Business Rules, Phase 0C discovery dan entry ini; tidak ada source legacy, database, atau runtime effect.
 - Langkah berikutnya: konfirmasi status `CLOSE`/`OPEN`; pilih atau koreksi threshold dan time metric per menu; tetapkan timestamp basis, timezone, eligibility/denominator, lalu buat source-backed golden fixtures.
 - Pesan commit: `docs(phase-0c): reconcile legacy SLA and TTR evidence`.
+
+## 2026-11-27 — Add Drizzle source_vlookup mapping schema
+
+- Phase: Phase 0C/0D — classification dependency discovery and schema request.
+- Tindakan: memeriksa model Prisma `sourceVlookup`, cache key families dan mapping path pada classifier legacy. Menambahkan schema Drizzle untuk `source_vlookup` dengan UUIDv7 PK dan delapan kolom mapping mengikuti tipe/batas legacy; mengekspor inferred select/insert types; membuat migration bernama `0004_source_vlookup.sql`; menyelaraskan schema-proposed SQL, Database, Phase 0D readiness, owner decision packet, Decision Log ADR-049 dan handover. Ticket rows tetap menyimpan hasil klasifikasi tanpa FK ke mapping mutable.
+- File berubah: `packages/db/src/schema.ts`, `packages/db/src/index.ts`, `packages/db/drizzle/0004_source_vlookup.sql`, `packages/db/drizzle/meta/0004_snapshot.json`, `packages/db/drizzle/meta/_journal.json`, `docs/Database.md`, `docs/schema-proposed.sql`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi atau DDL database; migration hanya dibuat sebagai file dan tidak diaplikasikan ke PostgreSQL `dompis_v3` yang persistent.
+- SQL/command tersanitasi: `bunx drizzle-kit generate --config=packages/db/drizzle.config.ts --name=source_vlookup`; `bun run db:generate`; `bun run typecheck`; `git diff --check`.
+- Hasil pengujian aktual: Drizzle mengenali 20 tabel, termasuk `source_vlookup` (9 kolom, 0 index/FK); regenerasi kedua menghasilkan `No schema changes, nothing to migrate`; workspace web/API/worker typecheck lulus tanpa error/warning; `git diff --check` lulus. Tidak ada unit/integration tests dijalankan.
+- Keputusan teknis: gunakan nama fisik `source_vlookup` sesuai domain/request; pertahankan field dan nullable semantics dari legacy Prisma, ganti autoincrement row ID dengan UUIDv7; tidak menambah natural-key uniqueness/indexes sebelum actual mapping duplicate/normalization audit, serta tidak seed/import data pada pekerjaan schema-only ini.
+- Risiko/kendala: schema tidak membuat classifier berfungsi dengan sendirinya. Mapping dataset, key normalization/uniqueness, classifier precedence/overrides, rule version, dan business approval masih harus diselesaikan; `jenis_tiket_1/2` tidak boleh diturunkan dari table sebelum mapping itu disahkan.
+- Rollback: hapus export/type/tabel Drizzle, migration/snapshot/journal entry `0004`, dan revert dokumen yang diperbarui. Tidak ada database rollback karena DDL tidak dieksekusi.
+- Langkah berikutnya: lanjutkan C0C-05 dengan memvalidasi isi `source_vlookup` pada source terdaftar atau owner-approved mapping fixture; tentukan unique lookup keys dan classifier version sebelum menambahkan index/seed/domain resolver. Minta konfirmasi apakah legacy `OPEN`/`CLOSE` masuk status groups v3.
+- Pesan commit: `feat(db): add source vlookup mapping schema`.
+
+## 2026-11-27 — Reorganize owner-relayed classification and TTR evidence
+
+- Phase: Phase 0C — C0C-02/C0C-05 discovery clarification.
+- Tindakan: menyusun satu referensi terstruktur untuk provenance, alur classifier/`source_vlookup`, inventory jenis tiket, threshold B2C/B2B yang dilaporkan, clock dan metrik TTR yang berbeda, anomali, serta checklist rekonsiliasi. Menautkan referensi dari Business Rules, owner decision packet, dan discovery report. Membandingkan angka yang disampaikan pemilik (sekitar 2,67 juta) dengan hasil discovery lokal terdahulu (1.108.814) dan menandai perbedaan sebagai belum direkonsiliasi.
+- File berubah: `docs/Phase-0C-Legacy-Classification-TTR-Reference.md` (baru), `docs/Business-Rules.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah; angka dari agent lain dicatat sebagai laporan owner yang belum direproduksi.
+- SQL/command tersanitasi: `rg` pada dokumentasi untuk mencocokkan baseline row count dan bagian TTR; `git diff --check`.
+- Hasil pengujian aktual: nilai jenis_tiket_1 yang dilaporkan berjumlah aritmetis 1.072.690; tidak ada query data baru atau test suite. `git diff --check` lulus.
+- Keputusan teknis: pisahkan laporan sekunder dari temuan kode yang sebelumnya diperiksa; pisahkan compliance, priority countdown, display Max TTR, dan MTTR; jangan menggunakan count atau threshold sebagai baseline/aturan v3 sebelum validasi sumber serta sign-off.
+- Risiko/kendala: populasi 2,67 juta vs 1.108.814 belum direkonsiliasi; exact predicates dan snapshot laporan tidak tersedia; fallback customer_type berbeda antar display/compliance; conflict Indibiz/Reseller, source_vlookup key integrity, timezone, eligibility dan KPI masih terbuka.
+- Rollback: revert referensi baru dan tautan/ringkasan yang diperbarui; tidak ada perubahan schema, data, atau runtime.
+- Langkah berikutnya: rekonsiliasi identitas source/snapshot dan SQL agregat; validasi actual source_vlookup rows/key semantics; minta keputusan owner untuk konflik threshold dan definisi setiap metrik sebelum menulis fixture bisnis atau implementasi classifier.
+- Pesan commit: `docs(phase-0c): organize legacy classification and TTR evidence`.
+
+## 2026-11-27 — Clarify classification counts as snapshot-only evidence
+
+- Phase: Phase 0C — C0C-02/C0C-05 evidence interpretation.
+- Tindakan: mengikuti arahan pemilik bahwa jumlah per `jenis_tiket_1` bergantung pada populasi ticket. Menandai distribusi tersebut sebagai profil snapshot yang dilaporkan, bukan jumlah target tetap atau acceptance criteria live; menjelaskan bahwa rekonsiliasi hanya sah untuk source snapshot, predicates, eligibility, dan rule version yang sama. Memperjelas owner packet.
+- File berubah: `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah.
+- SQL/command tersanitasi: perubahan dokumentasi; `git diff --check`.
+- Hasil pengujian aktual: `git diff --check` lulus; tidak ada test suite atau query database.
+- Keputusan teknis: angka distribusi boleh membantu rekonsiliasi populasi historis yang identik dan tervalidasi, tetapi tidak mengikat jumlah ticket di masa depan. Delta pada snapshot sama diselidiki, bukan dikoreksi paksa agar cocok.
+- Risiko/kendala: provenance dan predicates laporan yang dikirim agent lain belum tersedia; row count-nya masih berbeda dari audit lokal dan tidak dapat digunakan untuk migration acceptance saat ini.
+- Rollback: kembalikan penjelasan snapshot-only di dua dokumen tersebut; tidak ada perubahan data/schema/runtime.
+- Langkah berikutnya: gunakan baseline aggregate hanya setelah snapshot immutable dan query/predicate yang sama tersedia; jika tidak, lakukan validasi rekonsiliasi berdasarkan sumber dan populasi yang terdaftar.
+- Pesan commit: `docs(phase-0c): clarify classification counts as snapshot profile`.
+
+## 2026-11-27 — Audit legacy source_vlookup determinism
+
+- Phase: Phase 0C — C0C-05 classifier and mapping discovery.
+- Tindakan: membaca read-only model Prisma, seed script, dan classifier `source_vlookup` pada legacy checkout. Mencatat bahwa lookup indexes tidak unique, classifier membangun Map tanpa query ordering, duplicate normalized keys dapat overwrite menurut urutan hasil, key normalization tidak seragam, dan direct overrides mendahului lookup. Memperbarui reference, owner packet, dan status C0C-05.
+- File berubah: `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi database; hanya source code/seed legacy dibaca dari checkout reference. Tidak ada query atau seed yang dijalankan.
+- SQL/command tersanitasi: `rg` untuk lokasi model, seed, dan classifier; `sed` untuk baca source secara read-only; `git diff --check`.
+- Hasil pengujian aktual: temuan statis terkonfirmasi pada model (ordinary non-unique indexes), `findMany` tanpa ordering, serta penulisan key ke Map. `git diff --check` dijalankan pada akhir pekerjaan; test suite tidak dijalankan karena dokumentasi-only.
+- Keputusan teknis: jangan membawa seed/query/classifier lama ke v3. Ukur duplicate key per lookup family memakai canonicalization yang akan disetujui; selesaikan konflik dan tentukan precedence versioned sebelum menetapkan unique constraints/indexes atau classifier.
+- Risiko/kendala: tidak dapat memastikan isi deployed mapping atau actual duplicate counts dari checkout. Database-Access.md saat ini membatasi discovery agregat MySQL pada tabel ticket/master/user scopes, tidak `source_vlookup`; provenance/mapping fixture yang disetujui tetap dibutuhkan.
+- Rollback: revert catatan dan referensi dokumentasi; tidak ada perubahan data, schema, atau runtime.
+- Langkah berikutnya: minta atau daftarkan sumber mapping terotorisasi (sanitized approved fixture atau perluasan allowlist metadata/agregat), kemudian lakukan profiling bounded dan susun golden fixtures owner-reviewed.
+- Pesan commit: `docs(phase-0c): audit legacy vlookup determinism`.
+
+## 2026-11-27 — Profile checked-in legacy vlookup seed
+
+- Phase: Phase 0C — C0C-05 static mapping evidence.
+- Tindakan: mem-parse seed `source_vlookup` secara statis tanpa menjalankan SQL/seed; menghitung total row dan duplikasi per keluarga key setelah trim+uppercase, hanya mencetak aggregate counts. Memperjelas dokumen bahwa duplicate Map overwrite adalah risiko jika duplicate ada pada deployed table, bukan temuan duplicate pada seed yang diperiksa.
+- File berubah: `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Handover.md`.
+- Database target: tidak ada database dikoneksikan; data berasal dari seed code dalam legacy checkout.
+- SQL/command tersanitasi: parser read-only atas tuple literal `seed-source-vlookup.ts`; `git diff --check`.
+- Hasil pengujian aktual: seed script memuat 134 rows; 134 distinct `value_id`, 19 populated/distinct `customer_type_key`, 40 populated/distinct `realm_b2b`; tidak ada duplicate key groups atau konflik output untuk tiga key families dengan trim+uppercase. Pemeriksaan ini adalah profile seed saja, bukan deployed DB profile. `git diff --check` lulus; tidak ada test suite.
+- Keputusan teknis: seed statis memberi kandidat bukti yang lebih baik untuk constraint, tetapi tidak cukup untuk menambah constraint/menjalankan import sebelum mapping yang benar-benar digunakan dan pemilik menyetujuinya.
+- Risiko/kendala: record aktual table MySQL tidak diprofil karena `source_vlookup` belum masuk bounded query allowlist pada `Database-Access.md`; seed dapat berbeda dari isi database.
+- Rollback: revert profile dan penjelasan di referensi/handover; tidak ada efek database/schema/runtime.
+- Langkah berikutnya: dapatkan sanitized approved mapping fixture atau daftarkan query agregat `source_vlookup` pada access runbook; lalu bandingkan dengan seed dan putuskan constraints serta mapping version.
+- Pesan commit: `docs(phase-0c): profile legacy vlookup seed evidence`.
+
+## 2026-11-27 — Profile registered local source_vlookup aggregates
+
+- Phase: Phase 0C — C0C-05 bounded mapping integrity audit.
+- Tindakan: memperluas allowlist discovery secara terbatas pada `source_vlookup` untuk metadata dan agregat saja, tanpa row-level mapping output. Memverifikasi target guard lalu menjalankan transaksi read-only dengan timeout untuk total row/key cardinality, duplicate/conflicting-output groups, dan metadata kolom/index. Tidak melakukan SELECT nilai mapping, DML, DDL, atau import.
+- File berubah: `docs/Database-Access.md`, `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: MySQL 8.0.46 lokal `dompis_db`, host loopback port 3306, database/server identity diverifikasi; effective role `root@%` (overprivileged); data provenance tetap unclassified.
+- SQL/command tersanitasi: `START TRANSACTION READ ONLY`; statement timeout 5s; `COUNT(*)`, `COUNT(DISTINCT value_id)`, distinct normalized-key counts; grouped duplicate/excess/conflicting-output aggregates untuk `value_id → jenis_tiket`, `customer_type_key → jenis_tiket_2_val`, `realm_b2b → flag_1`; agregat metadata `information_schema.statistics/columns` dengan parameter schema/table; `ROLLBACK`.
+- Hasil pengujian aktual: live table 135 rows, 135 distinct/populated `value_id`, 20 populated/distinct customer-type keys, 40 populated/distinct realm keys; duplicate groups/excess rows/output conflicts masing-masing 0 pada ketiga lookup families; 9 columns, 6 indexes (1 unique, 5 non-unique). Perbandingan dengan static seed (134 rows, 19 customer-type keys, 40 realm keys) membuktikan aggregate berbeda, tetapi nilai/baris pembeda tidak diambil. Percobaan pertama atas query duplicate aggregate mengalami SQL parse/grouping errors dan tidak menghasilkan data; query diperbaiki lalu berhasil. Tidak ada test suite. `git diff --check` dijalankan setelah dokumentasi final.
+- Keputusan teknis: profile ini hanya bukti aggregate untuk live local table pada saat query, bukan approval mapping authority, migration snapshot, atau classifier behavior. Jangan menyamakan database mapping dengan seed sampai owner menetapkan sumber yang benar.
+- Risiko/kendala: root credential tetap overprivileged; data provenance tidak diketahui; mapping actual berbeda dari seed; local counts tidak menjawab semantic meaning atau rule precedence. No data/credential values recorded.
+- Rollback: tidak ada database changes (read-only transaction rolled back); untuk dokumentasi, revert allowlist extension and aggregate notes if scope should be withdrawn.
+- Langkah berikutnya: pemilik menetapkan authoritative mapping source/versi dan normalization/override contract; validasi fixture golden; lanjutkan keputusan lain Phase 0C (NOSSA closed/reopen evidence, time/TTR/KPI, geography crosswalk, field retention and source snapshot/restore gates).
+- Pesan commit: `docs(phase-0c): profile registered vlookup aggregates`.
