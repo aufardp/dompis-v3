@@ -1364,3 +1364,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: C0C-01–03, sisa C0C-04, C0C-05, dan source snapshot registration C0C-06 masih terbuka. Tidak ada query source/target dilakukan dalam pekerjaan ini.
 - Rollback: revert perubahan dokumentasi tiga file; tidak ada perubahan aplikasi, schema, atau data.
 - Langkah berikutnya: lanjutkan validasi sintetis hanya untuk kontrak/transformasi yang sudah terdefinisi; tunggu bukti closed/reopen, definisi lifecycle/waktu/TTR, crosswalk, field disposition, effective-scope policy, dan snapshot terdaftar sebelum memulai ETL. Pesan commit: `docs(phase-0): reconcile role and database readiness status`.
+
+## 2026-11-27 — Verify legacy field inventory against candidate schema
+
+- Phase: Phase 0C — field mapping/schema-reference validation (partial gate completion).
+- Tindakan: menjalankan pemeriksaan repository read-only atas tabel mapping `Legacy-Field-Mapping.md` terhadap DDL candidate yang checked in. Hasil menunjukkan 84 row source unik, 38 explicit target references `tickets.*` semuanya menunjuk kolom yang tersedia, tidak ada duplikasi source field, dan 46 row memiliki target/disposition archive, restricted, atau optional. Memperbarui Phase 0C untuk memisahkan validasi coverage dari keputusan retensi dan semantik.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; hanya file dokumentasi/DDL yang dibaca.
+- SQL/command tersanitasi: parser lokal read-only (`node -e`) membaca `docs/Legacy-Field-Mapping.md` dan `packages/db/drizzle/0000_vengeful_redwing.sql`; `git diff --check`.
+- Hasil pengujian aktual: inventory 84/84 unik; 38/38 referensi kolom ticket ditemukan; 0 duplikasi source field; 0 missing target ticket column; 46 archive/restricted/optional rows. `git diff --check` lulus. Tidak ada integration/unit suite dijalankan.
+- Keputusan teknis: ini hanya bukti konsistensi dokumentasi ke candidate DDL, bukan persetujuan eligibility, transformasi, PII retention, atau payload archive. C0C-05 menjadi partial, belum lulus.
+- Risiko/kendala: label typed/archive dalam mapping masih memerlukan pemeriksaan semantik per field dan approval; source snapshot tidak terdaftar, jadi tidak ada verifikasi atas data aktual pada pekerjaan ini. Gate C0C-01–04 serta kebijakan/retensi pada C0C-05 dan C0C-06 masih terbuka.
+- Rollback: revert dokumentasi dua file; tidak ada source, schema, atau data yang berubah.
+- Langkah berikutnya: Phase 0C tidak dapat dinyatakan complete tanpa fixture/keputusan eksternal yang tercantum; setelah bukti diterima, validasi semantik, eligibility dan field policy dengan golden fixtures. Pesan commit: `docs(phase-0c): verify legacy mapping coverage against schema`.
