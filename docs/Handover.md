@@ -1562,3 +1562,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: hapus fixture baru dan revert readiness/ADR/Handover references; tidak ada data/schema rollback.
 - Langkah berikutnya: buat executable domain golden tests ketika status-list completeness/unknown handling dan source evidence diterima; validasi close→open dengan sanitized response fixture.
 - Pesan commit: `docs(phase-0c): specify synthetic lifecycle golden cases`.
+
+## 2026-11-27 — Cross-check legacy time, TTR, and SLA rules
+
+- Phase: Phase 0C — C0C-02 legacy evidence reconciliation.
+- Tindakan: membandingkan matriks `dompis_v2/docs/sla-ttr-matrix.md` dengan implementasi compliance, priority countdown, displayed Max TTR, MTTR, customer/type config, dan date parser; merangkum evidence serta perbedaan ke owner packet, `Business-Rules.md`, dan Phase 0C discovery. Mengidentifikasi perbedaan status: legacy `CLOSE_STATUS_VALUES` memasukkan `CLOSE`, sedangkan `OPEN_STATUS_VALUES` juga memuat `OPEN`; keduanya belum disebut dalam daftar status pemilik v3.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Business-Rules.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; legacy checkout dibaca read-only.
+- SQL/command tersanitasi: `sed` pada `docs/sla-ttr-matrix.md`, `app/libs/tickets/ttr-comply.ts`, `app/libs/priority/ttr.ts`, `app/libs/tickets/effective.ts`, `app/libs/tickets/mttr.ts`, `app/config/customer-types.ts`, `app/config/jenis-tiket.ts`, `app/libs/ticket-utils.ts`, `app/utils/datetime.ts`; `rg` untuk referensi konsumsi.
+- Hasil pengujian aktual: dikonfirmasi dari source bahwa compliance memakai `resolve_date` dan deadline threshold dengan equality `<=`; B2C customer type thresholds 3/6/12/24 jam; B2B type-specific/configured logic termasuk TOP OLO 4/7 dan K-tier 1,5/3,6/7,2, dengan SQM-CCAN work-hour 4 jam dan MANJA P1 booking+3 jam. Legacy parser menafsirkan input offsetless sebagai Asia/Jakarta. Priority countdown memakai bucket 3/6/3/36 jam; display Max TTR punya precedence berbeda; MTTR memakai reported→closed/resolve path. Matriks menyebut Indibiz 4 jam/Reseller 6 jam sedangkan executable config memberi 24 jam untuk keduanya. Tidak ada test suite dijalankan; bukti berupa static source inspection.
+- Keputusan teknis: catat perilaku tersebut sebagai implementasi legacy, bukan persetujuan bisnis tunggal atau aturan v3. Raw TTR upstream tetap tanpa unit; resolve/closed timestamp mapping, KPI eligibility, dan denominator tidak disimpulkan dari kode lama.
+- Risiko/kendala: pemilik perlu mengadjudikasi konflik matrix/config dan mengonfirmasi apakah `CLOSE` closed serta `OPEN` open di v3; ada beberapa definisi waktu yang dapat menghasilkan KPI berbeda jika dipilih tanpa sign-off.
+- Rollback: revert ringkasan bukti pada owner packet, Business Rules, Phase 0C discovery dan entry ini; tidak ada source legacy, database, atau runtime effect.
+- Langkah berikutnya: konfirmasi status `CLOSE`/`OPEN`; pilih atau koreksi threshold dan time metric per menu; tetapkan timestamp basis, timezone, eligibility/denominator, lalu buat source-backed golden fixtures.
+- Pesan commit: `docs(phase-0c): reconcile legacy SLA and TTR evidence`.

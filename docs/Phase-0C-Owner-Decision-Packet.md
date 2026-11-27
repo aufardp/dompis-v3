@@ -28,14 +28,34 @@ Fixture tidak boleh memuat identifier pelanggan asli. Nilai yang disamarkan haru
 | Apakah pencarian incident dapat mengembalikan parent/children, dan aturan mana yang mengidentifikasi incident canonical? |  |
 | Approver dan tanggal keputusan: |  |
 
+**Discrepancy legacy untuk ditinjau:** `CLOSE_STATUS_VALUES` legacy memuat `CLOSE`, sedangkan `OPEN_STATUS_VALUES` juga memuat `OPEN`. Keduanya tidak ada di daftar status yang diberikan pemilik pada 2026-11-27. Jangan tambahkan otomatis ke mapping baru; pemilik perlu mengonfirmasi apakah `CLOSE` tetap closed dan `OPEN` termasuk open, atau keduanya dikeluarkan.
+
 ## B. Waktu, TTR, SLA dan KPI — C0C-02
+
+### Aturan yang memang sudah ada di aplikasi lama (observasi implementasi, bukan persetujuan aturan v3)
+
+Audit `dompis_v2` menemukan beberapa mekanisme waktu/TTR yang berbeda, bukan satu rule engine tunggal:
+
+| Jalur legacy | Perilaku yang ditemukan | Sumber dan batas bukti |
+|---|---|---|
+| TTR compliance | Memerlukan status dalam `CLOSE_STATUS_VALUES`, `resolve_date`, `reported_date` yang dapat diparse, dan threshold. Membandingkan `resolve_date <= deadline` sebagai `comply`; lewat deadline `not_comply`; tiket/status/jenis/timestamp yang tidak eligible menghasilkan null/tidak dinilai. | `app/libs/tickets/ttr-comply.ts`; ini perilaku kode lama, bukan keputusan bahwa `resolve_date` adalah canonical close time NOSSA. |
+| Threshold B2C | Untuk segment DCS/PL-TSEL memakai `customer_type`: Diamond 3 jam, Platinum 6 jam, Gold 12 jam, Reguler 24 jam. | `app/config/customer-types.ts`; fallback helper dapat memberi default 24 jam, tetapi compliance path mengembalikan null jika customer type tidak dikenali. |
+| Threshold B2B / jenis | `getJenisSlaHours` menjadi fallback, dengan pengecualian TOP OLO 4/7 jam tergantung `ticket_id_gamas` dan K-tier family 1,5/3,6/7,2 jam dari suffix K1/K2/K3; SIP TRUNK flat 10 jam. Jenis netral dikecualikan dari compliance. | `app/libs/tickets/ttr-comply.ts` dan `app/config/jenis-tiket.ts`; pemetaan dan precedence bergantung pada classifier/type fields. |
+| SQM dan MANJA | SQM-CCAN hanya dinilai untuk reported 08:00–17:00 WIB dengan 4 jam; MANJA P1 memakai `booking_date + 3 jam`. | `app/libs/tickets/ttr-comply.ts`; eligibility dan penerapan bisnis belum disahkan untuk v3. |
+| Max TTR tampilan/detail | Jalur display terpisah: booking + 3 jam bila booking tersedia, lalu guarantee+P1/P+ reported+3 jam, database maxTTR, fallback jenis/customer. | `app/libs/tickets/effective.ts`; bukan rule compliance. |
+| Priority countdown | Bucket priority sendiri memakai 3/6/3/36 jam dan status near pada sisa 10%; MANJA dapat memakai booking atau reported. | `app/libs/priority/ttr.ts`; bukan SLA matrix atau compliance KPI. |
+| MTTR / durasi resolve | Mean `reported_date → closed_at`, dengan sebagian dashboard memberi `resolve_date` precedence/fallback; negative/unparseable durations tidak dihitung. | `app/libs/tickets/mttr.ts`, `dashboard-overview.ts`; berbeda dari TTR compliance. |
+| Parsing timestamp | `parseWIBDateInput` menginterpretasikan string tanpa offset sebagai WIB (Asia/Jakarta), menghormati offset eksplisit, dan menangani format slash dengan asumsi DD/MM ketika ambigu. | `app/utils/datetime.ts`; parser lama membuktikan perilaku aplikasi, bukan bahwa tiap upstream field offsetless memang bermakna WIB. |
+
+Ada konflik langsung antara dokumen dan konfigurasi yang dipakai kode: `docs/sla-ttr-matrix.md` menyebut Indibiz 4 jam dan Reseller 6 jam, sedangkan `app/config/jenis-tiket.ts` memberi keduanya 24 jam. Matrix juga tidak mencakup seluruh override/exception yang diterapkan `ttr-comply.ts`. Rincian discovery dan rujukan tambahan ada di `Phase-0B-Discovery.md` bagian “SLA/TTR, denominator dan waktu”.
 
 | Field/aturan | Keputusan pemilik; tulis `unknown` jika belum diketahui |
 |---|---|
-| Zona waktu untuk setiap timestamp tanpa offset (reported, status, booking, resolved, closed, deadline) |  |
-| Makna dan unit setiap TTR upstream (`TTR_Customer`, `TTR_Nasional`, `TTR_Regional`, `TTR_Witel`, `TTR_Mitra`, `TTR_Agent`, `TTR_END_TO_END`, `C_SLG_TTR`, dan lainnya yang dipakai) |  |
-| SLA threshold dan basis jam kalender/kerja per segmen/jenis layanan |  |
+| Zona waktu untuk setiap timestamp NOSSA tanpa offset (reported, status, booking, resolved, closed, deadline): apakah aturan parser legacy WIB dipertahankan? |  |
+| Makna/unit TTR numerik NOSSA (`TTR_Customer`, `TTR_Nasional`, `TTR_Regional`, `TTR_Witel`, `TTR_Mitra`, `TTR_Agent`, `TTR_END_TO_END`, `C_SLG_TTR`, dll). Bedakan dari SLA threshold yang dihitung legacy. |  |
+| SLA threshold dan basis jam kalender/kerja per segmen/jenis layanan; mana yang berlaku saat matrix dan konfigurasi legacy bertentangan (khusus Indibiz/Reseller), atau apakah threshold diubah? |  |
 | Batas comply (misalnya inklusivitas equality), pause/pending, hari libur, dan kasus yang tidak eligible |  |
+| Pilih metric per penggunaan: compliance KPI, priority countdown, displayed Max TTR, dan MTTR; tetapkan timestamp basis dan eligible/denominator untuk tiap menu. Jangan satukan implementasi legacy yang berbeda. |  |
 | KPI numerator, denominator, tanggal basis, bucket/classifier version, serta unknown/null treatment untuk masing-masing menu |  |
 | Approver dan tanggal keputusan |  |
 
