@@ -1429,3 +1429,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: fixture lifecycle/TTR, area/Workzone crosswalk, account activation/effective-scope parity, field retention, serta source snapshot registration masih memerlukan bukti/keputusan eksternal.
 - Rollback: revert pembaruan paket dan entry Handover; tidak ada source/app/schema/data effect.
 - Langkah berikutnya: input yang tersisa tercantum di paket; Phase 0C exit review baru dapat dilakukan setelah input dan validasi fixture tersedia. Pesan commit: `docs(phase-0c): reconcile approved role policy in decision packet`.
+
+## 2026-11-27 — Run documented incident normalization contract tests
+
+- Phase: Phase 0C — locally testable incident identity contract (partial evidence; no migration).
+- Tindakan: meninjau implementasi dan test existing `packages/contracts/src/incident.ts` untuk memastikan batas yang diuji sesuai mapping (ASCII-only trim/uppercase, max 100, reject coercion/Unicode/invalid characters, idempotence), lalu menjalankan test file targeted. Memperbarui Phase 0C sebagai bukti terbatas.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: `bun test packages/contracts/src/incident.test.ts`; `git diff --check`.
+- Hasil pengujian aktual: 2 tests passed, 0 failed, 11 expectations. Test memvalidasi primitive normalizer saja, bukan dataset atau transformasi migrasi.
+- Keputusan teknis: pertahankan bukti normalisasi terpisah dari collision/eligibility disposition. Tes tidak meluluskan snapshot migration, source key collision review, atau field archive policy.
+- Risiko/kendala: C0C-01–04 dan keputusan/approval field C0C-05 serta snapshot registration C0C-06 belum tertutup. Tidak ada database/source data terlibat.
+- Rollback: revert dua pembaruan dokumentasi; source/test tidak berubah.
+- Langkah berikutnya: selesaikan exit checklist paket setelah fixture dan keputusan owner tersedia; jangan memulai ETL hanya berdasarkan test normalizer. Pesan commit: `test(phase-0c): verify documented incident normalization contract`.
