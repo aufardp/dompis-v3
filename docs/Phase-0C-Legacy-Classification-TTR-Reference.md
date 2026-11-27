@@ -153,9 +153,9 @@ The upstream NOSSA numeric TTR field units remain unknown. A legacy parser inter
 - [ ] Verify all 46 type-2 values and all 62 pairs, including null/blank handling; current relayed report lists only the rule-relevant subset.
 - [x] Bounded local aggregate profile found no duplicate lookup keys or conflicting outputs under tested normalization; no raw mapping values were emitted. Actual table is the owner-selected authority; its content differs from the non-authoritative checked-in seed.
 - [ ] Capture exact authoritative mapping rows/hash/version from the approved consistent source snapshot; verify null and override outcomes with sanitized golden cases.
-- [ ] Confirm whether the deployed mapping is maintained by a source table, checked-in seed, or both; compare provenance and avoid running legacy seed code.
+- [x] Mapping authority: owner selected legacy database `source_vlookup`; checked-in seed is secondary when it differs. No legacy seed was executed. Snapshot provenance/content capture remains a separate C0C-06 gate.
 - [ ] Prove deterministic results for duplicate normalized keys and override precedence; add only evidence-backed v3 uniqueness constraints and indexes.
-- [ ] Resolve executable-config vs documentation conflicts (at least INDIBIZ and RESELLER) with the application owner.
+- [x] Label conflict: owner directed that all former `RESELLER` classification becomes `INDIBIZ`; it is not a separate v3 type. Threshold conflict is recorded separately: executable legacy config is 24h for both labels and is the parity candidate, while old matrix values are stale evidence; do not ask the owner to repeat the label decision.
 - [x] Legacy blank/unrecognized B2C customer type behavior is distinguished by path: compliance not-evaluated/null; display fallback 24h only. Add a synthetic parity fixture before implementation acceptance.
 - [ ] Approve the threshold/clock basis for each product surface; separate compliance, countdown, display Max TTR, and MTTR.
 - [ ] Confirm work-hour calendar, timezone, boundary inclusivity, booking/guarantee/GAMAS predicates, suffix parsing, and tier family membership.

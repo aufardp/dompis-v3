@@ -21,13 +21,13 @@ The `source_vlookup` addition is a bounded Phase 0C/C0C-05 discovery allowance b
 | Attribute | Registration |
 |---|---|
 | Engine/address/database | PostgreSQL 18.7, local Unix socket (configured port 5432), database `dompis_v3`; session identity checked on 2026-11-27 |
-| Environment/data provenance | Local DOMPIS v3 development database. Treat as persistent/non-disposable; current row counts were not queried in this registration check. A separate `dompis_v3_dev` database is not present. |
+| Environment/data provenance | Local DOMPIS v3 development database. Treat as persistent/non-disposable; a bounded metadata check found 19 public tables (no business row counts queried). A separate `dompis_v3_dev` database is not present. |
 | Owner/authorization | DOMPIS application owner; local metadata and bounded synthetic test access only. |
 | Permitted scope | Metadata and rollback-only synthetic test transactions in `public`; no business-data migration or bulk operations under this registration. |
-| Role | Effective session role observed as `pakbreng`; privilege attributes and a dedicated least-privilege migration role have not been verified. |
+| Role | Effective session role observed as `pakbreng`; bounded `pg_roles` check found `SUPERUSER`, `CREATEDB`, `CREATEROLE`, and `REPLICATION`. This is an administrative role, not an application or migration least-privilege role. No role/privilege changes were made. |
 | Prohibited by this registration | Reset/drop/truncate, production migration, bulk writes, legacy import, or assuming the database is empty/disposable. |
 
-This registration confirms the current local development target identity only. It does not satisfy the isolated restore/rollback rehearsal or migration-role portion of C0C-06.
+This registration confirms the current local development target identity and PostgreSQL version only. Native `uuidv7()` is available. It does not satisfy the isolated restore/rollback rehearsal or migration-role portion of C0C-06. Do not use the observed superuser as a runtime or ETL credential.
 
 | Operation | Dev / isolated restore / staging | Production |
 |---|---|---|

@@ -1702,3 +1702,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert klarifikasi dokumen ini; tidak ada perubahan data/schema/runtime.
 - Langkah berikutnya: lanjutkan discovery menggunakan table mapping yang telah disetujui; crosswalk Workzone unmatched bukan syarat untuk menyimpan ticket history.
 - Pesan commit: `docs(phase-0c): apply organization table mapping clarification`.
+
+## 2026-11-27 — Refresh Phase 0C evidence and remove answered classifier gates
+
+- Phase: Phase 0C — C0C-02/C0C-05/C0C-06 readiness.
+- Tindakan: menghapus checklist yang meminta ulang otoritas `source_vlookup` dan rename `RESELLER`→`INDIBIZ`; mencatat pemeriksaan metadata PostgreSQL lokal dan memperbarui gate C0C-06/status Phase 0C sesuai bukti terbaru.
+- File berubah: `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Database-Access.md`, `docs/Handover.md`.
+- Database target: PostgreSQL lokal `dompis_v3`, PostgreSQL 18.7, socket lokal; read-only metadata query. Tidak ada DML/DDL.
+- SQL/command tersanitasi: `SELECT current_database(), current_user, inet_server_addr(), inet_server_port(), version()`; cek privilege role aktif dari `pg_roles`; hitung tabel public; `SELECT uuidv7() IS NOT NULL`.
+- Hasil pengujian aktual: target `dompis_v3`, role `pakbreng`, PostgreSQL 18.7; role memiliki SUPERUSER/CREATEDB/CREATEROLE/REPLICATION; 19 tabel public; native `uuidv7()` tersedia. `git diff --check` lulus. Tidak ada test suite.
+- Keputusan teknis: jangan gunakan role superuser untuk runtime/ETL; source_vlookup authority dan label Indibiz dianggap diputuskan. Phase 0C tetap belum complete karena belum ada upstream closed/reopen fixture/contract, source timestamp/TTR unit semantics, field/archive retention approval, immutable source snapshot/least-privilege role, dan isolated restore rehearsal.
+- Risiko/kendala: local MySQL provenance belum terklasifikasi dan role root overprivileged; PostgreSQL dev target persistent; tidak membuat role, snapshot, backup, atau database baru.
+- Rollback: revert perubahan dokumentasi; tidak ada perubahan database atau aplikasi.
+- Langkah berikutnya: lanjut hanya dari evidence yang dapat diberikan/diotorisasi: sanitized `/nossa-closed`+reopen contract, archive/PII retention policy, source snapshot provenance and isolated restore plan. Jangan menandai Phase 0C selesai sampai semua gate terverifikasi.
+- Pesan commit: `docs(phase-0c): refresh evidence and answered gates`.
