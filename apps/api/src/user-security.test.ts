@@ -5,19 +5,19 @@ const origin = 'https://dompis.example.test';
 const token = 'A'.repeat(43);
 
 test('admin mutations require the configured origin and matching CSRF token', () => {
-	const validRequest = new Request(`${origin}/admin/users`, {
+	const validRequest = new Request(`${origin}/api/admin/users`, {
 		method: 'POST',
 		headers: { origin, 'x-csrf-token': token }
 	});
 	expect(validateMutationSecurity(validRequest, token, origin)).toBe('allowed');
 
-	const crossOriginRequest = new Request(`${origin}/admin/users`, {
+	const crossOriginRequest = new Request(`${origin}/api/admin/users`, {
 		method: 'POST',
 		headers: { origin: 'https://attacker.example.test', 'x-csrf-token': token }
 	});
 	expect(validateMutationSecurity(crossOriginRequest, token, origin)).toBe('origin_rejected');
 
-	const mismatchedTokenRequest = new Request(`${origin}/admin/users`, {
+	const mismatchedTokenRequest = new Request(`${origin}/api/admin/users`, {
 		method: 'POST',
 		headers: { origin, 'x-csrf-token': 'B'.repeat(43) }
 	});

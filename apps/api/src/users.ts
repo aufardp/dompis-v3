@@ -116,7 +116,7 @@ function scopeRow(scope: ScopeGrant) {
 export function createUserRoutes(database: UserAdminDatabase | undefined, appOrigin: string | undefined) {
 	return new Elysia({ name: 'dompis-user-administration' })
 		.use(createPermissionGuard(database))
-		.get('/admin/scope-options', async ({ authorization, query, set }) => {
+		.get('/api/admin/scope-options', async ({ authorization, query, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
 			if (!authorization.globalScope) {
 				set.status = 403;
@@ -188,7 +188,7 @@ export function createUserRoutes(database: UserAdminDatabase | undefined, appOri
 				nextCursor: t.Nullable(t.String())
 			}), 400: apiError, 401: apiError, 403: apiError, 503: apiError, 422: invalidRequest, 500: apiError }
 		})
-		.get('/admin/users', async ({ authorization, query, set }) => {
+		.get('/api/admin/users', async ({ authorization, query, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
 			if (!authorization.globalScope) {
 				set.status = 403;
@@ -230,7 +230,7 @@ export function createUserRoutes(database: UserAdminDatabase | undefined, appOri
 				401: apiError, 403: apiError, 503: apiError, 422: invalidRequest, 500: apiError
 			}
 		})
-		.get('/admin/users/:id', async ({ authorization, params, set }) => {
+		.get('/api/admin/users/:id', async ({ authorization, params, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
 			if (!authorization.globalScope) {
 				set.status = 403;
@@ -279,7 +279,7 @@ export function createUserRoutes(database: UserAdminDatabase | undefined, appOri
 				}))
 			}), 401: apiError, 403: apiError, 404: apiError, 503: apiError, 422: invalidRequest, 500: apiError }
 		})
-		.post('/admin/users', async ({ authorization, body, cookie, request, set }) => {
+		.post('/api/admin/users', async ({ authorization, body, cookie, request, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
 			const mutationSecurity = validateMutationSecurity(request, cookie[CSRF_COOKIE]?.value, appOrigin);
 			if (mutationSecurity !== 'allowed') {
@@ -370,7 +370,7 @@ export function createUserRoutes(database: UserAdminDatabase | undefined, appOri
 				409: apiError, 503: apiError, 422: invalidRequest, 500: apiError
 			}
 		})
-		.put('/admin/users/:id/scopes', async ({ authorization, body, cookie, params, request, set }) => {
+		.put('/api/admin/users/:id/scopes', async ({ authorization, body, cookie, params, request, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
 			const mutationSecurity = validateMutationSecurity(request, cookie[CSRF_COOKIE]?.value, appOrigin);
 			if (mutationSecurity !== 'allowed') {
@@ -491,7 +491,7 @@ export function createUserRoutes(database: UserAdminDatabase | undefined, appOri
 			response: { 200: t.Object({ status: t.Union([t.Literal('updated'), t.Literal('unchanged')]) }), 400: apiError, 401: apiError,
 				403: apiError, 404: apiError, 409: apiError, 503: apiError, 422: invalidRequest, 500: apiError }
 		})
-		.delete('/admin/users/:id', async ({ authorization, cookie, params, request, set }) => {
+		.delete('/api/admin/users/:id', async ({ authorization, cookie, params, request, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
 			const mutationSecurity = validateMutationSecurity(request, cookie[CSRF_COOKIE]?.value, appOrigin);
 			if (mutationSecurity !== 'allowed') {

@@ -15,7 +15,7 @@ export default defineConfig({
 				target: apiTarget,
 				changeOrigin: false
 			},
-			'/admin': {
+			'/api/admin': {
 				target: apiTarget,
 				changeOrigin: false
 			},

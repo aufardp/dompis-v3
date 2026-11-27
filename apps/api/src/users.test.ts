@@ -66,14 +66,14 @@ test('superadmin user create, scope replacement and deactivation are audited and
 				origin: appOrigin,
 				'x-csrf-token': csrfToken
 			};
-			const list = await app.handle(new Request('http://localhost/admin/users?limit=1', {
+			const list = await app.handle(new Request('http://localhost/api/admin/users?limit=1', {
 				headers: { cookie: `__Host-dompis_session=${actorToken}` }
 			}));
 			expect(list.status).toBe(200);
 			expect((await list.json() as { users: unknown[] }).users.length).toBe(1);
 
 			const username = `synthetic_user_${crypto.randomUUID().replaceAll('-', '').slice(0, 12)}`;
-			const create = await app.handle(new Request('http://localhost/admin/users', {
+			const create = await app.handle(new Request('http://localhost/api/admin/users', {
 				method: 'POST',
 				headers: { ...authHeaders, 'content-type': 'application/json' },
 				body: JSON.stringify({
@@ -84,7 +84,7 @@ test('superadmin user create, scope replacement and deactivation are audited and
 			expect(create.status).toBe(201);
 			const { id: userId } = await create.json() as { id: string };
 
-			const detail = await app.handle(new Request(`http://localhost/admin/users/${userId}`, {
+			const detail = await app.handle(new Request(`http://localhost/api/admin/users/${userId}`, {
 				headers: { cookie: `__Host-dompis_session=${actorToken}` }
 			}));
 			expect(detail.status).toBe(200);
@@ -95,7 +95,7 @@ test('superadmin user create, scope replacement and deactivation are audited and
 
 			const targetToken = randomBytes(32).toString('base64url');
 			await createSession(tx, userId, hashSessionToken(targetToken), new Date(Date.now() + 60 * 60 * 1000));
-			const replaceScopes = await app.handle(new Request(`http://localhost/admin/users/${userId}/scopes`, {
+			const replaceScopes = await app.handle(new Request(`http://localhost/api/admin/users/${userId}/scopes`, {
 				method: 'PUT',
 				headers: { ...authHeaders, 'content-type': 'application/json' },
 				body: JSON.stringify({ globalScope: false, currentPassword: actorPassword, scopes: [{ level: 'workzone', targetId: workzone.id }] })
@@ -109,7 +109,7 @@ test('superadmin user create, scope replacement and deactivation are audited and
 				.where(eq(schema.sessions.tokenHash, hashSessionToken(targetToken))).limit(1);
 			expect(revokedSession?.revokedAt).toBeInstanceOf(Date);
 
-			const deactivate = await app.handle(new Request(`http://localhost/admin/users/${userId}`, {
+			const deactivate = await app.handle(new Request(`http://localhost/api/admin/users/${userId}`, {
 				method: 'DELETE', headers: authHeaders
 			}));
 			expect(deactivate.status).toBe(200);
@@ -122,7 +122,7 @@ test('superadmin user create, scope replacement and deactivation are audited and
 				'user.created', 'user.scope_updated', 'user.deactivated'
 			]);
 
-			const selfDeactivation = await app.handle(new Request(`http://localhost/admin/users/${actor.id}`, {
+			const selfDeactivation = await app.handle(new Request(`http://localhost/api/admin/users/${actor.id}`, {
 				method: 'DELETE', headers: authHeaders
 			}));
 			expect(selfDeactivation.status).toBe(409);

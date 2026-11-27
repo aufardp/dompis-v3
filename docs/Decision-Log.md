@@ -377,6 +377,16 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Boundaries: browser QA did not cover inactive-parent rejection, non-superadmin denial, theme persistence, or operator bootstrap. The wait for a guessed success message timed out after the deactivate click; the database state was independently checked and confirmed the account inactive. No screenshot was requested or saved.
 - Rollback: no persistent application/database rollback remains; all temporary data was removed and both local servers/browser were stopped.
 
+## ADR-042 — Separate admin API URLs from SvelteKit admin pages (2026-11-27)
+
+- Status: implemented locally.
+- Context: browser QA found that client-side navigation to `/admin/users` worked, but opening or reloading that URL was intercepted by Vite's `/admin` proxy and returned API JSON `{error: "forbidden"}` instead of the SvelteKit page. The same path prefix was used by both browser pages and API resources.
+- Evidence: direct `agent-browser open http://localhost:5173/admin/users` initially returned the API forbidden response. After moving admin API endpoints to `/api/admin/*` and the Vite proxy to `/api/admin`, direct route navigation rendered the user page; an officer got page-level access denial, and `/api/admin/users` independently returned 403.
+- Decision: keep UI routes at `/admin/*`; put admin API endpoints at `/api/admin/*`; proxy only `/api/admin` to Elysia. Update User Management UI calls, route integration tests, CSRF unit paths, Architecture and Getting Started docs. Avoid a broad `/admin` proxy.
+- Consequences: direct open/reload and client-side navigation share the same SvelteKit page behavior; API authorization remains server-enforced on a distinct route namespace.
+- Validation: workspace typecheck and build passed; `bun test apps/api/src/user-security.test.ts` passed (1 test, 5 expectations); rollback-only User Management PostgreSQL integration passed (1 test, 15 expectations). Browser verified role denial (API 403), inactive-parent scope rejection (400 `scope_target_unavailable`, zero inactive branch options), direct `/admin/users`, and light-theme persistence after reload. Temporary DB fixtures were removed and exact user/master counts verified zero. `git diff --check` passed.
+- Rollback: restore API route paths and frontend fetch URLs to `/admin/*`, restore Vite `/admin` proxy, and revert docs/this ADR. This reintroduces the page/proxy collision. No schema or persistent data rollback is needed.
+
 ## ADR-035 — Add scoped ticket list with signed keyset cursors (2026-11-26)
 
 - Status: implemented locally; `tickets.read` remains an unseeded candidate pending owner approval.

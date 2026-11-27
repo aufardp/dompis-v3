@@ -145,7 +145,7 @@
 		try {
 			const params = new URLSearchParams({ limit: '50' });
 			if (after) params.set('after', after);
-			const page = await request<{ users: UserRow[]; nextCursor: string | null }>(`/admin/users?${params}`);
+			const page = await request<{ users: UserRow[]; nextCursor: string | null }>(`/api/admin/users?${params}`);
 			users = page.users;
 			nextCursor = page.nextCursor;
 			currentCursor = after;
@@ -159,7 +159,7 @@
 		selectedUserId = user.id;
 		selectedUser = null;
 		try {
-			selectedUser = await request<UserDetail>(`/admin/users/${user.id}`);
+			selectedUser = await request<UserDetail>(`/api/admin/users/${user.id}`);
 			editGlobal = selectedUser.globalScope;
 			editScopes = selectedUser.scopes.map(toScopeGrant);
 			currentPassword = '';
@@ -195,7 +195,7 @@
 		const params = new URLSearchParams({ level, limit: '50' });
 		if (parentId) params.set('parentId', parentId);
 		if (scopeSearch.trim()) params.set('search', scopeSearch.trim());
-		const page = await request<{ options: Option[] }>(`/admin/scope-options?${params}`);
+		const page = await request<{ options: Option[] }>(`/api/admin/scope-options?${params}`);
 		if (level === 'area') areas = page.options;
 		if (level === 'region') regions = page.options;
 		if (level === 'branch') branches = page.options;
@@ -289,7 +289,7 @@
 		mutationLoading = true;
 		try {
 			const token = await csrfToken();
-			const payload = await request<{ id: string }>('/admin/users', {
+			const payload = await request<{ id: string }>('/api/admin/users', {
 				method: 'POST', headers: { 'content-type': 'application/json', 'x-csrf-token': token },
 				body: JSON.stringify({
 					username: createUsername, displayName: createDisplayName, roleCode: createRole,
@@ -317,7 +317,7 @@
 		mutationLoading = true;
 		try {
 			const token = await csrfToken();
-			await request(`/admin/users/${selectedUser.id}/scopes`, {
+			await request(`/api/admin/users/${selectedUser.id}/scopes`, {
 				method: 'PUT', headers: { 'content-type': 'application/json', 'x-csrf-token': token },
 				body: JSON.stringify({ globalScope: editGlobal, currentPassword,
 					scopes: editGlobal ? [] : editScopes.map(({ level, targetId }) => ({ level, targetId })) })
@@ -335,7 +335,7 @@
 		mutationLoading = true;
 		try {
 			const token = await csrfToken();
-			await request(`/admin/users/${selectedUser.id}`, { method: 'DELETE', headers: { 'x-csrf-token': token } });
+			await request(`/api/admin/users/${selectedUser.id}`, { method: 'DELETE', headers: { 'x-csrf-token': token } });
 			showDeactivateConfirm = false;
 			await loadUsers(currentCursor);
 			const refreshed = users.find((user) => user.id === selectedUser?.id);
