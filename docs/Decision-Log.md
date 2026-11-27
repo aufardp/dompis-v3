@@ -359,6 +359,24 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Rollback: remove `apps/api/src/users.ts`, its app composition and dependency declaration if not used elsewhere; remove the admin Svelte route and navigation/proxy changes; remove `validateMutationSecurity` export only if no other caller uses it; revert this ADR, Security/Phase 2/Handover entries. No database rollback is required.
 - Owner approval: user administration scope and superadmin-only access approved in current conversation on 2026-11-27. Initial-password handoff and lack of role/password editing are implementation boundaries, not an approved credential recovery policy.
 
+## ADR-040 — Verify User Management mutations with rollback-only PostgreSQL fixtures (2026-11-27)
+
+- Status: implemented locally; the test requires the guarded local development database.
+- Context: the User Management API had only Origin/CSRF unit coverage; transactions, hierarchy validation, audit writes, and session revocation had not been exercised through HTTP routes.
+- Decision: add an integration test that refuses any database URL outside loopback `dompis_v3`, creates only synthetic role-linked users, sessions, and organization hierarchy inside a transaction, exercises list/create/detail/scope replacement/deactivation, verifies scope version/session revocation/audit actions/self-deactivation denial, then deliberately throws a sentinel to roll back every fixture. Keep test credentials synthetic and never log database URL or payload.
+- Consequences: route behavior and transactionally written audit events are verified without persistent account/data changes. Browser behavior and failure cases requiring additional owner policy remain separate.
+- Validation: `bun --env-file=.env test apps/api/src/users.test.ts` passed (1 test, 15 expectations) against local PostgreSQL development `dompis_v3`; the initial sandboxed attempt failed because TCP was blocked, and the same guarded test passed with approved DB access. `bun run typecheck:api` and `git diff --check` passed. No production target was accessed.
+- Rollback: remove `apps/api/src/users.test.ts` and this ADR; no database rollback is needed because the test transaction is deliberately rolled back.
+
+## ADR-041 — Browser QA with temporary local fixtures and verified cleanup (2026-11-27)
+
+- Status: completed locally; QA fixtures removed.
+- Context: User Management integration tests passed, but permission navigation and cascading scope controls had not been exercised in a real browser. A rollback-only DB transaction cannot be shared with separately running web/API processes.
+- Decision: create temporary synthetic global-superadmin and five-level organization fixtures only in PostgreSQL development `dompis_v3` (loopback, PG18), perform browser login, verify the privileged navigation and list, create an officer with an Area grant, replace it with a Workzone grant, and deactivate the created user. Remove the exact fixture users, scope, related audit events and hierarchy rows after QA, then query exact fixture identifiers to prove cleanup. Stop local dev processes and close the browser session.
+- Evidence/result: browser showed the superadmin User Management link, rendered the user list and create form, accepted Area scope, saved Workzone-only scope after removing Area, and the target account was `active=false` in PostgreSQL before cleanup. Cleanup removed 2 users, 1 scope, 4 related audit events, and 5 hierarchy rows. A post-cleanup query returned zero for each test username and hierarchy code. No ticket/business records were used.
+- Boundaries: browser QA did not cover inactive-parent rejection, non-superadmin denial, theme persistence, or operator bootstrap. The wait for a guessed success message timed out after the deactivate click; the database state was independently checked and confirmed the account inactive. No screenshot was requested or saved.
+- Rollback: no persistent application/database rollback remains; all temporary data was removed and both local servers/browser were stopped.
+
 ## ADR-035 — Add scoped ticket list with signed keyset cursors (2026-11-26)
 
 - Status: implemented locally; `tickets.read` remains an unseeded candidate pending owner approval.
