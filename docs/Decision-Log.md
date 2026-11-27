@@ -494,3 +494,12 @@ Append ID/date/status/context/evidence/alternatives/decision/consequences/test/r
 - Evidence: owner messages on 2026-11-27; read-only inspection of `dompis_v2/app/libs/tickets/effective.ts`, `dompis_v2/app/libs/priority/ttr.ts`, and `dompis_v2/app/config/priority-rules.ts` (`BOOKING_DEADLINE_HOURS=3`, `GUARANTEE_ESCALATION_HOURS=3`).
 - Validation: static source trace and documentation review; no test/build, database, or API call.
 - Rollback: revert ADR-052 and corresponding v3 countdown/MTTR documentation; no runtime/database change.
+
+## ADR-053 — Set Semesta default and select migration source (2026-11-27)
+
+- Status: owner-approved product/source-selection decisions; snapshot and migration execution remain gated.
+- Context: Semesta summary and trend previously had inconsistent legacy defaults; GAUL semantics were not approved; the registered local MySQL database had an unclassified source purpose.
+- Decision: Semesta opens to the most recent 30 days using `reported_date`, with summary and trend sharing that range. Defer GAUL/recurring from initial release until its definition is approved. Treat the MySQL database named `dompis_db` that the owner sees in phpMyAdmin as the intended source for historical migration.
+- Consequences: no all-time headline vs bounded trend mismatch; GAUL is not an active implementation/KPI gate; no need to ask again whether this named database is the logical source. The source still needs an immutable consistent snapshot, provenance/restore evidence, least-privilege read role, PostgreSQL migration role, and isolated rehearsal before ETL.
+- Evidence: owner message on 2026-11-27. No database or endpoint was accessed for this decision.
+- Rollback: a future product change must supersede this ADR with an explicit owner decision and update PRD, Business Rules, and reports; source selection can only be changed before migration by registering the replacement source and a new snapshot. No runtime/schema/database change in this ADR.

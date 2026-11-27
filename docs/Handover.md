@@ -1912,3 +1912,31 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert tiga dokumen yang tercantum; tidak ada runtime/schema/database rollback.
 - Langkah berikutnya: gunakan pilihan ringkas tersebut untuk menutup policy gates; sementara menunggu, pekerjaan hanya boleh pada design/synthetic scope yang tidak bergantung pada keputusan itu.
 - Pesan commit: `docs(phase-0c): simplify remaining owner decisions`.
+
+## 2026-11-27 — Record Semesta, GAUL, and MySQL source decisions
+
+- Phase: Phase 0C — C0C-02 and C0C-06 owner decision update.
+- Tindakan: mencatat pilihan pemilik bahwa Semesta default 30 hari dengan tanggal `reported_date`, GAUL/recurring ditunda dari rilis awal, dan MySQL `dompis_db` yang terlihat di phpMyAdmin adalah sumber migrasi yang dimaksud. Menambahkan ADR-053 dan menyelaraskan PRD, Business Rules, Execution Readiness, discovery matrix, serta packet pemilik agar keputusan tersebut tidak ditanyakan ulang.
+- File berubah: `docs/Decision-Log.md`, `docs/PRD.md`, `docs/Business-Rules.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Execution-Readiness.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses/diubah; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: pencarian statis atas status Semesta/GAUL/source dan validasi dokumentasi; `git diff --check`.
+- Hasil pengujian aktual: dokumen keputusan dan phase checklist diperiksa silang. Belum menjalankan test/build/DB/API.
+- Keputusan teknis: sumber logis telah dipilih, tetapi snapshot konsisten, asal/provenance, backup/restore, least-privilege source dan PostgreSQL migration roles, serta isolated restore rehearsal tetap gate teknis. Tidak ada ETL atau snapshot dibuat.
+- Risiko/kendala: akses/retensi field sensitif masih menunggu penjelasan/pilihan pemilik; technical NOSSA closed→open ordering/pagination/window completeness dan offsetless timestamp evidence juga terbuka. Phase 0C/0D belum complete.
+- Rollback: supersede ADR-053 dengan keputusan baru jika pemilik mengubah periode Semesta, status GAUL, atau sumber migrasi sebelum ETL; revert dokumentasi saja untuk membatalkan pencatatan ini, tanpa DB rollback.
+- Langkah berikutnya: jelaskan contoh field sensitif dan pilihan penyimpanan/masa simpan; lanjutkan hanya pekerjaan teknis non-destructive sampai policy dan snapshot/restore gates lulus.
+- Pesan commit: `docs(phase-0c): record semesta and migration source decisions`.
+
+## 2026-11-27 — Clarify sensitive legacy fields for owner decision
+
+- Phase: Phase 0C — C0C-05 retention decision preparation.
+- Tindakan: merinci bahwa “field sensitif” hanya merujuk ke kolom tertentu—nama/telepon pelanggan, alamat, nomor seri perangkat, dan identitas teknisi/pembuat ticket manual—bukan seluruh data ticket. Menjelaskan pilihan simpan hanya di backup arsip terenkripsi (tidak dapat dicari di aplikasi) atau arsip PostgreSQL terbatas Superadmin, serta meminta masa simpan dalam tahun/kebijakan. Menegaskan preservation/counting ticket historis tetap terpisah dari akses kolom sensitif.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses/diubah; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: review field names dalam mapping docs dan `git diff --check`.
+- Hasil pengujian aktual: nama field dibandingkan ke daftar kandidat sensitif di mapping; tidak ada test/build/DB/API call.
+- Keputusan teknis: penandaan saat ini adalah kandidat sensitivitas, bukan klaim klasifikasi legal final. Tidak ada data field yang dibaca, disalin, atau dihapus.
+- Risiko/kendala: pemilik masih perlu memilih akses dan masa simpan; field-level eligibility/transform tetap harus divalidasi dari snapshot setelah aman tersedia.
+- Rollback: revert penjelasan di owner packet dan handover; tidak ada runtime/schema/database rollback.
+- Langkah berikutnya: minta pilihan yang mudah: (A) backup terenkripsi offline saja atau (B) arsip PostgreSQL Superadmin-only; tentukan berapa tahun. Sumber migrasi sudah dipilih sebagai MySQL `dompis_db` di phpMyAdmin.
+- Pesan commit: `docs(phase-0c): explain sensitive archive choices`.
