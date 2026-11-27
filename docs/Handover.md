@@ -1377,3 +1377,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: label typed/archive dalam mapping masih memerlukan pemeriksaan semantik per field dan approval; source snapshot tidak terdaftar, jadi tidak ada verifikasi atas data aktual pada pekerjaan ini. Gate C0C-01–04 serta kebijakan/retensi pada C0C-05 dan C0C-06 masih terbuka.
 - Rollback: revert dokumentasi dua file; tidak ada source, schema, atau data yang berubah.
 - Langkah berikutnya: Phase 0C tidak dapat dinyatakan complete tanpa fixture/keputusan eksternal yang tercantum; setelah bukti diterima, validasi semantik, eligibility dan field policy dengan golden fixtures. Pesan commit: `docs(phase-0c): verify legacy mapping coverage against schema`.
+
+## 2026-11-27 — Record legacy NOSSA overflow replay risk
+
+- Phase: Phase 0C — NOSSA client-contract evidence and legacy technical-debt audit.
+- Tindakan: membaca adapter `nossa.ts` dan `window-planner.ts` dari legacy checkout secara read-only. Menemukan ketidaksesuaian statis: planner comment mensyaratkan buffering sebelum yield, tetapi closed-window iterator yield per page sebelum mendeteksi overflow lalu melakukan split/replay. Hash row identik tidak menyelesaikan perubahan payload untuk incident yang sama. Mencatat temuan sebagai legacy risk, bukan kontrak server, lalu menautkannya dari Phase 0C pagination evidence.
+- File berubah: `docs/Technical-Debt-Audit.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada endpoint NOSSA dipanggil. Source legacy dibaca saja.
+- SQL/command tersanitasi: pembacaan terbatas `dompis_v2/lib/external-db/qosmic-bridge/nossa.ts` baris 171–234 dan `window-planner.ts` baris 102–120; `git diff --check`.
+- Hasil pengujian aktual: inspeksi source statis selesai; tidak ada test/benchmark/endpoint test dijalankan. `git diff --check` lulus.
+- Keputusan teknis: jangan port adapter lama dan jangan menganggap pagination/overflow assumptions sebagai kontrak server. V3 acceptance harus menguji page drift dan same-incident updates di samping fixture resmi.
+- Risiko/kendala: konsekuensi aktual bergantung pada stabilitas data upstream selama scan dan aturan conflict consumer; belum dibuktikan melalui endpoint. C0C-01/02 dan keseluruhan contract gate tetap terbuka.
+- Rollback: revert tiga perubahan dokumentasi; tidak ada perubahan source legacy, v3 code, schema, atau data.
+- Langkah berikutnya: lanjutkan discovery hanya dari fixture resmi/sanitized dan keputusan tertulis. Phase 0C belum dapat ditutup sebelum lifecycle/time/TTR, contract, field/access policy, crosswalk, dan source snapshot gates tervalidasi. Pesan commit: `docs(discovery): record legacy NOSSA overflow replay risk`.

@@ -18,6 +18,8 @@ Tanggal: 2026-11-27 (status revalidated). Status: **static contract/access audit
 | TTR/timezone | source TTR decimals may be string/decimal/zero/null; unit unknown; offsetless timestamps unresolved | Preserve raw validated values; no unit/date conversion approved |
 | Rate/error behavior | OAS summary says 50/min/key; local blueprint start 20/min; expected bounded retry/stop behavior | Static documentation only; no request made |
 
+Read-only inspection of the legacy NOSSA adapter confirms the client historically sent `limit`, `offset`, `date_from`, and `date_to`, capped page size at 1,000, and recursively split closed windows after offset overflow. This is evidence of prior client assumptions only. The adapter's closed-window loop yields rows before checking overflow, despite its planner comment requiring buffering; exact-row hashing cannot reconcile changed versions of one incident during replay. See `Technical-Debt-Audit.md`. Do not use this implementation as proof of the server contract or as a v3 design to port.
+
 The sample summary in `Data-Contract.md` reports 100 rows/100 distinct incident IDs and 103 union keys, with CLOSED, RESOLVED, FINALCHECK and MEDIACARE among statuses. These are supplied-sample statistics, not a live endpoint result or release fixture. Original customer values are deliberately not copied.
 
 ## 2. Field and historical migration evidence
