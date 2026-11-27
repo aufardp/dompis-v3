@@ -1744,3 +1744,31 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert matrix/link/status edits; no runtime/schema/data changes.
 - Langkah berikutnya: continue Phase 0C on remaining archive/source contract and snapshot/restore gates; later implementation should add executable golden tests against approved synthetic cases.
 - Pesan commit: `docs(phase-0c): map legacy TTR rule paths`.
+
+## 2026-11-27 — Apply countdown and MTTR owner decisions; detail Max TTR precedence
+
+- Phase: Phase 0C — C0C-02 business-rule clarification.
+- Tindakan: mencatat keputusan countdown Reguler v3=24h (override 36h legacy) dan MTTR ditunda; membaca ulang Max TTR display implementation untuk memastikan syarat dan urutan booking/guarantee, lalu memperbarui ADR, rule registry, source matrix, owner packet dan Phase 0C status.
+- File berubah: `docs/Decision-Log.md`, `docs/Business-Rules.md`, `docs/Phase-0C-TTR-Legacy-Path-Matrix.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database dikoneksikan; hanya source checkout legacy dibaca read-only.
+- SQL/command tersanitasi: `sed`/`rg` pada `effective.ts`, `priority/ttr.ts`, dan `priority-rules.ts`.
+- Hasil pengujian aktual: source menunjukkan booking valid menang lebih dulu dan memberi booking+3h tanpa cek guarantee/flag; jika booking tidak valid, `GUARANTEE` + raw flag P1/P+ memberi reported+3h. Countdown legacy Reguler 36h; keputusan v3 owner override 24h. Tidak ada test/build/API/DB query.
+- Keputusan teknis: compliance tetap reported+maximum threshold dibanding resolve; countdown dan display Max TTR tetap jalur terpisah; MTTR dikeluarkan dari current phase/work scope.
+- Risiko/kendala: report KPI/date definitions and source TTR unit semantics remain open; no code change is made in discovery phase.
+- Rollback: revert ADR-052 and associated documentation changes; no schema/runtime/data rollback.
+- Langkah berikutnya: continue Phase 0C only for remaining contract, archive-retention, source-snapshot and restore gates; do not reopen the decided countdown or MTTR scope.
+- Pesan commit: `docs(phase-0c): set regular countdown and defer mttr`.
+
+## 2026-11-27 — Reconcile active TTR checklist with owner decisions
+
+- Phase: Phase 0C — C0C-02 status consistency.
+- Tindakan: memperjelas bahwa legacy 36h hanya bukti perilaku lama; v3 countdown Reguler=24h. Menandai MTTR deferred agar tidak menjadi gate/fitur aktif; mempertahankan uraian legacy hanya sebagai referensi. Memperbarui owner packet dan contract checklist.
+- File berubah: `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database/API diakses.
+- SQL/command tersanitasi: `rg` untuk memeriksa konflik 36h/MTTR; `git diff --check`.
+- Hasil pengujian aktual: target docs menunjukkan 36h hanya sebagai legacy comparator dan 24h sebagai v3 rule; MTTR tidak lagi aktif gate. `git diff --check` lulus; tidak ada test suite.
+- Keputusan teknis: countdown dan maximum-close compliance threshold adalah dua konsep, meskipun Reguler keduanya kini 24h; Max TTR display memakai prioritas booking/guarantee tersendiri.
+- Risiko/kendala: sisa Phase 0C source snapshot, archive retention, NOSSA ordering/pagination, dan raw measurement semantics masih terbuka.
+- Rollback: revert dokumentasi dan ADR-052; tidak ada runtime/schema/data change.
+- Langkah berikutnya: lanjutkan discovery pada field/archive retention dan database snapshot/restore gates tanpa mengulang keputusan TTR yang telah diberikan.
+- Pesan commit: `docs(phase-0c): reconcile TTR owner decisions`.

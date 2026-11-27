@@ -131,11 +131,11 @@ Reported examples include ASTINET K1 1,151, K2 764, K3 2,855; METRO_E K1 226; VP
 | TTR compliance | Compares resolve time with threshold deadline; legacy source review says equality is compliant | Exact eligibility, date fields, pause rules, denominator, and v3 metric approval remain open |
 | Priority countdown | Separate priority buckets/countdown | Not the same metric as compliance; candidate legacy values are documented in `Business-Rules.md` |
 | Displayed Max TTR | Separate display precedence/fallback | A UI value is not necessarily an SLA result |
-| MTTR | Duration from reported to resolve/close according to legacy report path | Denominator, close timestamp, reopened tickets, and null/negative handling need approval |
+| MTTR | Legacy duration path recorded in the source matrix | Deferred by owner; not an active v3 rule or Phase 0C blocker |
 
 The owner-supplied maximum-hour thresholds are recorded as business inputs. NOSSA's numeric TTR fields remain separate measurements: the supplied example shows `TTR_Customer` 4.056 then 4.06 and `TTR_END_TO_END` numeric then string, but does not define their unit, rounding, clock basis, or precedence. A legacy parser interpreting offsetless timestamps as WIB is not proof of the source system's timezone contract.
 
-Direct source inspection now separates the exact compliance, priority countdown, displayed Max TTR and MTTR paths, with synthetic parity cases, in [TTR Legacy Path Matrix](Phase-0C-TTR-Legacy-Path-Matrix.md). That code trace does not turn unapproved menu KPI definitions into business policy.
+Direct source inspection now separates compliance, priority countdown and displayed Max TTR paths, with synthetic parity cases, in [TTR Legacy Path Matrix](Phase-0C-TTR-Legacy-Path-Matrix.md). MTTR source behavior is retained for historical reference but deferred for v3. That code trace does not turn unapproved menu KPI definitions into business policy.
 
 ## 5. Reported source-data anomalies
 

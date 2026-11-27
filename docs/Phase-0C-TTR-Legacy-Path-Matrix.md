@@ -6,6 +6,8 @@ Status: static source-code audit. This records observable legacy behavior and th
 
 The owner already provided the maximum hours allowed for each ticket family to close; see [Legacy Classification and Time/TTR Reference](Phase-0C-Legacy-Classification-TTR-Reference.md). All former `RESELLER` criteria are `INDIBIZ` in v3. These limits are distinct from the changing NOSSA fields `TTR_Customer` and `TTR_END_TO_END`.
 
+Additional v3 owner decisions: **Regular priority countdown is 24 hours** (override the legacy 36-hour countdown); **MTTR is deferred** and is not a current Phase 0C blocker or an implementation requirement until resumed.
+
 ## What the legacy code calculates
 
 | Output | Source path | Input clock and behavior |
@@ -15,9 +17,9 @@ The owner already provided the maximum hours allowed for each ticket family to c
 | B2B compliance threshold | `getComplyMaxTtrHours` + `app/config/jenis-tiket.ts` | Neutral categories return null. Then TOP OLO special rule (4h without GAMAS reference, 7h with one), then DATIN-family tier (base/K1 1.5h, K2 3.6h, K3 7.2h; SIP TRUNK excluded from tier and flat 10h), then type-2 SLA override, then type-1 override. |
 | SQM-CCAN work-hour compliance | `getComplyMaxTtrHours` and `computeSqmWorkHourCompliance` | `reported_date` is interpreted in WIB; eligible report hour is `08:00 <= time < 17:00`. Deadline is reported + 4h. Non-work-hour, invalid date, open status, or missing resolve time gives null. |
 | MANJA compliance | `computeManjaCompliance` | Only `flagging_manja=P1` is eligible; deadline = `booking_date + 3h`, not reported date. P+ is not included by this compliance function. |
-| Priority countdown | `app/libs/priority/ttr.ts` | Separate buckets: Diamond/VVIP 3h, Platinum 6h, MANJA 3h, regular 36h. Non-MANJA starts from reported date; MANJA prefers booking date and falls back to reported date. “Near” means 10% of bucket time remaining. Invalid far-future reported dates are rejected. |
-| Displayed Max TTR | `app/libs/tickets/effective.ts` | Requires reported date. Precedence: booking + 3h; guarantee + P1/P+ reported + 3h; customer-specific stored max-TTR date; compliance threshold; static type display threshold (including neutral categories); finally customer-type fallback. This display date can differ from compliance deadline. |
-| MTTR | `app/libs/tickets/mttr.ts`, dashboard services | Average elapsed seconds from reported date to selected end date. Dashboard selects `resolve_date` first, then `closed_at`; missing or negative durations are excluded. The overview query selects tickets resolved in period, or tickets with no resolve date but closed in period. |
+| Priority countdown | `app/libs/priority/ttr.ts` | Legacy buckets: Diamond/VVIP 3h, Platinum 6h, MANJA 3h, regular 36h. Owner v3 override: regular countdown **24h**. Non-MANJA starts from reported date; MANJA prefers booking date and falls back to reported date. “Near” means 10% of bucket time remaining. Invalid far-future reported dates are rejected. |
+| Displayed Max TTR | `app/libs/tickets/effective.ts` | `reported_date` must parse first. A valid booking date wins and gives booking +3h, regardless of guarantee/flag. If booking is absent/invalid, exact normalized `guarantee` plus raw P1/P+ flag gives reported +3h. Otherwise try customer-specific stored max-TTR date, compliance threshold, static type display threshold (including neutral categories), and customer-type fallback. This display date can differ from compliance deadline. |
+| MTTR | `app/libs/tickets/mttr.ts`, dashboard services | Legacy source behavior was previously documented, but the owner has asked to defer MTTR. Do not include MTTR in current implementation or keep it as an active Phase 0C decision gate. |
 
 ## Small synthetic parity cases from code inspection
 
@@ -33,8 +35,10 @@ These expected cases make the old behavior concrete. They are documentation fixt
 | SQM-CCAN at 16:59/17:00 WIB | closed, valid reported+resolve | 16:59 is eligible for 4h compliance; 17:00 is not evaluated |
 | MANJA P1 | closed, valid booking time, `flagging_manja=P1` | Compliance deadline is booking +3h |
 | MANJA P+ | `flagging_manja=P+` | Not eligible in `computeManjaCompliance`; other display/countdown paths have their own P+ handling |
-| Regular priority countdown | type REG/REGULER, no MANJA flag, reported time present | 36h countdown, which is not the Reguler 24h compliance threshold |
-| MTTR | reported 10:00, selected close/resolve 12:30 | 9,000 seconds; missing/negative duration is omitted from average |
+| Regular priority countdown | type REG/REGULER, no MANJA flag, reported time present | Legacy was 36h; v3 owner decision overrides countdown to 24h, matching the supplied Reguler maximum-close limit |
+| Booking Max TTR | parseable reported + booking timestamps | Display deadline = booking +3h; booking branch precedes guarantee, flag, stored Max TTR and type rules |
+| Guarantee Max TTR | no valid booking date; guarantee status `GUARANTEE`; raw flag P1 or P+ | Display deadline = reported +3h; other flags do not activate this branch |
+| Booking prerequisite | booking date parses but reported date is missing/unparseable | Display Max TTR is null because the function validates reported date before checking booking |
 
 ## Contract gaps still open
 
@@ -42,7 +46,7 @@ These expected cases make the old behavior concrete. They are documentation fixt
 - The owner-provided maximum-hour catalogue is known. Remaining work is exact golden parity for each separate path, not asking the owner for thresholds again.
 - The supplied NOSSA sample shows `TTR_Customer` 4.056 then 4.06 and `TTR_END_TO_END` as number then string. One sample does not define units, rounding, whether those are elapsed hours, or the clock reset behavior.
 - The old parser treats offsetless date strings as WIB; upstream meaning for each timestamp still requires an authoritative contract. The supplied ISO fields show `+07:00`; booking date is offsetless.
-- The legacy dashboard contains date-window and denominator logic beyond the rule functions. Each v3 report needs an approved metric definition and golden input/output before KPI parity is claimed.
+- The legacy dashboard contains date-window and denominator logic beyond the rule functions. Each v3 report needs an approved metric definition and golden input/output before KPI parity is claimed. MTTR is explicitly deferred.
 
 ## Source files inspected
 
