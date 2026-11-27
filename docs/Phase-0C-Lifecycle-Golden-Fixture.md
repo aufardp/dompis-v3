@@ -1,6 +1,6 @@
 # Phase 0C — Synthetic lifecycle golden fixture
 
-Status: **owner-approved examples for the enumerated status labels and fail-closed treatment of anything else**. This fixture tests the business mapping supplied by the application owner; it does not validate NOSSA response shape, field names, timestamps, source ordering, or closed/reopen endpoint coverage.
+Status: **owner-approved status mapping plus sanitized samples from both incident lookup endpoints**. The sanitized endpoint sample is in `Phase-0C-NOSSA-Incident-Fixture-Sanitized.json`; it records one incident observed open in `/nossa` and closed in `/nossa-closed`. It validates observed response envelopes/fields and an open→closed current-state change, but is not a post-close reopen sample and does not establish pagination completeness or conflict ordering.
 
 ## Status-to-lifecycle cases
 
@@ -37,4 +37,4 @@ Status: **owner-approved examples for the enumerated status labels and fail-clos
 - A reopen requires observations for the same incident in closed then open groups. This fixture does not establish how either NOSSA endpoint exposes that transition or how to order conflicting source rows.
 - No closure timestamp is derived from status. `resolved_at`, `closed_at`, timezone, source version/conflict, history retention, TTR/SLA, and KPI eligibility are outside this fixture and remain open.
 
-These cases are the golden expected outcomes for the enumerated owner-approved lifecycle rule. They must be supplemented with sanitized authoritative `/nossa` and `/nossa-closed` response fixtures before the integration contract or migration gate can pass.
+These cases are the golden expected outcomes for the enumerated owner-approved lifecycle rule. The two endpoint payload shapes are now represented by a sanitized owner-supplied sample. A closed→open observation for the same incident is still needed to prove the source evidence/order used for an actual reopen; the business rule itself is already decided.

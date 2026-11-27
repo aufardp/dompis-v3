@@ -1,6 +1,6 @@
 # Phase 0C — Legacy Classification and Time/TTR Reference
 
-Status: **discovery evidence only; not a v3 business-rule approval**. This page reorganizes the classification/TTR findings relayed by the application owner from another AI agent's audit of `dompis_v2`. The reported query counts and distributions below have not been independently reproduced in this task. Do not seed `source_vlookup`, implement a classifier, calculate a KPI, or clean source values from this page alone.
+Status: **owner-provided legacy maximum-hour catalogue recorded; code-path parity and KPI calculations still require fixtures**. This page reorganizes the classification/TTR findings relayed by the application owner from an audit of `dompis_v2`. Counts/distributions remain snapshot-only evidence and have not been independently reproduced. Do not seed `source_vlookup`, calculate a KPI, or clean source values from count tables alone.
 
 ## 1. Provenance and count reconciliation
 
@@ -65,7 +65,7 @@ The listed type-1 counts sum arithmetically to 1,072,690. This checks only the s
 
 ## 4. Separate time and TTR concepts
 
-Do not collapse the following into one “TTR rule.” The legacy implementation and the owner-relayed report describe several separate outputs and clocks. The report's type counts in this section are not independently validated.
+The owner has already supplied the maximum hours allowed for ticket types to close; this is the threshold catalogue in §4.1–4.3 and is not being requested again. The `TTR_Customer` and `TTR_END_TO_END` values returned by NOSSA are current ticket values, not the maximum threshold. Do not collapse the following into one “TTR rule”: legacy implementation and the owner-relayed report describe separate outputs and clocks. Counts remain snapshot-only and are not threshold rules.
 
 ### 4.1 B2C compliance threshold
 
@@ -91,10 +91,10 @@ The report estimates PL-TSEL at about 853,745 tickets, roughly 80% of that repor
 | UNSPEC | 24h | 74,080 |
 | INFRACARE | 24h display; neutral and excluded from compliance | 58,145 |
 | SQM-CCAN | 4h; only when reported time is 08:00–17:00 WIB | 39,953 |
-| INDIBIZ | 24h in executable config; legacy matrix says 4h | 33,081 |
+| INDIBIZ | 24h maximum close threshold in the owner-provided catalogue; former Reseller criteria are consolidated into INDIBIZ. Keep the conflicting older matrix entry as historical discrepancy, not a request to choose the label again. | 33,081 |
 | NON NUMBERING | 24h display; neutral | 12,715 |
 | UNSPEC B2B | 24h | 11,093 |
-| Legacy `RESELLER` label → v3 `INDIBIZ` | 24h in executable config for both old labels; legacy matrix says Indibiz 4h / Reseller 6h. Owner says consolidate the old Reseller category into Indibiz; use executable 24h as parity candidate, keep matrix as stale conflict evidence. | 9,569 rows reported under the old label |
+| Former `RESELLER` label → v3 `INDIBIZ` | 24h maximum close threshold in the owner-provided catalogue; no separate Reseller type remains in v3. The older matrix's 6h entry is retained only as legacy discrepancy evidence. | 9,569 rows reported under the old label |
 | WIFI-ID | 24h | 3,006 |
 | TSEL / TSEL LOW | 24h | 5,407 / 4,971 |
 | TSEL MINOR / MAJOR / CRITICAL | 16h / 8h / 4h | 1,092 / 67 / 53 |
@@ -133,7 +133,7 @@ Reported examples include ASTINET K1 1,151, K2 764, K3 2,855; METRO_E K1 226; VP
 | Displayed Max TTR | Separate display precedence/fallback | A UI value is not necessarily an SLA result |
 | MTTR | Duration from reported to resolve/close according to legacy report path | Denominator, close timestamp, reopened tickets, and null/negative handling need approval |
 
-The upstream NOSSA numeric TTR field units remain unknown. A legacy parser interpreting offsetless timestamps as WIB is not proof of the source system's timezone contract.
+The owner-supplied maximum-hour thresholds are recorded as business inputs. NOSSA's numeric TTR fields remain separate measurements: the supplied example shows `TTR_Customer` 4.056 then 4.06 and `TTR_END_TO_END` numeric then string, but does not define their unit, rounding, clock basis, or precedence. A legacy parser interpreting offsetless timestamps as WIB is not proof of the source system's timezone contract.
 
 ## 5. Reported source-data anomalies
 
@@ -157,11 +157,12 @@ The upstream NOSSA numeric TTR field units remain unknown. A legacy parser inter
 - [ ] Prove deterministic results for duplicate normalized keys and override precedence; add only evidence-backed v3 uniqueness constraints and indexes.
 - [x] Label conflict: owner directed that all former `RESELLER` classification becomes `INDIBIZ`; it is not a separate v3 type. Threshold conflict is recorded separately: executable legacy config is 24h for both labels and is the parity candidate, while old matrix values are stale evidence; do not ask the owner to repeat the label decision.
 - [x] Legacy blank/unrecognized B2C customer type behavior is distinguished by path: compliance not-evaluated/null; display fallback 24h only. Add a synthetic parity fixture before implementation acceptance.
-- [ ] Approve the threshold/clock basis for each product surface; separate compliance, countdown, display Max TTR, and MTTR.
+- [x] Owner supplied the maximum-hour threshold catalogue; do not ask for it again. Keep the values separate from compliance, countdown, display Max TTR, and MTTR implementations.
+- [ ] Validate which legacy calculation path consumes each threshold, its clock start/stop fields, eligibility and metric denominator; retain each product surface separately.
 - [ ] Confirm work-hour calendar, timezone, boundary inclusivity, booking/guarantee/GAMAS predicates, suffix parsing, and tier family membership.
 - [ ] Build sanitized golden fixtures and expected outputs after business rules are approved; record rule version and reclassification/rollback plan.
 
-Until these items are resolved, the figures and rules are discovery references only. No v3 classifier, SLA, TTR, or KPI behavior is approved by this document.
+The owner-provided maximum-hour catalogue is an approved threshold input; it does not by itself approve the implementation of classifier precedence, compliance eligibility, date/clock basis, countdown, Max TTR display, MTTR, or report KPI behavior. Counts remain discovery-only. Do not implement those separate calculations until their sanitized golden cases and source semantics are validated.
 
 ## Related documents
 

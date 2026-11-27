@@ -1716,3 +1716,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert perubahan dokumentasi; tidak ada perubahan database atau aplikasi.
 - Langkah berikutnya: lanjut hanya dari evidence yang dapat diberikan/diotorisasi: sanitized `/nossa-closed`+reopen contract, archive/PII retention policy, source snapshot provenance and isolated restore plan. Jangan menandai Phase 0C selesai sampai semua gate terverifikasi.
 - Pesan commit: `docs(phase-0c): refresh evidence and answered gates`.
+
+## 2026-11-27 — Record sanitized NOSSA open/closed sample and TTR maxima
+
+- Phase: Phase 0C — C0C-01/C0C-02 contract evidence.
+- Tindakan: menyimpan sepasang response incident lookup `/nossa` saat `BACKEND` dan `/nossa-closed` saat `CLOSED` sebagai fixture sintetis tersanitasi; merangkum perbedaan envelope/field casing, nilai null dan scalar types. Memperbarui lifecycle/contract evidence, rule registry, threshold reference dan ADR-051. Menegaskan daftar batas maksimum jam per jenis ticket sudah diberikan pemilik; `TTR_Customer`/`TTR_END_TO_END` adalah nilai ticket berjalan, bukan batas maksimum.
+- File berubah: `docs/Phase-0C-NOSSA-Incident-Fixture-Sanitized.json` (baru), `docs/Phase-0C-Lifecycle-Golden-Fixture.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Business-Rules.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses/diubah; tidak ada live API call.
+- SQL/command tersanitasi: validasi sintaks fixture dengan Python JSON parser; `git diff --check`; pencarian memastikan identifier pribadi/host yang diberikan tidak tertulis di fixture.
+- Hasil pengujian aktual: `fixture_json_valid`; `git diff --check` lulus; pencarian string PII/host sample tidak menghasilkan kecocokan. Tidak ada test suite/API integration test.
+- Keputusan teknis: fixture mempertahankan format response representative dan tipe/casing untuk field yang berubah, tetapi mengganti incident, nama, nomor layanan, user, workzone/witel, host, diagnostic/free text dengan nilai sintetis. Ia mendemonstrasikan open→closed, bukan close→reopen. Owner-provided maximum-close threshold list menjadi threshold input; source TTR fields tetap terpisah.
+- Risiko/kendala: belum ada contoh same-incident closed→open, pagination/tie/window completeness evidence, raw TTR units/rounding, full 84-field archive/PII disposition, source snapshot approval, least-privilege role dan isolated restore evidence. Threshold application paths masih perlu golden fixtures.
+- Rollback: hapus fixture sanitized dan revert perubahan docs/ADR-051; tidak ada perubahan runtime/schema/database.
+- Langkah berikutnya: lanjutkan Phase 0C pada sisa kontrak teknis dan retensi/snapshot gates; jangan meminta ulang status lifecycle, source_vlookup, rename Indibiz, atau daftar maksimum jam TTR.
+- Pesan commit: `docs(phase-0c): record sanitized NOSSA and TTR evidence`.

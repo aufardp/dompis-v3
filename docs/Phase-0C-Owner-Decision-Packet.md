@@ -8,7 +8,7 @@ Paket ini mengonsolidasikan input yang masih kurang setelah discovery statis. Ni
 
 - **Ticket:** tabel lama punya 84 kolom bercampur: fakta ticket, hasil hitung/report lama, catatan manual, data pelanggan, dan kolom teknisi. Di v3, kolom yang dipakai empat menu menjadi kolom ticket; nilai historis lain disimpan di archive terbatas sesuai retensi. Assignment teknisi tidak menjadi fitur operasional.
 - **Optimasi:** schema lama juga memiliki jalur raw/staging/projection dan banyak index ticket. v3 memakai satu tabel ticket kanonik dan hanya menambah index yang terbukti dibutuhkan query. Data historis tidak dibuang; tabel/worker raw permanen dan assignment teknisi tidak dibawa sebagai runtime dependency.
-- **Wilayah:** urutan lama `Region → Branch → Area lama → Service Area lama`. Di v3 menjadi `Area baru → Region → Branch → Service Area → Workzone`. Mapping `Area lama → Service Area baru` dan `Service Area lama → Workzone baru` sudah jelas. Yang tidak ada di schema lama hanyalah parent `Area baru → Region`.
+- **Wilayah:** ikuti mapping nama tabel/level yang sudah Anda berikan: `region → region`, `branch → branch`, `area lama → service_area`, `service_area lama → workzone`. Tidak ada permintaan crosswalk Area–Region per baris; jika perbedaan schema muncul, itu temuan teknis untuk diperiksa.
 - **Hak akses:** schema lama menyimpan scope di kolom langsung `users` dan empat tabel grant. Migrasi akan menghitung Workzone yang boleh dilihat tiap user, menggabungkan grant tumpang tindih tanpa duplikasi, lalu membandingkannya. Ini bukan pekerjaan manual satu per satu; jika hasil tidak bisa dibuktikan, akun tetap nonaktif/tanpa akses.
 - **Jenis tiket:** tabel live `source_vlookup` adalah kamus classifier dan sumber resmi yang Anda tetapkan; hasil `jenis_tiket_1/2` disimpan pada ticket sebagai snapshot supaya perubahan kamus tidak mengubah sejarah diam-diam.
 
@@ -16,11 +16,11 @@ Klarifikasi pemilik: struktur master mengikuti pemetaan tabel yang sudah diberik
 
 ## A. NOSSA dan lifecycle — C0C-01 / C0C-02
 
-### Bukti teknis NOSSA yang diperlukan (bukan konfirmasi ulang aturan status)
+### Bukti teknis NOSSA (bukan konfirmasi ulang aturan status atau daftar batas jam TTR)
 
 - Versi/tanggal authoritative OpenAPI atau dokumentasi kontrak yang digunakan:
-- Sanitized response `/nossa-closed` (minimal satu row, pertahankan nama/tipe field, null/missing, envelope, dan format timestamp):
-- Sanitized reopened incident yang sama sebelum dan sesudah reopen, atau konfirmasi tertulis bahwa sampel tersebut tidak tersedia:
+- Sanitized response `/nossa` dan `/nossa-closed` by incident sudah diterima dan disimpan di `Phase-0C-NOSSA-Incident-Fixture-Sanitized.json`; nilai pribadi/free text sudah diganti.
+- Yang belum ada: contoh incident yang sama setelah pernah closed lalu muncul kembali open (untuk validasi evidence reopen), atau dokumentasi upstream yang menjelaskan urutan/version yang membuktikannya:
 - Pagination ordering/cursor atau tie behavior pada timestamp yang sama:
 - Closed-window boundary, completeness, rate/error/retry behavior yang dikonfirmasi:
 - Sumber bukti, pemilik/upstream, tanggal diterima:
@@ -34,11 +34,15 @@ Fixture tidak boleh memuat identifier pelanggan asli. Nilai yang disamarkan haru
 | Status lifecycle | **Ditetapkan:** daftar open dan closed di atas; status lain unknown dan tidak ditebak. `OPEN`/`CLOSE` dari kode legacy tidak ditambahkan ke daftar eksplisit v3. |
 | Reopen | **Ditetapkan:** incident yang sama berubah dari salah satu status closed yang disebut ke salah satu status open yang disebut berarti reopen. |
 
-Aturan lifecycle tidak perlu dijawab ulang. Yang belum tersedia adalah bukti bentuk response `/nossa-closed`, timestamp/version fields, pagination/tie behavior, dan cara dua endpoint menunjukkan incident yang reopen. Itu validasi kontrak teknis.
+Aturan lifecycle dan bentuk dasar dua response sudah dicatat. Contoh yang diberikan menunjukkan incident yang sama berpindah dari open ke close. Yang belum tersedia hanyalah bukti closed lalu open kembali dan kontrak timestamp/version, pagination/tie behavior serta kelengkapan window.
 
 ## B. Waktu, TTR, SLA dan KPI — C0C-02
 
-### Aturan yang memang sudah ada di aplikasi lama (observasi implementasi, bukan persetujuan aturan v3)
+### Batas maksimum ticket harus close sudah diberikan
+
+Daftar maksimum jam per jenis ticket yang Anda kirim sebelumnya sudah menjadi acuan di `Phase-0C-Legacy-Classification-TTR-Reference.md`; tidak perlu dikirim ulang. Semua kriteria lama `RESELLER` mengikuti `INDIBIZ`. Contoh response endpoint menunjukkan `TTR_Customer`/`TTR_END_TO_END` sebagai nilai dari ticket berjalan, bukan nilai maksimum SLA.
+
+### Aturan yang memang sudah ada di aplikasi lama
 
 Audit `dompis_v2` menemukan beberapa mekanisme waktu/TTR yang berbeda, bukan satu rule engine tunggal. Rincian terstruktur classification, daftar threshold yang dilaporkan, anomali, provenance dan rekonsiliasi ada di [Legacy Classification and Time/TTR Reference](Phase-0C-Legacy-Classification-TTR-Reference.md). Distribusi jumlah jenis tiket di sana hanya profil snapshot yang dilaporkan, bukan target jumlah permanen; ia hanya dapat dipakai untuk merekonsiliasi populasi snapshot yang sama setelah predicate dan provenance tervalidasi.
 
@@ -53,22 +57,21 @@ Audit `dompis_v2` menemukan beberapa mekanisme waktu/TTR yang berbeda, bukan sat
 | MTTR / durasi resolve | Mean `reported_date → closed_at`, dengan sebagian dashboard memberi `resolve_date` precedence/fallback; negative/unparseable durations tidak dihitung. | `app/libs/tickets/mttr.ts`, `dashboard-overview.ts`; berbeda dari TTR compliance. |
 | Parsing timestamp | `parseWIBDateInput` menginterpretasikan string tanpa offset sebagai WIB (Asia/Jakarta), menghormati offset eksplisit, dan menangani format slash dengan asumsi DD/MM ketika ambigu. | `app/utils/datetime.ts`; parser lama membuktikan perilaku aplikasi, bukan bahwa tiap upstream field offsetless memang bermakna WIB. |
 
-Pemilik telah menetapkan bahwa semua kategori/kriteria lama bernama Reseller sekarang digabung sebagai Indibiz; `RESELLER` bukan jenis tiket terpisah di v3. Untuk perilaku waktu, kode yang benar-benar dijalankan (`app/config/jenis-tiket.ts`) memberi Indibiz dan Reseller lama 24 jam. Karena labelnya sekarang satu, gunakan 24 jam sebagai kandidat parity Indibiz; nilai 4 jam/6 jam pada matriks lama dicatat sebagai dokumentasi usang yang bertentangan. Empat jalur lama tetap berbeda: compliance, priority countdown, Max TTR tampilan, dan MTTR. Pada B2C, customer type kosong/tidak dikenal tidak dinilai oleh jalur compliance; fallback 24 jam hanya untuk tampilan. Parser legacy membaca timestamp tanpa offset sebagai WIB dan menghormati offset eksplisit; itu belum membuktikan timezone setiap field upstream NOSSA. Detail dan batas buktinya ada di [referensi classification/TTR](Phase-0C-Legacy-Classification-TTR-Reference.md).
+Anda telah menetapkan semua kategori/kriteria lama bernama Reseller digabung menjadi Indibiz; `RESELLER` bukan jenis tiket terpisah di v3. Daftar maksimum jam yang Anda kirim menjadi input batas penutupan; INDIBIZ memakai 24 jam menurut daftar itu. Nilai matriks lama yang berbeda disimpan sebagai catatan historis, bukan alasan untuk meminta Anda memilih ulang. Empat jalur lama tetap berbeda: compliance, priority countdown, Max TTR tampilan, dan MTTR. Pada B2C, customer type kosong/tidak dikenal tidak dinilai oleh jalur compliance; fallback 24 jam hanya untuk tampilan. Parser legacy membaca timestamp tanpa offset sebagai WIB dan menghormati offset eksplisit; itu belum membuktikan timezone setiap field upstream NOSSA. Detail ada di [referensi classification/TTR](Phase-0C-Legacy-Classification-TTR-Reference.md).
 
 | Field/aturan | Keputusan pemilik; tulis `unknown` jika belum diketahui |
 |---|---|
 | Legacy behavior yang akan dipertahankan untuk parity | **Sudah dipetakan dari kode:** compliance memakai `resolve_date` vs deadline dan equality dihitung comply; priority countdown memakai bucketnya sendiri; Max TTR punya urutan fallback tampilan sendiri; MTTR menghitung reported ke resolve/closed sesuai consumer. Jangan satukan jalur tersebut. |
 | Customer type B2C kosong/tidak dikenal | **Sudah dipetakan dari kode:** compliance = tidak dinilai/null; fallback tampilan 24 jam hanya display. |
-| Indibiz dan kategori lama Reseller | **Ditetapkan pemilik:** semua output kategori lama Reseller menjadi Indibiz. Kandidat threshold parity dari config executable = 24 jam; matriks 4h/6h usang dan tidak digunakan. |
-| TTR angka dari NOSSA | Unit field sumber tetap unknown sampai kontrak/fixture upstream menjelaskannya; jangan disamakan dengan threshold SLA hitungan aplikasi. |
-| Timestamp NOSSA tanpa offset dan response `/nossa-closed` | Bukti upstream/fixture masih dibutuhkan; perilaku parser legacy WIB hanya acuan untuk data legacy, bukan asumsi kontrak API. |
+| Indibiz dan kategori lama Reseller | **Ditetapkan pemilik:** semua kriteria lama Reseller menjadi Indibiz; daftar maksimum yang Anda kirim memberi INDIBIZ 24 jam. Nilai matriks lama yang bertentangan tetap dicatat sebagai histori teknis, tidak meminta keputusan ulang. |
+| `TTR_Customer` dan `TTR_END_TO_END` dari NOSSA | Contoh menunjukkan nilai berjalan `4.056`/`4.06` dan tipe `number`/`string`. Unit, pembulatan dan clock basis field upstream tetap perlu kontrak; angka itu bukan batas maksimum per jenis ticket yang sudah Anda kirim. |
+| Timestamp NOSSA tanpa offset dan ordering | Contoh ISO timestamp menyertakan `+07:00`, tetapi booking date tidak. Semantik offsetless, authoritative version/tie ordering, pagination dan closed-window completeness tetap perlu dokumentasi/fixture. |
 
 Jangan menyetujui KPI berdasarkan nama field atau perilaku implementasi lama saja. Sampel golden input/output sintetis wajib dibuat setelah definisi disetujui.
 
 ## C. Master wilayah dan Workzone — C0C-03
 
 **Pemetaan master yang sudah ditetapkan pemilik:** `region → region`, `branch → branch`, `area lama → service_area`, dan `service_area lama → workzone`; target v3 mengikuti susunan `Area → Region → Branch → Service Area → Workzone`. Tidak perlu meminta pemilik membuat crosswalk satu per satu untuk mengganti nama tabel/level. Implementasi harus memakai relasi parent yang ada dan mapping ini secara konsisten; jika schema atau data aktual menunjukkan perbedaan, catat sebagai temuan teknis untuk diperiksa, bukan meminta ulang keputusan struktur.
-|  |  |  |  |  |
 
 Untuk Workzone, aturan aman tidak memerlukan keputusan tambahan: semua ticket tetap dimigrasikan dan nilai aslinya dipertahankan. **391 key** cocok tepat ke master yang unik dan dapat dipetakan langsung. Jika kode tidak cocok (74 key/7.171 ticket) atau kosong (47 ticket), `workzone_id` dibiarkan kosong dan diberi penanda belum terpetakan; ticket tidak dihapus, tidak dipasangkan dengan tebakan, dan tidak muncul pada laporan/scope user biasa sampai Superadmin memperbaiki mapping. Kamus resmi hanya diperlukan jika nanti ingin memperbaiki 74 key tersebut; ini tidak menghalangi penyimpanan history. Jangan gunakan fuzzy match.
 
