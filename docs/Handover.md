@@ -1520,3 +1520,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: tanpa fixture closed/reopen, pagination tie/page drift, completeness, dan lifecycle tidak dapat divalidasi; Phase 0C exit gate tetap tertahan.
 - Rollback: hapus entry Handover ini; tidak ada source, database, atau runtime effect.
 - Langkah berikutnya: pemilik menyediakan versi OpenAPI resmi dan fixture `/nossa-closed` serta incident reopen yang sudah disanitasi, atau menautkan lokasi artefak otoritatif yang telah disetujui. Pesan commit: `docs(phase-0c): revalidate legacy NOSSA contract evidence`.
+
+## 2026-11-27 — Search untracked NOSSA contract artifacts
+
+- Phase: Phase 0C — C0C-01 artifact completeness recheck.
+- Tindakan: melakukan file-name inventory termasuk hidden/ignored/untracked paths pada repository v3 dan legacy reference, sambil mengecualikan dependency/build/vendor/Git directories. Tidak membaca file environment, token, atau payload. Temuan `openapi.md` pada skill lokal hanya dokumentasi library Elysia, bukan kontrak NOSSA.
+- File berubah: `docs/Handover.md`.
+- Database target: tidak ada database diakses.
+- SQL/command tersanitasi: `rg --files --hidden --no-ignore` dengan exclusions `node_modules`, `vendor`, `.git`, `.svelte-kit`, `build`, `dist`, lalu filter nama OpenAPI/Swagger/NOSSA/fixture/contract/closed/reopen dan YAML.
+- Hasil pengujian aktual: tidak ditemukan file kontrak OpenAPI/Swagger NOSSA atau fixture sanitized `/nossa-closed`/reopen pada kedua checkout; hasil yang cocok hanya kode adapter, endpoint pencarian legacy, compiled build artifacts, serta referensi OpenAPI milik skill Elysia. V3 working tree bersih pada awal inspeksi; tidak ada test suite dijalankan.
+- Keputusan teknis: artefak compiled/legacy implementation dan skill documentation tidak memenuhi bukti upstream berwenang C0C-01.
+- Risiko/kendala: C0C-01 tetap tidak dapat diverifikasi tanpa artefak dari pemilik/upstream; user tidak mengizinkan live endpoint call dengan anggaran dan kredensial yang terdaftar.
+- Rollback: hapus entry Handover ini; tidak ada database/source/runtime effect.
+- Langkah berikutnya: pemilik menambahkan atau menunjuk versi OpenAPI resmi beserta fixture closed/reopen yang disanitasi. Setelah diterima, validasi schema, null/missing, envelope, timestamps, paging, dan completeness tanpa memakai fixture berisi PII.
+- Pesan commit: `docs(phase-0c): record contract artifact search result`.
