@@ -1,0 +1,124 @@
+# Phase 0C — Paket Bukti dan Keputusan Pemilik
+
+Status: **belum disetujui; lembar kerja untuk menutup gate Phase 0C**. Jangan isi dengan credential, payload pelanggan asli, nama pengguna, atau data pribadi. Lampirkan artefak sanitasi secara terpisah dan batasi field yang tidak relevan.
+
+Paket ini mengonsolidasikan input yang masih kurang setelah discovery statis. Nilai yang kosong berarti belum diputuskan; agent tidak boleh mengisinya dengan asumsi. Keputusan bisnis dicatat pemilik aplikasi, sedangkan kontrak teknis harus didukung artefak upstream atau bukti dari snapshot yang terdaftar.
+
+## A. NOSSA dan lifecycle — C0C-01 / C0C-02
+
+### Bukti kontrak yang diperlukan
+
+- Versi/tanggal authoritative OpenAPI atau dokumentasi kontrak yang digunakan:
+- Sanitized response `/nossa-closed` (minimal satu row, pertahankan nama/tipe field, null/missing, envelope, dan format timestamp):
+- Sanitized reopened incident yang sama sebelum dan sesudah reopen, atau konfirmasi tertulis bahwa sampel tersebut tidak tersedia:
+- Pagination ordering/cursor atau tie behavior pada timestamp yang sama:
+- Closed-window boundary, completeness, rate/error/retry behavior yang dikonfirmasi:
+- Sumber bukti, pemilik/upstream, tanggal diterima:
+
+Fixture tidak boleh memuat identifier pelanggan asli. Nilai yang disamarkan harus mempertahankan struktur, tipe, format, serta pola null/missing yang diperlukan untuk menguji parser.
+
+### Keputusan bisnis yang diperlukan
+
+| Pertanyaan | Keputusan pemilik |
+|---|---|
+| Status upstream mana yang berarti lifecycle `open`, `closed`, atau `unknown`? Cantumkan seluruh status yang dikenal dan aturan status baru/tidak dikenal. |  |
+| Field dan aturan apa yang menentukan waktu penutupan? Apakah `resolved_at` berbeda dari `closed_at`? |  |
+| Bagaimana tiket yang reopen direpresentasikan; kapan lifecycle kembali `open`; apakah riwayat status harus dibentuk dari sumber yang tersedia? |  |
+| Jika `/nossa` dan `/nossa-closed` berbeda, bukti/version/timestamp mana yang menang? Bagaimana tie atau versi yang tidak dapat dibandingkan diperlakukan? |  |
+| Apakah pencarian incident dapat mengembalikan parent/children, dan aturan mana yang mengidentifikasi incident canonical? |  |
+| Approver dan tanggal keputusan: |  |
+
+## B. Waktu, TTR, SLA dan KPI — C0C-02
+
+| Field/aturan | Keputusan pemilik; tulis `unknown` jika belum diketahui |
+|---|---|
+| Zona waktu untuk setiap timestamp tanpa offset (reported, status, booking, resolved, closed, deadline) |  |
+| Makna dan unit setiap TTR upstream (`TTR_Customer`, `TTR_Nasional`, `TTR_Regional`, `TTR_Witel`, `TTR_Mitra`, `TTR_Agent`, `TTR_END_TO_END`, `C_SLG_TTR`, dan lainnya yang dipakai) |  |
+| SLA threshold dan basis jam kalender/kerja per segmen/jenis layanan |  |
+| Batas comply (misalnya inklusivitas equality), pause/pending, hari libur, dan kasus yang tidak eligible |  |
+| KPI numerator, denominator, tanggal basis, bucket/classifier version, serta unknown/null treatment untuk masing-masing menu |  |
+| Approver dan tanggal keputusan |  |
+
+Jangan menyetujui KPI berdasarkan nama field atau perilaku implementasi lama saja. Sampel golden input/output sintetis wajib dibuat setelah definisi disetujui.
+
+## C. Master wilayah dan Workzone — C0C-03
+
+Lampirkan CSV/lembar crosswalk tanpa data tiket, dengan kolom minimal berikut:
+
+| Legacy region ID/code | Legacy region name | New area code | New area name | Approver/date |
+|---|---|---|---|---|
+|  |  |  |  |  |
+
+Lampirkan kamus resmi Workzone code/name dan aturan normalisasi yang disetujui. Untuk 74 normalized ticket keys yang sebelumnya unmatched (7.171 rows) dan 47 rows blank/null, berikan disposition per key/group: match ke ID resmi, tetap unmapped/isolated, atau pengecualian dengan alasan. Jangan gunakan fuzzy match atau menebak parent.
+
+Acceptance: exact normalized key uniqueness dibuktikan; setiap mapped key menunjuk satu master Workzone dan satu parent chain yang disahkan; unmatched/blank mendapat disposition eksplisit; tidak ada scope grant yang melebar akibat mapping.
+
+## D. Role, account, dan effective scope — C0C-04
+
+Keputusan yang sudah tercatat dan tidak perlu diulang:
+
+- `superadmin` memiliki kontrol penuh; User Management hanya untuk `superadmin`.
+- `admin` berganti nama menjadi `team_leader`; `admin_branch` menjadi `officer`; role lainnya tetap memakai nama yang disetujui.
+- `officer`, `team_leader`, dan `senior_leader` harus setara satu sama lain, tetapi capability set bersama belum dipilih.
+- `helpdesk` dan `teknisi` ditunda; assignment teknisi tetap di luar scope.
+
+Keputusan/bukti yang masih diperlukan:
+
+| Pertanyaan | Keputusan pemilik |
+|---|---|
+| Capability produk apa yang diberikan kepada cohort setara `officer`/`team_leader`/`senior_leader`? Daftar capability code secara eksplisit; kosong berarti deny. |  |
+| Apakah grant `helpdesk`/`teknisi` tetap kosong untuk rollout ini? (default aman: ya) |  |
+| Akun legacy aktif otomatis? (default aman: tidak) |  |
+| Bagaimana akun dengan nol junction-derived leaf diperlakukan sampai direct FK/global exception direkonsiliasi? (default aman: jangan aktifkan) |  |
+| Apakah global scope hanya boleh dimiliki/diberikan `superadmin`? |  |
+| Metadata audit yang boleh dibaca dan periode retensi |  |
+| Apakah role change/credential reset termasuk User Management? Reset harus memakai flow aman, bukan password berbasis username. |  |
+| Approver dan tanggal keputusan |  |
+
+Acceptance migrasi: pada snapshot yang terdaftar, hitung effective leaf scope lama dari seluruh direct FK dan junction grants, role/global exceptions, lalu bandingkan per-user dengan target; semua privilege delta harus disetujui. Tidak ada aktivasi akun sebelum parity lolos.
+
+## E. Field, eligibility, PII, dan archive — C0C-05
+
+Isi disposition eksplisit untuk setiap 84 scalar field pada `Legacy-Field-Mapping.md` setelah source DDL/snapshot didaftarkan. Gunakan tepat satu disposition utama:
+
+- `ticket_typed`: kolom kanonik; jelaskan transformasi, sumber waktu/tipe, null/invalid rule dan alasan produk.
+- `archive_allowlisted`: payload historis terbatas; sebut field allowlist, role yang boleh mengakses, tujuan, dan retention period.
+- `restricted_offline`: hanya backup terenkripsi di luar runtime; sebut owner dan retention.
+- `exclude`: alasan terdokumentasi dan bukti bahwa field tidak diperlukan oleh produk/histori; perlu persetujuan pemilik.
+- `derived`: aturan dan versi yang disetujui; jangan mengganti nilai historis secara diam-diam.
+
+Daftar kandidat pada mapping saat ini belum merupakan izin untuk menyimpan atau membuang field. Periksa khusus PII, free text, user/technician references, local/manual annotations, validation, pending, SLA/TTR historis, dan generated fields. Tidak boleh menghapus field/data eligible tanpa alasan dan disposition yang disetujui.
+
+| Keputusan umum | Keputusan pemilik |
+|---|---|
+| Kriteria ticket historis yang eligible; termasuk manual/local-only |  |
+| Archive allowlist, reader roles, export prohibition/permission, retention, dan disposal evidence |  |
+| PII/free-text retention dan kebutuhan encrypted offline backup |  |
+| Approver dan tanggal keputusan |  |
+
+Acceptance: 84/84 row memiliki disposition dan transform yang dapat diuji; setiap field yang tidak disimpan memiliki alasan; data archive dibatasi sesuai policy; golden fixture menunjukkan exact row accounting tanpa kehilangan field eligible.
+
+## F. Registrasi sumber dan target — C0C-06
+
+Jangan menaruh password, DSN, token, atau secret di lembar ini. Kirim secret melalui mekanisme lokal yang disetujui dan jangan masukkan ke Git/Handover.
+
+| Registry item | Nilai non-secret yang diperlukan | Status/owner |
+|---|---|---|
+| Legacy MySQL source | Engine/version, host label, port, database, environment classification, owner, schema allowlist, read-only role label |  |
+| Consistent source snapshot | Snapshot ID/time, source schema hash, row manifest/count method, isolation/consistency method, backup location/restore evidence, retention |  |
+| PostgreSQL development target | Engine/version, host label, port, database, environment, owner, schema allowlist, non-superuser migration role label |  |
+| Rollback/restore rehearsal | Procedure reference, backup verification, restore-test date/result, approver |  |
+
+Acceptance: source snapshot immutable dan dapat diidentifikasi; metadata/credential cocok dengan registry melalui target guard; read role tidak dapat menulis; target rehearsal terisolasi dan restore terbukti. Identitas server saja tidak cukup untuk mengizinkan ETL.
+
+## Exit checklist Phase 0C
+
+- [ ] C0C-01: authoritative API contract dan sanitized closed/reopened fixture tervalidasi; pagination, error, dan completeness behavior terdokumentasi.
+- [ ] C0C-02: status/lifecycle/reopen, source conflict, timezone, TTR/SLA, dan KPI decisions disetujui serta memiliki golden fixtures.
+- [ ] C0C-03: parent-area crosswalk, Workzone dictionary, uniqueness, unmatched/blank dispositions, dan scope implications tervalidasi.
+- [ ] C0C-04: role/capability policy, account activation, global grants, no-leaf treatment, dan exact per-user effective-scope parity disetujui.
+- [ ] C0C-05: 84/84 field disposition, eligibility, archive/PII access, retention dan exclusion rationale disetujui.
+- [ ] C0C-06: source snapshot/read-only role dan isolated PostgreSQL target/restore terdaftar.
+- [ ] Security, rollback, test results, unresolved risks dan implementation plan diperbarui; pemilik menyetujui exit gate.
+
+Setelah checklist lengkap, lakukan review parity dan acceptance test, perbarui `Decision-Log.md`, `Phase-0C-Contract-Access-Discovery.md`, `Phase-0D-Design-Readiness.md`, dan `Handover.md`. Jangan mulai legacy ETL sebelum semua gate relevan lulus.

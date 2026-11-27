@@ -1390,3 +1390,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: konsekuensi aktual bergantung pada stabilitas data upstream selama scan dan aturan conflict consumer; belum dibuktikan melalui endpoint. C0C-01/02 dan keseluruhan contract gate tetap terbuka.
 - Rollback: revert tiga perubahan dokumentasi; tidak ada perubahan source legacy, v3 code, schema, atau data.
 - Langkah berikutnya: lanjutkan discovery hanya dari fixture resmi/sanitized dan keputusan tertulis. Phase 0C belum dapat ditutup sebelum lifecycle/time/TTR, contract, field/access policy, crosswalk, dan source snapshot gates tervalidasi. Pesan commit: `docs(discovery): record legacy NOSSA overflow replay risk`.
+
+## 2026-11-27 — Prepare Phase 0C owner decision packet
+
+- Phase: Phase 0C — unblock owner validation and define auditable exit criteria.
+- Tindakan: membuat paket input pemilik yang menggabungkan fixture/kontrak NOSSA, lifecycle/reopen dan waktu/TTR/KPI, crosswalk area/Workzone, role/account/effective-scope, 84-field eligibility/archive/retention, source/target registry, serta exit checklist. Keputusan role yang telah disetujui dipraisi sebagai fakta; pertanyaan belum dijawab tetap kosong. Menautkan paket dari Phase 0C discovery.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada secret diminta atau dicatat.
+- SQL/command tersanitasi: review dokumen Phase 0C dan Authorization Capability Discovery; `git diff --check`.
+- Hasil pengujian aktual: `git diff --check` lulus. Tidak ada test/build dijalankan karena perubahan dokumentasi saja.
+- Keputusan teknis: paket tidak memilih nilai business rule atau permission yang belum disetujui. Artefak upstream harus disanitasi namun mempertahankan bentuk, tipe, null/missing, dan timestamp; credentials tidak boleh disertakan.
+- Risiko/kendala: Phase 0C tidak dapat ditutup sampai input yang ditandai di exit checklist tervalidasi. Tidak ada perubahan database, endpoint, source code, atau aplikasi.
+- Rollback: hapus file paket dan revert tautan Phase 0C serta entry handover ini bila format paket diganti; tidak ada data/schema rollback.
+- Langkah berikutnya: pemilik mengisi/menyediakan paket input; setelah tersedia, agent menjalankan validasi fixture, parity, dan restore pada target yang terdaftar, lalu mengajukan Phase 0C exit review. Pesan commit: `docs(phase-0c): add owner decision and evidence packet`.
