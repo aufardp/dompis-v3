@@ -129,6 +129,8 @@ Rekomendasi sederhana: jangan buang ticket eligible. Simpan field yang dibutuhka
 
 Daftar kandidat pada mapping saat ini belum merupakan izin untuk menyimpan atau membuang field. Periksa khusus PII, free text, user/technician references, local/manual annotations, validation, pending, SLA/TTR historis, dan generated fields. Tidak boleh menghapus field/data eligible tanpa alasan dan disposition yang disetujui.
 
+Interpretasi draft untuk initial v3 kini ditulis di `Legacy-Field-Mapping.md`: field legacy yang hanya ditandai optional typed promotion menjadi archive-only pada scope awal; field restricted tidak masuk runtime/API; belum ada field yang diberi disposition `exclude`. Ini belum menyetujui akses/masa simpan archive. Masih perlu divalidasi: kelayakan tiap field terhadap PRD/actual DDL dan masa simpan/akses archive PII serta free text.
+
 Ringkasan audit inventory (bukan approval): ada 84 field; draft mapping menunjuk 38 field ke kolom typed ticket, 8 field sensitif ke restricted/offline, dan 38 field lain ke archive/metadata/transform/review. Delapan field sensitif yang ditandai saat ini: `contact_phone`, `contact_name`, `customer_name`, `sn_ont`, `alamat`, `teknisi_user_id`, `technician`, `manual_created_by`. Draft dapat berubah setelah pemakaian menu dan actual DDL divalidasi.
 
 | Keputusan umum | Keputusan pemilik |

@@ -2,6 +2,13 @@
 
 Sumber: `prisma.zip` → `prisma/schema.prisma`, model `ticket`. Terdapat **84 scalar fields** (relation navigation excluded). Ini bukan SHOW CREATE TABLE production. Verify actual deployed columns, generated expressions, collation, data profile and migration revisions before using mapping. Every row below is a proposed disposition; business approval required for semantic transforms and retention.
 
+### Disposition interpretation for the initial v3 scope (draft, not retention approval)
+
+- A `tickets.*` target means a typed-column candidate only when the source meaning/transform has been verified and the field supports a PRD menu or a required integrity rule. Preserve original value separately only under the approved archive policy.
+- Rows marked `Archive; optional approved typed/detail mapping` or `Archive; approved typed field/rule if required` mean **archive-only in the initial v3 scope**. They are not simultaneous archive-and-column instructions. Promote one later only if a concrete PRD field is missing, source equivalence is verified, and an ADR records tests and migration/reclassification impact.
+- `Restricted offline backup / approved archive only` means no v3 runtime column or general archive access. Until the owner approves archive access and retention, preserve such content only in an encrypted offline backup with the approved access controls; do not extract it into fixtures, logs or API responses.
+- No source field is marked `exclude` by this draft. That preserves eligible history without assuming every old field belongs in a hot relational table. Archive format/access/retention and historical eligibility remain owner gates; this draft does not authorize copying or deletion.
+
 ## 1. Complete scalar inventory
 
 | Legacy column | Prisma/DB type | Nullable | Target/disposition | Rule |

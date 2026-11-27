@@ -1842,3 +1842,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert perubahan dokumentasi di atas dan entry ini; tidak ada runtime/schema/dependency/data change.
 - Langkah berikutnya: lanjutkan Phase 0C pada bukti endpoint/window dan field/archive inventory; sajikan hanya keputusan owner yang benar-benar belum ditetapkan dengan bahasa sederhana. Jangan menjalankan ETL atau melakukan snapshot/write sebelum syarat sumber dan retensi dipenuhi.
 - Pesan commit: `docs(phase-0c): reconcile approved KPI and TTR contracts`.
+
+## 2026-11-27 — Clarify initial disposition for legacy-only ticket fields
+
+- Phase: Phase 0C — C0C-05 historical field disposition review.
+- Tindakan: meninjau kembali 84-row `Legacy-Field-Mapping.md` tanpa membaca nilai ticket. Memperjelas bahwa label “optional typed”/“typed if required” berarti archive-only untuk scope v3 awal; typed promotion memerlukan requirement produk dan source equivalence; restricted fields tidak masuk runtime/API; tidak ada field yang diberi disposition exclude pada draft. Memperbarui owner packet dan C0C-05 gate.
+- File berubah: `docs/Legacy-Field-Mapping.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah; tidak ada data row dibaca; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: parser lokal memeriksa 84 baris markdown; `git diff --check`.
+- Hasil pemeriksaan aktual: 84 field unik; 38 typed-target references; 8 restricted/offline candidates; 38 archive/metadata/transform/review candidates; 0 field bertanda exclude. Terdapat 30 baris dengan label optional typed yang kini ditafsirkan sebagai archive-only pada initial v3. `git diff --check` lulus; tidak ada test suite/build.
+- Keputusan teknis: pertahankan raw historical values tanpa menambahkan kolom/tabel panas hanya karena pernah ada di MySQL. Promosi field perlu kebutuhan menu, mapping source terverifikasi, data type/transform rule dan ADR. PII/free text tetap memerlukan persetujuan akses/masa simpan.
+- Risiko/kendala: inventory 38/8/38 adalah draft disposition class, bukan eligibility approval atau izin copy. Actual deployed DDL, archive payload allowlist, retention period, PII access and source snapshot provenance tetap belum ditetapkan; tidak ada migrasi atau penghilangan data.
+- Rollback: revert perubahan dokumentasi mapping/owner packet/C0C-05 dan entry ini; tidak ada runtime/schema/database change.
+- Langkah berikutnya: lanjutkan Phase 0C dengan menyusun per-field review berdasarkan actual PRD usage dan source mapping, kemudian tampilkan hanya keputusan retensi/snapshot yang memang memerlukan owner. Jangan jalankan ETL sebelum snapshot dan archive policy terdaftar.
+- Pesan commit: `docs(phase-0c): clarify legacy field disposition draft`.
