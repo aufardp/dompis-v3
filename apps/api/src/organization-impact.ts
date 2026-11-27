@@ -8,20 +8,20 @@ import { createPermissionGuard } from './permission-guard';
 
 type OrganizationDatabase = NonNullable<typeof database>;
 type HierarchyLevel = 'area' | 'region' | 'branch' | 'service_area' | 'workzone';
-type ParentNode = { id: string; level: HierarchyLevel; code: string; name: string };
-type HierarchyPath = Partial<Record<HierarchyLevel, string>>;
-type ScopeMatch = { level: HierarchyLevel; predicate: ReturnType<typeof sql<boolean>> };
-type ImpactClaims = { actorId: string; level: HierarchyLevel; parentId: string | null; total: number; fingerprint: string; expiresAt: number };
+type OrganizationParentNode = { id: string; level: HierarchyLevel; code: string; name: string };
+type OrganizationHierarchyPath = Partial<Record<HierarchyLevel, string>>;
+type OrganizationScopeMatch = { level: HierarchyLevel; predicate: ReturnType<typeof sql<boolean>> };
+type OrganizationImpactTokenClaims = { actorId: string; level: HierarchyLevel; parentId: string | null; total: number; fingerprint: string; expiresAt: number };
 const impactSigningKey = randomBytes(32);
 const csrfCookie = '__Host-dompis_csrf';
 
-const levelSchema = t.Union([
+const organizationLevelSchema = t.Union([
 	t.Literal('area'), t.Literal('region'), t.Literal('branch'), t.Literal('service_area'), t.Literal('workzone')
 ]);
-const apiError = t.Object({ error: t.String() });
-const invalidRequest = t.Object({ error: t.Literal('invalid_request'), requestId: t.String() });
+const apiErrorResponseSchema = t.Object({ error: t.String() });
+const invalidRequestResponseSchema = t.Object({ error: t.Literal('invalid_request'), requestId: t.String() });
 
-function scopeExists(column: AnyPgColumn, targetId: string) {
+function hasUserScopeGrant(column: AnyPgColumn, targetId: string) {
 	return sql<boolean>`EXISTS (
 		SELECT 1 FROM ${schema.userScopes}
 		WHERE ${schema.userScopes.userId} = ${schema.users.id}
@@ -29,13 +29,13 @@ function scopeExists(column: AnyPgColumn, targetId: string) {
 	)`;
 }
 
-function sealImpact(claims: ImpactClaims): string {
+function createSignedOrganizationImpactToken(claims: OrganizationImpactTokenClaims): string {
 	const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
 	const signature = createHmac('sha256', impactSigningKey).update(payload).digest('base64url');
 	return `${payload}.${signature}`;
 }
 
-function readImpactToken(token: string, actorId: string, level: HierarchyLevel, parentId: string | null): ImpactClaims | null {
+function verifyOrganizationImpactToken(token: string, actorId: string, level: HierarchyLevel, parentId: string | null): OrganizationImpactTokenClaims | null {
 	const [payload, signature, extra] = token.split('.');
 	if (!payload || !signature || extra !== undefined) return null;
 	const expected = createHmac('sha256', impactSigningKey).update(payload).digest();
@@ -43,7 +43,7 @@ function readImpactToken(token: string, actorId: string, level: HierarchyLevel, 
 	try { actual = Buffer.from(signature, 'base64url'); } catch { return null; }
 	if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
 	try {
-		const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as ImpactClaims;
+		const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as OrganizationImpactTokenClaims;
 		if (claims.actorId !== actorId || claims.level !== level || claims.parentId !== parentId ||
 			!Number.isSafeInteger(claims.total) || typeof claims.fingerprint !== 'string' ||
 			!Number.isSafeInteger(claims.expiresAt) || claims.expiresAt <= Date.now()) return null;
@@ -51,21 +51,21 @@ function readImpactToken(token: string, actorId: string, level: HierarchyLevel, 
 	} catch { return null; }
 }
 
-function databaseConstraint(error: unknown): string | undefined {
-	let candidate: unknown = error;
-	for (let depth = 0; depth < 3; depth += 1) {
-		if (typeof candidate !== 'object' || candidate === null) return undefined;
-		if ('constraint' in candidate && typeof candidate.constraint === 'string') return candidate.constraint;
-		candidate = 'cause' in candidate ? candidate.cause : undefined;
+function getDatabaseConstraintName(error: unknown): string | undefined {
+	let currentErrorCause: unknown = error;
+	for (let errorCauseDepth = 0; errorCauseDepth < 3; errorCauseDepth += 1) {
+		if (typeof currentErrorCause !== 'object' || currentErrorCause === null) return undefined;
+		if ('constraint' in currentErrorCause && typeof currentErrorCause.constraint === 'string') return currentErrorCause.constraint;
+		currentErrorCause = 'cause' in currentErrorCause ? currentErrorCause.cause : undefined;
 	}
 	return undefined;
 }
 
-async function resolveActiveParent(
+async function loadActiveOrganizationParent(
 	database: OrganizationDatabase,
 	childLevel: HierarchyLevel,
 	parentId: string | undefined
-): Promise<{ parent: ParentNode | null; path: HierarchyPath } | null> {
+): Promise<{ parent: OrganizationParentNode | null; path: OrganizationHierarchyPath } | null> {
 	if (childLevel === 'area') return parentId ? null : { parent: null, path: {} };
 	if (!parentId) return null;
 
@@ -133,16 +133,16 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 				return { error: 'organization_parent_invalid' as const };
 			}
 
-			const resolved = await resolveActiveParent(database, query.level, query.parentId);
+			const resolved = await loadActiveOrganizationParent(database, query.level, query.parentId);
 			if (!resolved) {
 				set.status = 404;
 				return { error: 'active_parent_not_found' as const };
 			}
-			const matches: ScopeMatch[] = [];
-			if (resolved.path.area) matches.push({ level: 'area', predicate: scopeExists(schema.userScopes.areaId, resolved.path.area) });
-			if (resolved.path.region) matches.push({ level: 'region', predicate: scopeExists(schema.userScopes.regionId, resolved.path.region) });
-			if (resolved.path.branch) matches.push({ level: 'branch', predicate: scopeExists(schema.userScopes.branchId, resolved.path.branch) });
-			if (resolved.path.service_area) matches.push({ level: 'service_area', predicate: scopeExists(schema.userScopes.serviceAreaId, resolved.path.service_area) });
+			const matches: OrganizationScopeMatch[] = [];
+			if (resolved.path.area) matches.push({ level: 'area', predicate: hasUserScopeGrant(schema.userScopes.areaId, resolved.path.area) });
+			if (resolved.path.region) matches.push({ level: 'region', predicate: hasUserScopeGrant(schema.userScopes.regionId, resolved.path.region) });
+			if (resolved.path.branch) matches.push({ level: 'branch', predicate: hasUserScopeGrant(schema.userScopes.branchId, resolved.path.branch) });
+			if (resolved.path.service_area) matches.push({ level: 'service_area', predicate: hasUserScopeGrant(schema.userScopes.serviceAreaId, resolved.path.service_area) });
 			const inheritedScope = matches.length ? or(...matches.map((match) => match.predicate)) : undefined;
 			const affectedPredicate = inheritedScope
 				? or(eq(schema.users.globalScope, true), inheritedScope)
@@ -156,7 +156,7 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 				.innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id)).where(basePredicate).orderBy(asc(schema.users.id));
 			const total = Number(summary?.total ?? 0);
 			const global = Number(summary?.global ?? 0);
-			const previewToken = sealImpact({ actorId: authorization.userId, level: query.level, parentId: query.parentId ?? null,
+			const previewToken = createSignedOrganizationImpactToken({ actorId: authorization.userId, level: query.level, parentId: query.parentId ?? null,
 				total, fingerprint: createHash('sha256').update(fingerprintUsers.map((user) => user.id).join(',')).digest('hex'), expiresAt: Date.now() + 5 * 60 * 1000 });
 
 			const limit = query.limit ?? 50;
@@ -167,10 +167,10 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 				displayName: schema.users.displayName,
 				roleCode: schema.roles.code,
 				globalScope: schema.users.globalScope,
-				areaGrant: resolved.path.area ? scopeExists(schema.userScopes.areaId, resolved.path.area) : sql<boolean>`FALSE`,
-				regionGrant: resolved.path.region ? scopeExists(schema.userScopes.regionId, resolved.path.region) : sql<boolean>`FALSE`,
-				branchGrant: resolved.path.branch ? scopeExists(schema.userScopes.branchId, resolved.path.branch) : sql<boolean>`FALSE`,
-				serviceAreaGrant: resolved.path.service_area ? scopeExists(schema.userScopes.serviceAreaId, resolved.path.service_area) : sql<boolean>`FALSE`
+				areaGrant: resolved.path.area ? hasUserScopeGrant(schema.userScopes.areaId, resolved.path.area) : sql<boolean>`FALSE`,
+				regionGrant: resolved.path.region ? hasUserScopeGrant(schema.userScopes.regionId, resolved.path.region) : sql<boolean>`FALSE`,
+				branchGrant: resolved.path.branch ? hasUserScopeGrant(schema.userScopes.branchId, resolved.path.branch) : sql<boolean>`FALSE`,
+				serviceAreaGrant: resolved.path.service_area ? hasUserScopeGrant(schema.userScopes.serviceAreaId, resolved.path.service_area) : sql<boolean>`FALSE`
 			}).from(schema.users).innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id))
 				.where(and(...pagePredicates)).orderBy(asc(schema.users.id)).limit(limit + 1);
 			const hasMore = rows.length > limit;
@@ -193,7 +193,7 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 			};
 		}, {
 			query: t.Object({
-				level: levelSchema,
+				level: organizationLevelSchema,
 				parentId: t.Optional(t.String({ format: 'uuid' })),
 				after: t.Optional(t.String({ format: 'uuid' })),
 				limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, multipleOf: 1 }))
@@ -201,14 +201,14 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 			requirePermission: 'organization.manage',
 			response: {
 				200: t.Object({
-					childLevel: levelSchema,
-					parent: t.Union([t.Object({ id: t.String(), level: levelSchema, code: t.String(), name: t.String() }), t.Null()]),
+					childLevel: organizationLevelSchema,
+					parent: t.Union([t.Object({ id: t.String(), level: organizationLevelSchema, code: t.String(), name: t.String() }), t.Null()]),
 					summary: t.Object({ total: t.Number(), global: t.Number(), inheritedScope: t.Number() }),
 					users: t.Array(t.Object({ id: t.String(), username: t.String(), displayName: t.String(), roleCode: t.String(),
 						accessMode: t.Union([t.Literal('global'), t.Literal('inherited_scope')]), scopeLevels: t.Array(t.String()) })),
 					nextCursor: t.Nullable(t.String()), previewToken: t.String()
 				}),
-				400: apiError, 401: apiError, 403: apiError, 404: apiError, 503: apiError, 422: invalidRequest, 500: apiError
+				400: apiErrorResponseSchema, 401: apiErrorResponseSchema, 403: apiErrorResponseSchema, 404: apiErrorResponseSchema, 503: apiErrorResponseSchema, 422: invalidRequestResponseSchema, 500: apiErrorResponseSchema
 			}
 		})
 		.post('/api/admin/organization/children', async ({ authorization, body, cookie, request, set }) => {
@@ -227,7 +227,7 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 				return { error: 'global_scope_required' as const };
 			}
 			const parentId = body.parentId ?? null;
-			const claims = readImpactToken(body.previewToken, authorization.userId, body.level, parentId);
+			const claims = verifyOrganizationImpactToken(body.previewToken, authorization.userId, body.level, parentId);
 			if (!claims) {
 				set.status = 409;
 				return { error: 'preview_expired_or_invalid' as const };
@@ -245,57 +245,57 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 				return { error: 'reauthentication_required' as const };
 			}
 			try {
-				const result = await database.transaction(async (tx) => {
-					await tx.execute(sql`LOCK TABLE ${schema.users} IN SHARE ROW EXCLUSIVE MODE`);
-					const [currentActor] = await tx.select({ active: schema.users.active, globalScope: schema.users.globalScope,
+				const result = await database.transaction(async (databaseTransaction) => {
+					await databaseTransaction.execute(sql`LOCK TABLE ${schema.users} IN SHARE ROW EXCLUSIVE MODE`);
+					const [currentActor] = await databaseTransaction.select({ active: schema.users.active, globalScope: schema.users.globalScope,
 						roleCode: schema.roles.code, roleActive: schema.roles.active }).from(schema.users)
 						.innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id))
 						.where(eq(schema.users.id, authorization.userId)).limit(1);
-					const permissions = await tx.select({ code: schema.permissions.code }).from(schema.rolePermissions)
+					const permissions = await databaseTransaction.select({ code: schema.permissions.code }).from(schema.rolePermissions)
 						.innerJoin(schema.permissions, eq(schema.rolePermissions.permissionId, schema.permissions.id))
 						.innerJoin(schema.roles, eq(schema.rolePermissions.roleId, schema.roles.id))
 						.where(and(eq(schema.roles.code, 'superadmin'), eq(schema.roles.active, true), eq(schema.permissions.code, 'organization.manage'))).limit(1);
 					if (currentActor?.active !== true || currentActor.roleActive !== true || currentActor.roleCode !== 'superadmin' ||
 						currentActor.globalScope !== true || permissions.length !== 1) throw new Error('actor_authorization_changed');
-					const resolved = await resolveActiveParent(tx, body.level, parentId ?? undefined);
+					const resolved = await loadActiveOrganizationParent(databaseTransaction, body.level, parentId ?? undefined);
 					if (!resolved) throw new Error('active_parent_not_found');
-					const matches: ScopeMatch[] = [];
-					if (resolved.path.area) matches.push({ level: 'area', predicate: scopeExists(schema.userScopes.areaId, resolved.path.area) });
-					if (resolved.path.region) matches.push({ level: 'region', predicate: scopeExists(schema.userScopes.regionId, resolved.path.region) });
-					if (resolved.path.branch) matches.push({ level: 'branch', predicate: scopeExists(schema.userScopes.branchId, resolved.path.branch) });
-					if (resolved.path.service_area) matches.push({ level: 'service_area', predicate: scopeExists(schema.userScopes.serviceAreaId, resolved.path.service_area) });
+					const matches: OrganizationScopeMatch[] = [];
+					if (resolved.path.area) matches.push({ level: 'area', predicate: hasUserScopeGrant(schema.userScopes.areaId, resolved.path.area) });
+					if (resolved.path.region) matches.push({ level: 'region', predicate: hasUserScopeGrant(schema.userScopes.regionId, resolved.path.region) });
+					if (resolved.path.branch) matches.push({ level: 'branch', predicate: hasUserScopeGrant(schema.userScopes.branchId, resolved.path.branch) });
+					if (resolved.path.service_area) matches.push({ level: 'service_area', predicate: hasUserScopeGrant(schema.userScopes.serviceAreaId, resolved.path.service_area) });
 					const inherited = matches.length ? or(...matches.map((match) => match.predicate)) : undefined;
 					const impacted = inherited ? or(eq(schema.users.globalScope, true), inherited) : eq(schema.users.globalScope, true);
 					const activeUsers = and(eq(schema.users.active, true), eq(schema.roles.active, true), impacted);
-					const [currentSummary] = await tx.select({ total: sql<number>`count(*)::int` })
+					const [currentSummary] = await databaseTransaction.select({ total: sql<number>`count(*)::int` })
 						.from(schema.users).innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id)).where(activeUsers);
-					const currentUsers = await tx.select({ id: schema.users.id }).from(schema.users)
+					const currentUsers = await databaseTransaction.select({ id: schema.users.id }).from(schema.users)
 						.innerJoin(schema.roles, eq(schema.users.roleId, schema.roles.id)).where(activeUsers).orderBy(asc(schema.users.id));
 					const currentFingerprint = createHash('sha256').update(currentUsers.map((user) => user.id).join(',')).digest('hex');
 					if (Number(currentSummary?.total ?? 0) !== claims.total || currentFingerprint !== claims.fingerprint) throw new Error('impact_changed');
 					let inserted: { id: string } | undefined;
 					if (body.level === 'area') {
-						[inserted] = await tx.insert(schema.areas).values({ code, name }).returning({ id: schema.areas.id });
+						[inserted] = await databaseTransaction.insert(schema.areas).values({ code, name }).returning({ id: schema.areas.id });
 					} else if (body.level === 'region') {
-						[inserted] = await tx.insert(schema.regions).values({ areaId: parentId!, code, name }).returning({ id: schema.regions.id });
+						[inserted] = await databaseTransaction.insert(schema.regions).values({ areaId: parentId!, code, name }).returning({ id: schema.regions.id });
 					} else if (body.level === 'branch') {
-						[inserted] = await tx.insert(schema.branches).values({ regionId: parentId!, code, name }).returning({ id: schema.branches.id });
+						[inserted] = await databaseTransaction.insert(schema.branches).values({ regionId: parentId!, code, name }).returning({ id: schema.branches.id });
 					} else if (body.level === 'service_area') {
-						[inserted] = await tx.insert(schema.serviceAreas).values({ branchId: parentId!, code, name }).returning({ id: schema.serviceAreas.id });
+						[inserted] = await databaseTransaction.insert(schema.serviceAreas).values({ branchId: parentId!, code, name }).returning({ id: schema.serviceAreas.id });
 					} else {
-						[inserted] = await tx.insert(schema.workzones).values({ serviceAreaId: parentId!, code, name }).returning({ id: schema.workzones.id });
+						[inserted] = await databaseTransaction.insert(schema.workzones).values({ serviceAreaId: parentId!, code, name }).returning({ id: schema.workzones.id });
 					}
 					if (!inserted) throw new Error('organization_create_failed');
 					const affectedIds = currentUsers.map((user) => user.id);
 					if (affectedIds.length) {
 						const now = new Date();
-						await tx.update(schema.users).set({ scopeVersion: sql`${schema.users.scopeVersion} + 1`, updatedAt: now })
+						await databaseTransaction.update(schema.users).set({ scopeVersion: sql`${schema.users.scopeVersion} + 1`, updatedAt: now })
 							.where(inArray(schema.users.id, affectedIds));
-						await tx.update(schema.sessions).set({ revokedAt: now })
+						await databaseTransaction.update(schema.sessions).set({ revokedAt: now })
 							.where(and(inArray(schema.sessions.userId, affectedIds), sql`${schema.sessions.revokedAt} IS NULL`, gt(schema.sessions.expiresAt, now)));
 					}
 					const requestId = set.headers['x-request-id'];
-					await appendAuditEvent(tx, {
+					await appendAuditEvent(databaseTransaction, {
 						actorId: authorization.userId, action: 'organization.child_created', targetId: inserted.id,
 						requestId: typeof requestId === 'string' ? requestId : 'unknown',
 						metadata: { level: body.level, code, parentId, affectedUsers: affectedIds.length }
@@ -308,17 +308,17 @@ export function createOrganizationImpactRoutes(database: OrganizationDatabase | 
 				if (error instanceof Error && error.message === 'actor_authorization_changed') { set.status = 403; return { error: 'forbidden' as const }; }
 				if (error instanceof Error && error.message === 'active_parent_not_found') { set.status = 404; return { error: 'active_parent_not_found' as const }; }
 				if (error instanceof Error && error.message === 'impact_changed') { set.status = 409; return { error: 'impact_changed_refresh_preview' as const }; }
-				if (databaseConstraint(error)?.endsWith('_code_unique') || databaseConstraint(error) === 'areas_code_unique') {
+				if (getDatabaseConstraintName(error)?.endsWith('_code_unique') || getDatabaseConstraintName(error) === 'areas_code_unique') {
 					set.status = 409;
 					return { error: 'organization_code_already_exists' as const };
 				}
 				throw error;
 			}
 		}, {
-			body: t.Object({ level: levelSchema, parentId: t.Optional(t.String({ format: 'uuid' })), code: t.String({ minLength: 1, maxLength: 80 }),
+			body: t.Object({ level: organizationLevelSchema, parentId: t.Optional(t.String({ format: 'uuid' })), code: t.String({ minLength: 1, maxLength: 80 }),
 				name: t.String({ minLength: 1, maxLength: 120 }), previewToken: t.String({ minLength: 20, maxLength: 2048 }), currentPassword: t.String({ minLength: 1, maxLength: 1024 }) }),
 			cookie: t.Cookie({ [csrfCookie]: t.Optional(t.String()) }), requirePermission: 'organization.manage',
-			response: { 201: t.Object({ id: t.String(), affectedUsers: t.Number() }), 400: apiError, 401: apiError, 403: apiError, 404: apiError,
-				409: apiError, 422: invalidRequest, 500: apiError, 503: apiError }
+			response: { 201: t.Object({ id: t.String(), affectedUsers: t.Number() }), 400: apiErrorResponseSchema, 401: apiErrorResponseSchema, 403: apiErrorResponseSchema, 404: apiErrorResponseSchema,
+				409: apiErrorResponseSchema, 422: invalidRequestResponseSchema, 500: apiErrorResponseSchema, 503: apiErrorResponseSchema }
 		});
 }

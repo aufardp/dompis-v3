@@ -1,81 +1,91 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	type EventRow = { id: string; actorId: string | null; action: string; targetId: string | null; requestId: string; createdAt: string };
-	let loading = $state(true);
-	let busy = $state(false);
-	let allowed = $state(false);
-	let events = $state<EventRow[]>([]);
-	let nextCursor = $state<string | null>(null);
-	let cursors = $state<(string | null)[]>([null]);
-	let page = $state(0);
-	let theme = $state<'light' | 'dark'>('dark');
-	let message = $state('');
+	type AuditEventRow = { id: string; actorId: string | null; action: string; targetId: string | null; requestId: string; createdAt: string };
+	let isLoadingAuditEvents = $state(true);
+	let isLoadingAuditPage = $state(false);
+	let canReadAuditEvents = $state(false);
+	let auditEvents = $state<AuditEventRow[]>([]);
+	let nextAuditEventCursor = $state<string | null>(null);
+	let auditEventCursorHistory = $state<(string | null)[]>([null]);
+	let currentAuditPageNumber = $state(0);
+	let selectedTheme = $state<'light' | 'dark'>('dark');
+	let auditPageMessage = $state('');
 	onMount(() => {
-		let stored: string | null = null;
-		try { stored = localStorage.getItem('dompis-theme'); } catch { /* Theme persistence is optional. */ }
-		const systemLight = matchMedia('(prefers-color-scheme: light)').matches;
-		applyTheme(stored === 'light' || stored === 'dark' ? stored : systemLight ? 'light' : 'dark');
-		void initialize();
+		let storedThemePreference: string | null = null;
+		try { storedThemePreference = localStorage.getItem('dompis-theme'); } catch { /* Theme persistence is optional. */ }
+		const systemPrefersLightTheme = matchMedia('(prefers-color-scheme: light)').matches;
+		applySelectedTheme(storedThemePreference === 'light' || storedThemePreference === 'dark' ? storedThemePreference : systemPrefersLightTheme ? 'light' : 'dark');
+		void initializeAuditLogPage();
 	});
-	function applyTheme(value: 'light' | 'dark'): void {
-		theme = value; document.documentElement.dataset.theme = value;
-		const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-		if (meta) meta.content = value === 'light' ? '#FFFFFF' : '#101220';
+	function applySelectedTheme(themeName: 'light' | 'dark'): void {
+		selectedTheme = themeName; document.documentElement.dataset.theme = themeName;
+		const themeColorMetaElement = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+		if (themeColorMetaElement) themeColorMetaElement.content = themeName === 'light' ? '#FFFFFF' : '#101220';
 	}
-	function toggleTheme(): void {
-		const value = theme === 'dark' ? 'light' : 'dark';
-		try { localStorage.setItem('dompis-theme', value); } catch { /* Keep the page usable. */ }
-		applyTheme(value);
+	function toggleSelectedTheme(): void {
+		const nextThemeName = selectedTheme === 'dark' ? 'light' : 'dark';
+		try { localStorage.setItem('dompis-theme', nextThemeName); } catch { /* Keep the page usable. */ }
+		applySelectedTheme(nextThemeName);
 	}
-	async function get<T>(url: string): Promise<T> {
-		const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
-		if (!response.ok) throw new Error(`http_${response.status}`);
-		return await response.json() as T;
+	async function requestJson<T>(requestUrl: string): Promise<T> {
+		const httpResponse = await fetch(requestUrl, { credentials: 'same-origin', cache: 'no-store' });
+		if (!httpResponse.ok) throw new Error(`http_${httpResponse.status}`);
+		return await httpResponse.json() as T;
 	}
-	async function initialize(): Promise<void> {
-		loading = true;
+	async function initializeAuditLogPage(): Promise<void> {
+		isLoadingAuditEvents = true;
 		try {
-			const session = await get<{ globalScope: boolean; permissions: string[] }>('/auth/me');
-			allowed = session.globalScope && session.permissions.includes('audit.read');
-			if (!allowed) { message = 'Audit Log hanya tersedia untuk superadmin dengan cakupan global.'; return; }
-			await loadPage(null, 0);
+			const currentSession = await requestJson<{ globalScope: boolean; permissions: string[] }>('/auth/me');
+			canReadAuditEvents = currentSession.globalScope && currentSession.permissions.includes('audit.read');
+			if (!canReadAuditEvents) { auditPageMessage = 'Audit Log hanya tersedia untuk superadmin dengan cakupan global.'; return; }
+			await loadAuditEventPage(null, 0);
 		} catch (cause) {
-			message = cause instanceof Error && cause.message === 'http_401'
+			auditPageMessage = cause instanceof Error && cause.message === 'http_401'
 				? 'Sesi tidak aktif. Masuk kembali untuk melihat catatan audit.' : 'Layanan belum tersedia. Coba lagi beberapa saat.';
 		}
-		finally { loading = false; }
+		finally { isLoadingAuditEvents = false; }
 	}
-	async function loadPage(after: string | null, nextPage: number): Promise<void> {
-		busy = true; message = '';
+	async function loadAuditEventPage(cursorAfterAuditEventId: string | null, targetPageNumber: number): Promise<void> {
+		isLoadingAuditPage = true; auditPageMessage = '';
 		try {
-			const params = new URLSearchParams({ limit: '50' });
-			if (after) params.set('after', after);
-			const result = await get<{ events: EventRow[]; nextCursor: string | null }>(`/api/admin/audit-events?${params}`);
-			events = result.events; nextCursor = result.nextCursor; page = nextPage;
-		} catch (cause) { message = cause instanceof Error && cause.message === 'http_403'
+			const auditSearchParameters = new URLSearchParams({ limit: '50' });
+			if (cursorAfterAuditEventId) auditSearchParameters.set('after', cursorAfterAuditEventId);
+			const auditEventPage = await requestJson<{ events: AuditEventRow[]; nextCursor: string | null }>(`/api/admin/audit-events?${auditSearchParameters}`);
+			auditEvents = auditEventPage.events; nextAuditEventCursor = auditEventPage.nextCursor; currentAuditPageNumber = targetPageNumber;
+		} catch (cause) { auditPageMessage = cause instanceof Error && cause.message === 'http_403'
 			? 'Akses ditolak. Hak akses akun mungkin telah berubah.' : 'Catatan audit gagal dimuat. Coba lagi.'; }
-		finally { busy = false; }
+		finally { isLoadingAuditPage = false; }
 	}
-	async function next(): Promise<void> { if (!nextCursor) return; const value = [...cursors, nextCursor]; cursors = value; await loadPage(nextCursor, page + 1); }
-	async function previous(): Promise<void> { if (cursors.length <= 1) return; const value = cursors.slice(0, -1); cursors = value; await loadPage(value.at(-1) ?? null, Math.max(page - 1, 0)); }
-	function localTime(value: string): string { return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'medium', timeZone: 'Asia/Jakarta' }).format(new Date(value)); }
+	async function loadNextAuditEventPage(): Promise<void> {
+		if (!nextAuditEventCursor) return;
+		auditEventCursorHistory = [...auditEventCursorHistory, nextAuditEventCursor];
+		await loadAuditEventPage(nextAuditEventCursor, currentAuditPageNumber + 1);
+	}
+	async function loadPreviousAuditEventPage(): Promise<void> {
+		if (auditEventCursorHistory.length <= 1) return;
+		auditEventCursorHistory = auditEventCursorHistory.slice(0, -1);
+		await loadAuditEventPage(auditEventCursorHistory.at(-1) ?? null, Math.max(currentAuditPageNumber - 1, 0));
+	}
+	function formatAuditTimestampInJakarta(timestamp: string): string {
+		return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'medium', timeZone: 'Asia/Jakarta' }).format(new Date(timestamp));
+	}
 </script>
 
 <svelte:head><title>Audit Log · DOMPIS</title><meta name="description" content="Riwayat tindakan administrasi DOMPIS." /><meta name="theme-color" content="#101220" /></svelte:head>
 <a class="skip-link" href="#audit-main">Lewati ke catatan audit</a>
 <main id="audit-main" class="shell">
-	<header class="topbar"><a class="brand" href="/" aria-label="DOMPIS, halaman utama"><span class="brand-mark">D</span><span>DOMPIS</span></a>{#if allowed}<nav aria-label="Administrasi"><a href="/admin/users">Pengguna</a><a href="/admin/organization">Organisasi</a><a class="active" href="/admin/audit" aria-current="page">Audit log</a></nav>{/if}<button class="theme-button" type="button" onclick={toggleTheme}>{theme === 'dark' ? 'Mode terang' : 'Mode gelap'}</button></header>
+	<header class="topbar"><a class="brand" href="/" aria-label="DOMPIS, halaman utama"><span class="brand-mark">D</span><span>DOMPIS</span></a>{#if canReadAuditEvents}<nav aria-label="Administrasi"><a href="/admin/users">Pengguna</a><a href="/admin/organization">Organisasi</a><a class="active" href="/admin/audit" aria-current="page">Audit log</a></nav>{/if}<button class="theme-button" type="button" onclick={toggleSelectedTheme}>{selectedTheme === 'dark' ? 'Mode terang' : 'Mode gelap'}</button></header>
 	<section class="intro"><p class="eyebrow">ADMINISTRASI <span>/</span> JEJAK TINDAKAN</p><div class="title-row"><div><h1>Audit Log</h1><p>Riwayat perubahan yang tercatat oleh sistem DOMPIS.</p></div><a class="back-link" href="/">← Beranda</a></div></section>
-	{#if loading}<section class="panel pending" aria-live="polite">Memeriksa sesi dan memuat catatan…</section>
-	{:else if !allowed}<section class="panel denied" role="alert"><strong>Akses tidak tersedia</strong><p>{message}</p><a href="/">Kembali ke halaman utama</a></section>
+	{#if isLoadingAuditEvents}<section class="panel pending" aria-live="polite">Memeriksa sesi dan memuat catatan…</section>
+	{:else if !canReadAuditEvents}<section class="panel denied" role="alert"><strong>Akses tidak tersedia</strong><p>{auditPageMessage}</p><a href="/">Kembali ke halaman utama</a></section>
 	{:else}
-		{#if message}<p class="notice" role="alert">{message}</p>{/if}
+		{#if auditPageMessage}<p class="notice" role="alert">{auditPageMessage}</p>{/if}
 		<section class="panel"><div class="panel-title"><div><span class="eyebrow">REKAMAN TERBARU</span><h2>Tindakan administrasi</h2></div><span class="privacy-note">Metadata bebas tidak ditampilkan</span></div>
 			<div class="table-wrap"><table><thead><tr><th>Waktu (WIB)</th><th>Tindakan</th><th>Actor ID</th><th>Target ID</th><th>Request ID</th></tr></thead><tbody>
-				{#each events as event (event.id)}<tr><td>{localTime(event.createdAt)}</td><td><span class="action">{event.action}</span></td><td class="mono">{event.actorId ?? 'Actor dihapus'}</td><td class="mono">{event.targetId ?? '—'}</td><td class="mono">{event.requestId}</td></tr>
+				{#each auditEvents as auditEvent (auditEvent.id)}<tr><td>{formatAuditTimestampInJakarta(auditEvent.createdAt)}</td><td><span class="action">{auditEvent.action}</span></td><td class="mono">{auditEvent.actorId ?? 'Actor dihapus'}</td><td class="mono">{auditEvent.targetId ?? '—'}</td><td class="mono">{auditEvent.requestId}</td></tr>
 				{:else}<tr><td colspan="5" class="empty">Belum ada catatan audit.</td></tr>{/each}
 			</tbody></table></div>
-			<footer class="pagination"><span>Halaman {page + 1} · maksimum 50 catatan</span><div><button type="button" disabled={page === 0 || busy} onclick={previous}>Sebelumnya</button><button type="button" disabled={!nextCursor || busy} onclick={next}>Berikutnya</button></div></footer>
+			<footer class="pagination"><span>Halaman {currentAuditPageNumber + 1} · maksimum 50 catatan</span><div><button type="button" disabled={currentAuditPageNumber === 0 || isLoadingAuditPage} onclick={loadPreviousAuditEventPage}>Sebelumnya</button><button type="button" disabled={!nextAuditEventCursor || isLoadingAuditPage} onclick={loadNextAuditEventPage}>Berikutnya</button></div></footer>
 		</section>
 	{/if}
 </main>

@@ -4,30 +4,30 @@ import { Elysia, t } from 'elysia';
 import { database, schema } from '@dompis/db';
 import { createPermissionGuard } from './permission-guard';
 
-type AuditDatabase = NonNullable<typeof database>;
-const cursorKey = randomBytes(32);
-type CursorClaims = { actorId: string; afterId: string };
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+type AuditEventDatabase = NonNullable<typeof database>;
+const auditCursorSigningKey = randomBytes(32);
+type AuditCursorClaims = { actorId: string; afterId: string };
+const uuidV7CursorPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function signCursor(claims: CursorClaims): string {
-	const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
-	const signature = createHmac('sha256', cursorKey).update(payload).digest('base64url');
-	return `${payload}.${signature}`;
+function createSignedAuditEventCursor(cursorClaims: AuditCursorClaims): string {
+	const encodedCursorClaims = Buffer.from(JSON.stringify(cursorClaims)).toString('base64url');
+	const cursorSignature = createHmac('sha256', auditCursorSigningKey).update(encodedCursorClaims).digest('base64url');
+	return `${encodedCursorClaims}.${cursorSignature}`;
 }
 
-function parseCursor(value: string, actorId: string): string | null {
-	const [payload, signature, extra] = value.split('.');
-	if (!payload || !signature || extra !== undefined) return null;
-	const expected = createHmac('sha256', cursorKey).update(payload).digest();
-	const actual = Buffer.from(signature, 'base64url');
-	if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+function readVerifiedAuditEventCursor(signedCursor: string, actorId: string): string | null {
+	const [encodedCursorClaims, encodedSignature, unexpectedCursorPart] = signedCursor.split('.');
+	if (!encodedCursorClaims || !encodedSignature || unexpectedCursorPart !== undefined) return null;
+	const expectedSignature = createHmac('sha256', auditCursorSigningKey).update(encodedCursorClaims).digest();
+	const actualSignature = Buffer.from(encodedSignature, 'base64url');
+	if (actualSignature.length !== expectedSignature.length || !timingSafeEqual(actualSignature, expectedSignature)) return null;
 	try {
-		const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as CursorClaims;
-		return claims.actorId === actorId && uuidPattern.test(claims.afterId) ? claims.afterId : null;
+		const cursorClaims = JSON.parse(Buffer.from(encodedCursorClaims, 'base64url').toString('utf8')) as AuditCursorClaims;
+		return cursorClaims.actorId === actorId && uuidV7CursorPattern.test(cursorClaims.afterId) ? cursorClaims.afterId : null;
 	} catch { return null; }
 }
 
-export function createAuditRoutes(database: AuditDatabase | undefined) {
+export function createAuditRoutes(database: AuditEventDatabase | undefined) {
 	return new Elysia({ name: 'dompis-audit-read' }).use(createPermissionGuard(database))
 		.get('/api/admin/audit-events', async ({ authorization, query, set }) => {
 			set.headers['cache-control'] = 'private, no-store';
@@ -39,20 +39,20 @@ export function createAuditRoutes(database: AuditDatabase | undefined) {
 			if (actor?.active !== true || actor.roleActive !== true || actor.roleCode !== 'superadmin' || actor.globalScope !== true) {
 				set.status = 403; return { error: 'forbidden' as const };
 			}
-			const afterId = query.after ? parseCursor(query.after, authorization.userId) : null;
-			if (query.after && !afterId) { set.status = 400; return { error: 'invalid_cursor' as const }; }
-			const limit = query.limit ?? 50;
-			const rows = await database.select({ id: schema.auditEvents.id, actorId: schema.auditEvents.actorId,
+			const cursorAfterAuditEventId = query.after ? readVerifiedAuditEventCursor(query.after, authorization.userId) : null;
+			if (query.after && !cursorAfterAuditEventId) { set.status = 400; return { error: 'invalid_cursor' as const }; }
+			const pageSize = query.limit ?? 50;
+			const auditEventRows = await database.select({ id: schema.auditEvents.id, actorId: schema.auditEvents.actorId,
 				action: schema.auditEvents.action, targetId: schema.auditEvents.targetId,
 				requestId: schema.auditEvents.requestId, createdAt: schema.auditEvents.createdAt })
-				.from(schema.auditEvents).where(afterId ? lt(schema.auditEvents.id, afterId) : undefined)
-				.orderBy(desc(schema.auditEvents.id)).limit(limit + 1);
-			const hasMore = rows.length > limit;
-			const events = rows.slice(0, limit);
-			const last = events.at(-1);
+				.from(schema.auditEvents).where(cursorAfterAuditEventId ? lt(schema.auditEvents.id, cursorAfterAuditEventId) : undefined)
+				.orderBy(desc(schema.auditEvents.id)).limit(pageSize + 1);
+			const hasMoreAuditEvents = auditEventRows.length > pageSize;
+			const auditEventsPage = auditEventRows.slice(0, pageSize);
+			const lastAuditEvent = auditEventsPage.at(-1);
 			return {
-				events,
-				nextCursor: hasMore && last ? signCursor({ actorId: authorization.userId, afterId: last.id }) : null
+				events: auditEventsPage,
+				nextCursor: hasMoreAuditEvents && lastAuditEvent ? createSignedAuditEventCursor({ actorId: authorization.userId, afterId: lastAuditEvent.id }) : null
 			};
 		}, {
 			query: t.Object({ after: t.Optional(t.String({ minLength: 20, maxLength: 512 })),

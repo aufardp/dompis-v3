@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	type Level = 'area' | 'region' | 'branch' | 'service_area' | 'workzone';
-	type Option = { id: string; code: string; name: string };
-	type Impact = {
-		childLevel: Level;
-		parent: (Option & { level: Level }) | null;
+	type OrganizationLevel = 'area' | 'region' | 'branch' | 'service_area' | 'workzone';
+	type OrganizationScopeOption = { id: string; code: string; name: string };
+	type OrganizationChildImpactPreview = {
+		childLevel: OrganizationLevel;
+		parent: (OrganizationScopeOption & { level: OrganizationLevel }) | null;
 		summary: { total: number; global: number; inheritedScope: number };
 		users: Array<{ id: string; username: string; displayName: string; roleCode: string; accessMode: 'global' | 'inherited_scope'; scopeLevels: string[] }>;
 		nextCursor: string | null;
 		previewToken: string;
 	};
-	type Session = { globalScope?: boolean; permissions?: string[] };
-	const levels: { id: Level; label: string }[] = [
+	type AuthenticatedSessionSummary = { globalScope?: boolean; permissions?: string[] };
+	const levels: { id: OrganizationLevel; label: string }[] = [
 		{ id: 'area', label: 'Area' }, { id: 'region', label: 'Region' }, { id: 'branch', label: 'Branch' },
 		{ id: 'service_area', label: 'Service Area' }, { id: 'workzone', label: 'Workzone' }
 	];
-	const ancestors: Level[] = ['area', 'region', 'branch', 'service_area'];
+	const ancestors: OrganizationLevel[] = ['area', 'region', 'branch', 'service_area'];
 	let theme = $state<'light' | 'dark'>('dark');
 	let allowed = $state(false);
 	let loading = $state(true);
@@ -24,11 +24,11 @@
 	let successNotice = $state('');
 	let searchDraft = $state('');
 	let appliedSearch = $state('');
-	let level = $state<Level>('area');
-	let selected = $state<Record<Level, string>>({ area: '', region: '', branch: '', service_area: '', workzone: '' });
-	let options = $state<Record<Level, Option[]>>({ area: [], region: [], branch: [], service_area: [], workzone: [] });
+	let level = $state<OrganizationLevel>('area');
+	let selected = $state<Record<OrganizationLevel, string>>({ area: '', region: '', branch: '', service_area: '', workzone: '' });
+	let options = $state<Record<OrganizationLevel, OrganizationScopeOption[]>>({ area: [], region: [], branch: [], service_area: [], workzone: [] });
 	let hasMoreOptions = $state(false);
-	let impact = $state<Impact | null>(null);
+	let impact = $state<OrganizationChildImpactPreview | null>(null);
 	let nextCursor = $state<string | null>(null);
 	let cursorStack = $state<(string | null)[]>([null]);
 	let currentPage = $state(0);
@@ -40,33 +40,33 @@
 	onMount(() => {
 		let stored: string | null = null;
 		try { stored = localStorage.getItem('dompis-theme'); } catch { /* Theme preference is optional. */ }
-		const light = matchMedia('(prefers-color-scheme: light)').matches;
-		applyTheme(stored === 'light' || stored === 'dark' ? stored : light ? 'light' : 'dark');
-		void initialize();
+		const systemPrefersLightTheme = matchMedia('(prefers-color-scheme: light)').matches;
+		applySelectedTheme(stored === 'light' || stored === 'dark' ? stored : systemPrefersLightTheme ? 'light' : 'dark');
+		void initializeOrganizationManagementPage();
 	});
-	function applyTheme(value: 'light' | 'dark'): void {
-		theme = value;
-		document.documentElement.dataset.theme = value;
-		const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-		if (meta) meta.content = value === 'light' ? '#FFFFFF' : '#101220';
+	function applySelectedTheme(themeName: 'light' | 'dark'): void {
+		theme = themeName;
+		document.documentElement.dataset.theme = themeName;
+		const themeColorMetaElement = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+		if (themeColorMetaElement) themeColorMetaElement.content = themeName === 'light' ? '#FFFFFF' : '#101220';
 	}
-	function toggleTheme(): void {
-		const value = theme === 'dark' ? 'light' : 'dark';
-		try { localStorage.setItem('dompis-theme', value); } catch { /* Continue without persistence. */ }
-		applyTheme(value);
+	function toggleSelectedTheme(): void {
+		const nextThemeName = theme === 'dark' ? 'light' : 'dark';
+		try { localStorage.setItem('dompis-theme', nextThemeName); } catch { /* Continue without persistence. */ }
+		applySelectedTheme(nextThemeName);
 	}
-	async function request<T>(url: string): Promise<T> {
-		const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
-		if (!response.ok) throw new Error(`http_${response.status}`);
-		return await response.json() as T;
+	async function requestJson<T>(requestUrl: string): Promise<T> {
+		const httpResponse = await fetch(requestUrl, { credentials: 'same-origin', cache: 'no-store' });
+		if (!httpResponse.ok) throw new Error(`http_${httpResponse.status}`);
+		return await httpResponse.json() as T;
 	}
-	async function initialize(): Promise<void> {
+	async function initializeOrganizationManagementPage(): Promise<void> {
 		loading = true;
 		try {
-			const session = await request<Session>('/auth/me');
-			allowed = session.globalScope === true && session.permissions?.includes('organization.manage') === true;
+			const authenticatedSession = await requestJson<AuthenticatedSessionSummary>('/auth/me');
+			allowed = authenticatedSession.globalScope === true && authenticatedSession.permissions?.includes('organization.manage') === true;
 			if (!allowed) { error = 'Akses Organization Management memerlukan superadmin dengan cakupan global.'; return; }
-			await loadOptions('area');
+			await loadOrganizationScopeOptions('area');
 		} catch (cause) {
 			error = cause instanceof Error && cause.message === 'http_401'
 				? 'Sesi tidak aktif. Masuk kembali untuk mengelola organisasi.'
@@ -74,57 +74,57 @@
 		}
 		finally { loading = false; }
 	}
-	function parentLevel(child: Level): Level | null {
+	function getParentOrganizationLevel(child: OrganizationLevel): OrganizationLevel | null {
 		const index = levels.findIndex((item) => item.id === child);
 		return index > 0 ? levels[index - 1]!.id : null;
 	}
-	async function loadOptions(target: Level): Promise<void> {
-		const parent = parentLevel(target);
+	async function loadOrganizationScopeOptions(target: OrganizationLevel): Promise<void> {
+		const parent = getParentOrganizationLevel(target);
 		const parentId = parent ? selected[parent] : '';
 		if (parent && !parentId) { options[target] = []; return; }
-		const params = new URLSearchParams({ level: target, limit: '50' });
-		if (parentId) params.set('parentId', parentId);
-		if (appliedSearch) params.set('search', appliedSearch);
-		const result = await request<{ options: Option[]; nextCursor: string | null }>(`/api/admin/scope-options?${params}`);
-		options[target] = result.options;
-		if (target === level) hasMoreOptions = result.nextCursor !== null;
+		const scopeOptionSearchParameters = new URLSearchParams({ level: target, limit: '50' });
+		if (parentId) scopeOptionSearchParameters.set('parentId', parentId);
+		if (appliedSearch) scopeOptionSearchParameters.set('search', appliedSearch);
+		const scopeOptionResponse = await requestJson<{ options: OrganizationScopeOption[]; nextCursor: string | null }>(`/api/admin/scope-options?${scopeOptionSearchParameters}`);
+		options[target] = scopeOptionResponse.options;
+		if (target === level) hasMoreOptions = scopeOptionResponse.nextCursor !== null;
 	}
-	async function applySearch(): Promise<void> {
+	async function applyOrganizationSearch(): Promise<void> {
 		appliedSearch = searchDraft.trim();
 		impact = null; error = '';
 		selected = { area: '', region: '', branch: '', service_area: '', workzone: '' };
 		options = { area: [], region: [], branch: [], service_area: [], workzone: [] };
-		try { await loadOptions('area'); if (level !== 'area') await loadOptions(level); }
+		try { await loadOrganizationScopeOptions('area'); if (level !== 'area') await loadOrganizationScopeOptions(level); }
 		catch { error = 'Daftar wilayah gagal dimuat. Periksa pencarian lalu coba lagi.'; }
 	}
-	async function changeLevel(value: Level): Promise<void> {
+	async function selectOrganizationLevel(value: OrganizationLevel): Promise<void> {
 		level = value; impact = null; error = '';
-		try { await loadOptions(value); }
+		try { await loadOrganizationScopeOptions(value); }
 		catch { error = 'Pilihan wilayah gagal dimuat.'; }
 	}
-	async function changeParent(target: Level, value: string): Promise<void> {
+	async function selectOrganizationParent(target: OrganizationLevel, value: string): Promise<void> {
 		selected[target] = value;
 		impact = null; error = '';
 		const index = levels.findIndex((item) => item.id === target);
 		for (const child of levels.slice(index + 1)) { selected[child.id] = ''; options[child.id] = []; }
 		const child = levels[index + 1]?.id;
 		if (child && levels.findIndex((item) => item.id === child) < levels.findIndex((item) => item.id === level)) {
-			try { await loadOptions(child); } catch { error = 'Pilihan wilayah lanjutan gagal dimuat.'; }
+			try { await loadOrganizationScopeOptions(child); } catch { error = 'Pilihan wilayah lanjutan gagal dimuat.'; }
 		}
 	}
-	function ready(): boolean {
-		const parent = parentLevel(level);
+	function isOrganizationParentSelectionComplete(): boolean {
+		const parent = getParentOrganizationLevel(level);
 		return parent === null || Boolean(selected[parent]);
 	}
-	async function loadImpact(after: string | null, page: number): Promise<void> {
-		if (!ready()) { error = 'Pilih seluruh parent wilayah terlebih dahulu.'; return; }
+	async function loadOrganizationChildImpactPage(after: string | null, page: number): Promise<void> {
+		if (!isOrganizationParentSelectionComplete()) { error = 'Pilih seluruh parent wilayah terlebih dahulu.'; return; }
 		busy = true; error = '';
 		try {
 			const params = new URLSearchParams({ level, limit: '50' });
-			const parent = parentLevel(level);
+			const parent = getParentOrganizationLevel(level);
 			if (parent) params.set('parentId', selected[parent]);
 			if (after) params.set('after', after);
-			impact = await request<Impact>(`/api/admin/organization/child-impact?${params}`);
+			impact = await requestJson<OrganizationChildImpactPreview>(`/api/admin/organization/child-impact?${params}`);
 			nextCursor = impact.nextCursor; currentPage = page;
 		} catch (cause) {
 			impact = null;
@@ -133,38 +133,38 @@
 				: 'Pratinjau dampak gagal dimuat. Coba lagi.';
 		} finally { busy = false; }
 	}
-	async function preview(): Promise<void> { cursorStack = [null]; await loadImpact(null, 0); }
-	async function nextPage(): Promise<void> {
+	async function previewOrganizationChildCreationImpact(): Promise<void> { cursorStack = [null]; await loadOrganizationChildImpactPage(null, 0); }
+	async function loadNextOrganizationImpactPage(): Promise<void> {
 		if (!nextCursor) return;
 		const cursors = [...cursorStack, nextCursor]; cursorStack = cursors;
-		await loadImpact(nextCursor, currentPage + 1);
+		await loadOrganizationChildImpactPage(nextCursor, currentPage + 1);
 	}
-	async function previousPage(): Promise<void> {
+	async function loadPreviousOrganizationImpactPage(): Promise<void> {
 		if (cursorStack.length <= 1) return;
 		const cursors = cursorStack.slice(0, -1); cursorStack = cursors;
-		await loadImpact(cursors.at(-1) ?? null, Math.max(0, currentPage - 1));
+		await loadOrganizationChildImpactPage(cursors.at(-1) ?? null, Math.max(0, currentPage - 1));
 	}
-	async function createChild(event: SubmitEvent): Promise<void> {
+	async function createOrganizationChild(event: SubmitEvent): Promise<void> {
 		event.preventDefault();
 		if (!impact || saving) return;
 		saving = true; error = ''; successNotice = '';
 		try {
 			const csrfResponse = await fetch('/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
 			if (!csrfResponse.ok) throw new Error('csrf');
-			const csrf = await csrfResponse.json() as { csrfToken?: unknown };
-			if (typeof csrf.csrfToken !== 'string') throw new Error('csrf');
-			const parent = parentLevel(level);
+			const csrfResponsePayload = await csrfResponse.json() as { csrfToken?: unknown };
+			if (typeof csrfResponsePayload.csrfToken !== 'string') throw new Error('csrf');
+			const parent = getParentOrganizationLevel(level);
 			const response = await fetch('/api/admin/organization/children', {
 				method: 'POST', credentials: 'same-origin', cache: 'no-store',
-				headers: { 'content-type': 'application/json', 'x-csrf-token': csrf.csrfToken },
+				headers: { 'content-type': 'application/json', 'x-csrf-token': csrfResponsePayload.csrfToken },
 				body: JSON.stringify({ level, ...(parent ? { parentId: selected[parent] } : {}), code: unitCode, name: unitName,
 					previewToken: impact.previewToken, currentPassword })
 			});
 			if (response.status === 409) throw new Error('impact_changed');
 			if (response.status === 403) throw new Error('forbidden');
 			if (!response.ok) throw new Error('create_failed');
-			const result = await response.json() as { affectedUsers: number };
-			successNotice = `Unit berhasil dibuat. ${result.affectedUsers} sesi user terdampak dicabut. Masuk kembali untuk melanjutkan administrasi.`;
+			const childCreationResponse = await response.json() as { affectedUsers: number };
+			successNotice = `Unit berhasil dibuat. ${childCreationResponse.affectedUsers} sesi user terdampak dicabut. Masuk kembali untuk melanjutkan administrasi.`;
 			impact = null; unitCode = ''; unitName = ''; currentPassword = '';
 		} catch (cause) {
 			error = cause instanceof Error && cause.message === 'impact_changed'
@@ -174,7 +174,7 @@
 					: 'Unit belum dapat dibuat. Periksa kode unik, data, dan koneksi lalu coba lagi.';
 		} finally { saving = false; }
 	}
-	function levelLabel(value: string): string { return levels.find((item) => item.id === value)?.label ?? value; }
+	function getOrganizationLevelLabel(value: string): string { return levels.find((item) => item.id === value)?.label ?? value; }
 </script>
 
 <svelte:head>
@@ -188,7 +188,7 @@
 	<header class="topbar">
 		<a class="brand" href="/" aria-label="DOMPIS, kembali ke halaman utama"><span class="brand-mark">D</span><span>DOMPIS</span></a>
 		{#if allowed}<nav aria-label="Administrasi"><a href="/admin/users">Pengguna</a><a class="active" href="/admin/organization" aria-current="page">Organisasi</a><a href="/admin/organization/move">Pindah unit</a></nav>{/if}
-		<button class="theme-button" type="button" onclick={toggleTheme} aria-label="Ganti tema">{theme === 'dark' ? 'Mode terang' : 'Mode gelap'}</button>
+		<button class="theme-button" type="button" onclick={toggleSelectedTheme} aria-label="Ganti tema">{theme === 'dark' ? 'Mode terang' : 'Mode gelap'}</button>
 	</header>
 	<section class="intro">
 		<p class="eyebrow">ADMINISTRASI <span> / </span> STRUKTUR ORGANISASI</p>
@@ -200,31 +200,31 @@
 		{#if error}<p class="notice" role="alert">{error}</p>{/if}
 		{#if successNotice}<p class="success-notice" role="status">{successNotice} <a href="/">Kembali ke halaman masuk</a></p>{/if}
 		<div class="layout">
-			<section class="panel controls" aria-labelledby="preview-title">
-				<div class="panel-heading"><span class="step">01</span><div><h2 id="preview-title">Atur konteks pratinjau</h2><p>Semua pilihan hanya membaca data.</p></div></div>
-			<label class="field"><span>Cari wilayah</span><div class="search-row"><input bind:value={searchDraft} maxlength="80" placeholder="Kode atau nama wilayah" onkeydown={(event) => event.key === 'Enter' && applySearch()} /><button type="button" class="secondary" onclick={applySearch}>Terapkan</button></div></label>
+			<section class="panel controls" aria-labelledby="previewOrganizationChildCreationImpact-title">
+				<div class="panel-heading"><span class="step">01</span><div><h2 id="previewOrganizationChildCreationImpact-title">Atur konteks pratinjau</h2><p>Semua pilihan hanya membaca data.</p></div></div>
+			<label class="field"><span>Cari wilayah</span><div class="search-row"><input bind:value={searchDraft} maxlength="80" placeholder="Kode atau nama wilayah" onkeydown={(event) => event.key === 'Enter' && applyOrganizationSearch()} /><button type="button" class="secondary" onclick={applyOrganizationSearch}>Terapkan</button></div></label>
 			<p class="hint">Pencarian menyaring pilihan pada setiap tingkat. Daftar dibatasi 50 item; gunakan pencarian bila unit tidak terlihat.</p>
-			<label class="field"><span>Unit yang akan dibuat</span><select value={level} onchange={(event) => changeLevel(event.currentTarget.value as Level)}>{#each levels as item}<option value={item.id}>{item.label}</option>{/each}</select></label>
+			<label class="field"><span>Unit yang akan dibuat</span><select value={level} onchange={(event) => selectOrganizationLevel(event.currentTarget.value as OrganizationLevel)}>{#each levels as item}<option value={item.id}>{item.label}</option>{/each}</select></label>
 			{#each ancestors.slice(0, levels.findIndex((item) => item.id === level)) as parent}
-				<label class="field"><span>{levelLabel(parent)} parent</span><select value={selected[parent]} onchange={(event) => changeParent(parent, event.currentTarget.value)}><option value="">Pilih {levelLabel(parent).toLowerCase()}</option>{#each options[parent] as option}<option value={option.id}>{option.code} · {option.name}</option>{/each}</select></label>
+				<label class="field"><span>{getOrganizationLevelLabel(parent)} parent</span><select value={selected[parent]} onchange={(event) => selectOrganizationParent(parent, event.currentTarget.value)}><option value="">Pilih {getOrganizationLevelLabel(parent).toLowerCase()}</option>{#each options[parent] as option}<option value={option.id}>{option.code} · {option.name}</option>{/each}</select></label>
 			{/each}
 			{#if hasMoreOptions}<p class="hint">Masih ada pilihan lain di luar 50 hasil pertama. Tambahkan kata kunci pencarian.</p>{/if}
 			<div class="read-only-note"><span aria-hidden="true">i</span><p><strong>Pratinjau saja.</strong> Belum ada perubahan hierarchy atau scope yang disimpan.</p></div>
-			<button class="primary" type="button" disabled={!ready() || busy} onclick={preview}>{busy ? 'Memuat pratinjau…' : 'Lihat user terdampak'}</button>
+			<button class="primary" type="button" disabled={!isOrganizationParentSelectionComplete() || busy} onclick={previewOrganizationChildCreationImpact}>{busy ? 'Memuat pratinjau…' : 'Lihat user terdampak'}</button>
 			</section>
 			<section class="panel results" aria-labelledby="impact-title" aria-live="polite">
 				<div class="panel-heading"><span class="step">02</span><div><h2 id="impact-title">Dampak cakupan user</h2><p>Snapshot user aktif yang grant-nya mencakup calon unit.</p></div></div>
 				{#if !impact}<div class="empty"><span class="empty-icon">↗</span><strong>Belum ada pratinjau</strong><p>Tentukan level dan parent, lalu pilih “Lihat user terdampak”.</p></div>
 				{:else}
-					<div class="context"><span>CALON UNIT</span><strong>{levelLabel(impact.childLevel)}</strong><p>{impact.parent ? `${levelLabel(impact.parent.level)} · ${impact.parent.code} — ${impact.parent.name}` : 'Unit root baru; hanya global scope yang berlaku.'}</p></div>
+					<div class="context"><span>CALON UNIT</span><strong>{getOrganizationLevelLabel(impact.childLevel)}</strong><p>{impact.parent ? `${getOrganizationLevelLabel(impact.parent.level)} · ${impact.parent.code} — ${impact.parent.name}` : 'Unit root baru; hanya global scope yang berlaku.'}</p></div>
 					<div class="metrics"><article><span>USER TERDAMPAK</span><strong>{impact.summary.total}</strong></article><article><span>GLOBAL</span><strong>{impact.summary.global}</strong></article><article><span>INHERIT SCOPE</span><strong>{impact.summary.inheritedScope}</strong></article></div>
 					<div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Akses melalui</th></tr></thead><tbody>
-						{#each impact.users as user (user.id)}<tr><td><strong>{user.displayName}</strong><small>@{user.username}</small></td><td><span class="role">{user.roleCode}</span></td><td>{user.accessMode === 'global' ? 'Cakupan global' : user.scopeLevels.map(levelLabel).join(', ')}</td></tr>
+						{#each impact.users as user (user.id)}<tr><td><strong>{user.displayName}</strong><small>@{user.username}</small></td><td><span class="role">{user.roleCode}</span></td><td>{user.accessMode === 'global' ? 'Cakupan global' : user.scopeLevels.map(getOrganizationLevelLabel).join(', ')}</td></tr>
 						{:else}<tr><td colspan="3" class="no-users">Tidak ada user aktif dengan grant yang mencakup parent ini.</td></tr>{/each}
 					</tbody></table></div>
-					<div class="pagination"><span>Halaman {currentPage + 1} · {impact.users.length} user ditampilkan pada halaman ini</span><div><button class="secondary" type="button" disabled={currentPage === 0 || busy} onclick={previousPage}>Sebelumnya</button><button class="secondary" type="button" disabled={!nextCursor || busy} onclick={nextPage}>Berikutnya</button></div></div>
-					<form class="create-form" onsubmit={createChild}>
-						<div><p class="eyebrow">KONFIRMASI MUTASI</p><h3>Buat {levelLabel(level)}</h3><p>Pratinjau berlaku lima menit. User yang terdampak akan diminta masuk kembali.</p></div>
+					<div class="pagination"><span>Halaman {currentPage + 1} · {impact.users.length} user ditampilkan pada halaman ini</span><div><button class="secondary" type="button" disabled={currentPage === 0 || busy} onclick={loadPreviousOrganizationImpactPage}>Sebelumnya</button><button class="secondary" type="button" disabled={!nextCursor || busy} onclick={loadNextOrganizationImpactPage}>Berikutnya</button></div></div>
+					<form class="create-form" onsubmit={createOrganizationChild}>
+						<div><p class="eyebrow">KONFIRMASI MUTASI</p><h3>Buat {getOrganizationLevelLabel(level)}</h3><p>Pratinjau berlaku lima menit. User yang terdampak akan diminta masuk kembali.</p></div>
 						<div class="create-fields"><label class="field"><span>Kode unit</span><input bind:value={unitCode} maxlength="80" required autocomplete="off" /></label><label class="field"><span>Nama unit</span><input bind:value={unitName} maxlength="120" required autocomplete="off" /></label><label class="field"><span>Password superadmin untuk konfirmasi</span><input bind:value={currentPassword} type="password" maxlength="1024" required autocomplete="current-password" /></label></div>
 						<button class="primary" type="submit" disabled={saving || !unitCode.trim() || !unitName.trim() || !currentPassword}>{saving ? 'Menyimpan…' : 'Konfirmasi dan buat unit'}</button>
 					</form>
