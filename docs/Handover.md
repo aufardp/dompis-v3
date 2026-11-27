@@ -1339,3 +1339,15 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: diff relatif luas karena konsistensi identifier dipakai di implementasi, test, dan UI; typecheck, build, serta integration test dipakai untuk menjaga perilaku. Tidak ada risiko perubahan schema/retensi/data; Phase 0C masih memerlukan closed/reopen fixture, keputusan lifecycle/timezone/TTR, crosswalk, role capability, field/archive policy, serta registrasi snapshot MySQL read-only.
 - Rollback: revert rename pada sembilan file kode dan catatan handover ini; kontrak, migration, dan data tidak perlu rollback. Belum ada commit dibuat.
 - Langkah berikutnya: lanjutkan Phase 0C dengan memvalidasi bukti dan keputusan yang tersedia, tanpa memulai ETL atau memberi grant role operasional sebelum gate pemilik terpenuhi. Pesan commit: `refactor(naming): use purpose-revealing organization and audit identifiers`.
+## 2026-11-27 — Revalidate Phase 0C contract and authorization gates
+
+- Phase: Phase 0C — Contract and Access Discovery (evidence revalidation; gate remains open).
+- Tindakan: memeriksa status repository, Implementation Plan, Phase 0C/3A readiness, authorization worksheet, dan artefak terkait. Memperbarui Phase 0C supaya keputusan owner yang sudah tercatat—role vocabulary, superadmin full control, User Management superadmin-only, dan cohort `officer`/`team_leader`/`senior_leader`—dinyatakan sebagai partial completion, dengan sisa keputusan scope dan aktivasi dirinci. Pencarian file tidak menemukan authoritative OpenAPI, sanitized closed/reopen fixture, atau approved crosswalk baru.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada credential dibaca.
+- SQL/command tersanitasi: `git status --short`; `git log -5 --oneline`; `rg --files` untuk OpenAPI/fixture/crosswalk/NOSSA terkait; `rg` dan `sed` pada dokumen Phase 0C, Phase 3A, dan authorization.
+- Hasil pengujian aktual: `git diff --check` dijalankan setelah pembaruan dokumentasi dan lulus. Tidak ada test, typecheck, build, endpoint call, atau query database dijalankan karena perubahan hanya merapikan status dokumentasi.
+- Keputusan teknis: C0C-04 kini ditandai partial, bukan seluruhnya belum diputuskan. Nama dan equivalence cohort tidak diperlakukan sebagai approval capability set atau migrasi grant. Phase 3A tetap tidak dimulai sampai kontrak, snapshot, field policy, crosswalk, dan parity access tervalidasi.
+- Risiko/kendala: tidak ditemukan bukti lokal baru untuk closed/reopen lifecycle, timezone/TTR, geography, field retention, atau MySQL snapshot registration. Phase 0C masih tertahan; tidak ada aturan bisnis yang disimpulkan dari nama role, endpoint, atau status ticket.
+- Rollback: revert perubahan dokumentasi ini saja; tidak ada perubahan source, schema, atau data.
+- Langkah berikutnya: lengkapi C0C-01–03, sisa C0C-04, C0C-05, dan registrasi source pada C0C-06 dengan fixture/keputusan owner yang disanitasi dan dapat ditelusuri; lanjutkan synthetic validation setelah input diterima. Pesan commit: `docs(phase-0c): reflect approved role decisions and remaining gates`.
