@@ -61,16 +61,15 @@ Keputusan yang sudah tercatat dan tidak perlu diulang:
 - `admin` berganti nama menjadi `team_leader`; `admin_branch` menjadi `officer`; role lainnya tetap memakai nama yang disetujui.
 - `officer`, `team_leader`, dan `senior_leader` harus setara satu sama lain, tetapi capability set bersama belum dipilih.
 - `helpdesk` dan `teknisi` ditunda; assignment teknisi tetap di luar scope.
+- Untuk scope v3 saat ini, capability catalog yang disetujui hanya diberikan kepada `superadmin`; peran lain belum mendapat operational grant. `superadmin` memegang explicit global data scope dan menjadi satu-satunya role yang dapat mengatur global/hierarchical scope; audit reader juga hanya `superadmin`.
 
 Keputusan/bukti yang masih diperlukan:
 
 | Pertanyaan | Keputusan pemilik |
 |---|---|
 | Capability produk apa yang diberikan kepada cohort setara `officer`/`team_leader`/`senior_leader`? Daftar capability code secara eksplisit; kosong berarti deny. |  |
-| Apakah grant `helpdesk`/`teknisi` tetap kosong untuk rollout ini? (default aman: ya) |  |
 | Akun legacy aktif otomatis? (default aman: tidak) |  |
 | Bagaimana akun dengan nol junction-derived leaf diperlakukan sampai direct FK/global exception direkonsiliasi? (default aman: jangan aktifkan) |  |
-| Apakah global scope hanya boleh dimiliki/diberikan `superadmin`? |  |
 | Metadata audit yang boleh dibaca dan periode retensi |  |
 | Apakah role change/credential reset termasuk User Management? Reset harus memakai flow aman, bukan password berbasis username. |  |
 | Approver dan tanggal keputusan |  |

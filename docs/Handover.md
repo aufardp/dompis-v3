@@ -1416,3 +1416,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: Prisma model bukan bukti keadaan database aktif atau nilai data. Source environment belum terklasifikasi; tidak dilakukan query. Seluruh owner decisions/fixtures Phase 0C masih diperlukan.
 - Rollback: revert dua perubahan dokumentasi; tidak ada code/schema/database effect.
 - Langkah berikutnya: tunggu bukti sanitized/approval pemilik yang diminta di `Phase-0C-Owner-Decision-Packet.md`; sesudah terima, validasi semantik, crosswalk, access parity dan snapshot sebelum Phase 0C exit. Pesan commit: `docs(phase-0c): validate legacy scalar mapping inventory`.
+
+## 2026-11-27 — Reconcile owner decision packet with approved role policy
+
+- Phase: Phase 0C — owner input packet consistency review.
+- Tindakan: membandingkan ulang worksheet keputusan dengan `Authorization-Capability-Discovery.md` dan `Decision-Log.md`. Memindahkan keputusan yang sudah disetujui dari pertanyaan terbuka ke bagian fakta: superadmin global scope/scope administration, audit read superadmin-only, dan tidak ada grant operasional untuk role lain saat ini. Menghapus dua pertanyaan duplikat agar pemilik hanya diminta memutuskan capability cohort serta kebijakan akun/scope yang memang belum ada.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada secret dibaca.
+- SQL/command tersanitasi: review statis role worksheet, Decision Log, dan paket Phase 0C; `git diff --check`.
+- Hasil pengujian aktual: dokumentasi dibandingkan terhadap keputusan tercatat; `git diff --check` lulus. Tidak ada test/build dijalankan.
+- Keputusan teknis: keputusan eksplisit owner tidak diminta ulang. Persamaan role tidak diartikan sebagai capability grant; superadmin-only policy dipertahankan sesuai keputusan sebelumnya.
+- Risiko/kendala: fixture lifecycle/TTR, area/Workzone crosswalk, account activation/effective-scope parity, field retention, serta source snapshot registration masih memerlukan bukti/keputusan eksternal.
+- Rollback: revert pembaruan paket dan entry Handover; tidak ada source/app/schema/data effect.
+- Langkah berikutnya: input yang tersisa tercantum di paket; Phase 0C exit review baru dapat dilakukan setelah input dan validasi fixture tersedia. Pesan commit: `docs(phase-0c): reconcile approved role policy in decision packet`.
