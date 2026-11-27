@@ -1442,3 +1442,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: C0C-01–04 dan keputusan/approval field C0C-05 serta snapshot registration C0C-06 belum tertutup. Tidak ada database/source data terlibat.
 - Rollback: revert dua pembaruan dokumentasi; source/test tidak berubah.
 - Langkah berikutnya: selesaikan exit checklist paket setelah fixture dan keputusan owner tersedia; jangan memulai ETL hanya berdasarkan test normalizer. Pesan commit: `test(phase-0c): verify documented incident normalization contract`.
+
+## 2026-11-27 — Add product-field dependency evidence to Phase 0C packet
+
+- Phase: Phase 0C — historical field disposition discovery (evidence preparation; no policy decision).
+- Tindakan: menambahkan tabel jejak candidate field/dependency untuk Ticket Management, Semesta, Rekap Workorder, dan Detail WO HI berdasarkan PRD/Phase 0B. Menandai secara eksplisit bahwa legacy consumer adalah bukti risiko kehilangan kegunaan, bukan persetujuan retensi, aturan KPI, atau sumber fakta upstream.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada record legacy dibaca.
+- SQL/command tersanitasi: review `docs/PRD.md`, `docs/Phase-0B-Discovery.md`, dan `docs/Legacy-Field-Mapping.md`; `git diff --check`.
+- Hasil pengujian aktual: validasi editorial terhadap sumber dokumentasi; `git diff --check` lulus. Tidak ada code test/build dijalankan.
+- Keputusan teknis: field dependencies didokumentasikan per menu untuk membantu pemilik mengisi disposition 84-field; nilai bisnis, retention, access, atau eligibility tidak disimpulkan.
+- Risiko/kendala: exact query-level usage dan actual row/value semantics belum diverifikasi pada snapshot MySQL terdaftar. C0C-05 tetap belum lulus; C0C-01–04 dan source registration C0C-06 juga terbuka.
+- Rollback: revert tabel tambahan dalam packet dan entry handover; tidak ada source/schema/data effect.
+- Langkah berikutnya: pemilik memilih disposition dan field policy berdasar bukti; lakukan query-level dependency/data reconciliation hanya pada target source terdaftar. Pesan commit: `docs(phase-0c): map product field dependencies for owner review`.

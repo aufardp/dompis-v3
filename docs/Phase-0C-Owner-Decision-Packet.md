@@ -86,6 +86,19 @@ Isi disposition eksplisit untuk setiap 84 scalar field pada `Legacy-Field-Mappin
 - `exclude`: alasan terdokumentasi dan bukti bahwa field tidak diperlukan oleh produk/histori; perlu persetujuan pemilik.
 - `derived`: aturan dan versi yang disetujui; jangan mengganti nilai historis secara diam-diam.
 
+### Bukti kebutuhan produk yang sudah ditemukan
+
+Ini adalah jejak pemakaian/requirement candidate dari `PRD.md` dan `Phase-0B-Discovery.md`, bukan keputusan retensi atau business rule baru:
+
+| Menu | Field/kelompok candidate yang perlu diputuskan | Risiko/ketergantungan yang sudah diketahui |
+|---|---|---|
+| Ticket Management | incident/status/workzone; `operational_bucket`, `kpi_seg`, `jenis_tiket_1/2`, source/classification/customer/service fields; booking/TTR/SLA; flag dan annotation lokal | Predicate bucket/status/SLA berbeda antar jalur legacy; `status_update`, `pending_dompis`, dan SQM reason tidak dijamin NOSSA. Assignment/teknisi tidak boleh masuk scope produk. |
+| Semesta | `reported_date`/`reported_at`; bucket/segment/type; workzone; `service_no`; GAUL/GAMAS references | PRD memilih reported-date untuk histori. Recurring/GAUL perlu bukti ketersediaan, definisi lookback/grouping, dan persetujuan denominator. |
+| Rekap Workorder | reported/operational date basis; workzone/master; status; bucket/segment dan filter/drilldown dimensions | Classifier SQL dan JS legacy berbeda; technician metrics dikeluarkan dari scope. Summary/cell/drilldown harus memakai rule dan scope yang sama. |
+| Detail WO HI | incident/status/workzone; reported, booking, resolved, closed timestamps; ticket type; age dan effective Max TTR | Legacy list/summary memakai builder berbeda dan offset paging. Date basis, lifecycle, SLA unit, dan Max TTR semantics perlu keputusan terpisah dari compliance KPI. |
+
+Field names pada kelompok di atas harus dicocokkan satu per satu ke inventaris 84 field dan kandidat target. Jejak consumer legacy membantu mengidentifikasi risiko bila field dihapus, tetapi tidak membuktikan bahwa field boleh dipertahankan, dipublikasikan, atau dijadikan fakta NOSSA.
+
 Daftar kandidat pada mapping saat ini belum merupakan izin untuk menyimpan atau membuang field. Periksa khusus PII, free text, user/technician references, local/manual annotations, validation, pending, SLA/TTR historis, dan generated fields. Tidak boleh menghapus field/data eligible tanpa alasan dan disposition yang disetujui.
 
 | Keputusan umum | Keputusan pemilik |
