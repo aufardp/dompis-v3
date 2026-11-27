@@ -1786,3 +1786,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert dua dokumen dan catatan ini; tidak ada database/runtime changes.
 - Langkah berikutnya: minta pemilik menetapkan (1) sumber migrasi `dompis_db` vs snapshot lain, (2) PII/archive policy dan masa simpan, lalu siapkan role least-privilege dan isolated restore berdasarkan pilihan tersebut.
 - Pesan commit: `docs(phase-0c): clarify archive and snapshot gates`.
+
+## 2026-11-27 — Trace legacy report date behavior for Phase 0C
+
+- Phase: Phase 0C — C0C-02 report/KPI contract discovery.
+- Tindakan: membaca source route/service/query legacy secara read-only untuk Semesta V1/V2, Rekap Workorder overview/hourly-close, dan Detail WO HI. Mencatat perbedaan tanggal basis, default window, daily operational population, serta potensi parity antara summary dan list. Memperbarui catatan evidence dan owner packet.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada database yang diakses atau diubah; tidak ada endpoint NOSSA dipanggil.
+- SQL/command tersanitasi: `rg`/`sed` read-only pada `dompis_v2/app/libs/services/tickets.service.ts`, Semesta routes, Rekap Workorder routes/queries, `daily-ticket-where.ts`, dan Detail WO HI route.
+- Hasil pemeriksaan aktual: Semesta V1/V2 mengelompokkan `reported_date`, tetapi aggregate default tidak dibatasi sementara trend default 7/30 hari; Rekap overview menggabungkan ticket non-close dan yang `closed_at` hari ini; hourly-close memakai `closed_at`; Detail WO HI memakai `reported_date` untuk date filter/age dan OFFSET pagination. `git diff --check` dijalankan setelah dokumentasi; tidak ada test suite/build atau query database.
+- Keputusan teknis: perilaku ini dicatat sebagai bukti implementasi legacy, bukan KPI v3 yang otomatis disetujui. Tanggal dan denominator harus didefinisikan per metrik; `Phase-0B-Discovery.md` report-date convention tidak menyelesaikan metrik penutupan atau snapshot operasional.
+- Risiko/kendala: membawa default lama apa adanya dapat membuat total headline dan tren berbeda populasi/tanggal; Rekap daily snapshot, close-volume, dan histori report-date menjawab pertanyaan berbeda. Summary/list/export perlu satu filter dan scope contract di v3. C0C-02 tetap terbuka untuk raw NOSSA TTR units/time semantics dan KPI/date/denominator approval.
+- Rollback: revert perubahan pada dua dokumen discovery/decision packet dan catatan handover ini; tidak ada runtime, schema, dependency atau data change.
+- Langkah berikutnya: lanjutkan Phase 0C dengan menutup sisa bukti sumber yang dapat ditelusuri, lalu susun pertanyaan KPI tersisa dalam bentuk metrik dan contoh hasil yang mudah diverifikasi; tetap menunggu kebijakan archive/PII dan identitas snapshot sumber sebelum ETL.
+- Pesan commit: `docs(phase-0c): trace legacy report date contracts`.
