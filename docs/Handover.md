@@ -1730,3 +1730,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: hapus fixture sanitized dan revert perubahan docs/ADR-051; tidak ada perubahan runtime/schema/database.
 - Langkah berikutnya: lanjutkan Phase 0C pada sisa kontrak teknis dan retensi/snapshot gates; jangan meminta ulang status lifecycle, source_vlookup, rename Indibiz, atau daftar maksimum jam TTR.
 - Pesan commit: `docs(phase-0c): record sanitized NOSSA and TTR evidence`.
+
+## 2026-11-27 — Trace legacy TTR calculation paths from source
+
+- Phase: Phase 0C — C0C-02 legacy rule and KPI discovery.
+- Tindakan: membaca langsung fungsi legacy compliance, customer/type SLA, priority countdown, displayed Max TTR, MTTR, serta dashboard consumer; membuat matriks aturan dan synthetic expected cases tanpa menyalin implementasi.
+- File berubah: `docs/Phase-0C-TTR-Legacy-Path-Matrix.md` (baru), `docs/Phase-0C-Legacy-Classification-TTR-Reference.md`, `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database atau API diakses; hanya checkout legacy read-only.
+- SQL/command tersanitasi: `sed`/`rg` read-only terhadap `ttr-comply.ts`, `priority/ttr.ts`, `effective.ts`, `mttr.ts`, `customer-types.ts`, `jenis-tiket.ts`, `priority-rules.ts`, dan dashboard consumers.
+- Hasil pengujian aktual: static source trace, tidak menjalankan test/build atau legacy code; tidak ada database query. `git diff --check` lulus dan fixture JSON valid.
+- Keputusan teknis: legacy TTR memiliki aturan yang berbeda: compliance memakai resolve-vs-deadline, countdown REGULAR 36h, B2C compliance REGULER 24h, displayed Max TTR memakai fallback precedence tersendiri, dan MTTR memakai reported→resolve/closed. Batas maksimum yang owner kirim tidak ditanyakan ulang; NOSSA `TTR_Customer`/`TTR_END_TO_END` bukan threshold.
+- Risiko/kendala: ini membuktikan perilaku legacy, bukan definisi KPI v3 final. Source unit/rounding, upstream offsetless timestamp semantics, report denominator/date range, archive/PII policy, consistent source snapshot, least privilege and restore rehearsal remain open.
+- Rollback: revert matrix/link/status edits; no runtime/schema/data changes.
+- Langkah berikutnya: continue Phase 0C on remaining archive/source contract and snapshot/restore gates; later implementation should add executable golden tests against approved synthetic cases.
+- Pesan commit: `docs(phase-0c): map legacy TTR rule paths`.

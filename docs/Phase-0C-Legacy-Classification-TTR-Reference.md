@@ -135,6 +135,8 @@ Reported examples include ASTINET K1 1,151, K2 764, K3 2,855; METRO_E K1 226; VP
 
 The owner-supplied maximum-hour thresholds are recorded as business inputs. NOSSA's numeric TTR fields remain separate measurements: the supplied example shows `TTR_Customer` 4.056 then 4.06 and `TTR_END_TO_END` numeric then string, but does not define their unit, rounding, clock basis, or precedence. A legacy parser interpreting offsetless timestamps as WIB is not proof of the source system's timezone contract.
 
+Direct source inspection now separates the exact compliance, priority countdown, displayed Max TTR and MTTR paths, with synthetic parity cases, in [TTR Legacy Path Matrix](Phase-0C-TTR-Legacy-Path-Matrix.md). That code trace does not turn unapproved menu KPI definitions into business policy.
+
 ## 5. Reported source-data anomalies
 
 | Value/pattern | Reported amount | Safe treatment during discovery |
