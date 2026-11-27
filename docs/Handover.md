@@ -1351,3 +1351,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: tidak ditemukan bukti lokal baru untuk closed/reopen lifecycle, timezone/TTR, geography, field retention, atau MySQL snapshot registration. Phase 0C masih tertahan; tidak ada aturan bisnis yang disimpulkan dari nama role, endpoint, atau status ticket.
 - Rollback: revert perubahan dokumentasi ini saja; tidak ada perubahan source, schema, atau data.
 - Langkah berikutnya: lengkapi C0C-01–03, sisa C0C-04, C0C-05, dan registrasi source pada C0C-06 dengan fixture/keputusan owner yang disanitasi dan dapat ditelusuri; lanjutkan synthetic validation setelah input diterima. Pesan commit: `docs(phase-0c): reflect approved role decisions and remaining gates`.
+
+## 2026-11-27 — Reconcile Phase 0C and 0D readiness records
+
+- Phase: Phase 0C — Contract and Access Discovery; Phase 0D remains blocked pending upstream/data-policy gates.
+- Tindakan: membandingkan kembali authorization worksheet dan Phase 2 yang telah selesai dengan Phase 0D candidate table; mengoreksi deskripsi role scaffold agar tidak menyajikan `admin/viewer` sebagai keadaan target saat ini. Memperjelas bahwa source MySQL lokal pernah teridentifikasi, namun environment/owner, snapshot konsisten, dan read-only migration role belum terdaftar. Menyamakan gate C0C-06 pada Phase 0C dan Phase 0D.
+- File berubah: `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses; tidak ada credential dibaca.
+- SQL/command tersanitasi: pembacaan `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Authorization-Capability-Discovery.md`, `docs/Phase-2-Organization-Auth.md`, dan `packages/db/src/schema.ts`; `git diff --check`.
+- Hasil pengujian aktual: `git diff --check` lulus. Tidak ada build/typecheck/test dijalankan karena perubahan dokumentasi saja.
+- Keputusan teknis: role vocabulary dan local superadmin-only grants adalah status implementasi/policy yang sudah ada; hal itu tidak menjadi izin untuk migrasi legacy users/grants. Identifikasi server MySQL bukan bukti source approval atau consistent snapshot.
+- Risiko/kendala: C0C-01–03, sisa C0C-04, C0C-05, dan source snapshot registration C0C-06 masih terbuka. Tidak ada query source/target dilakukan dalam pekerjaan ini.
+- Rollback: revert perubahan dokumentasi tiga file; tidak ada perubahan aplikasi, schema, atau data.
+- Langkah berikutnya: lanjutkan validasi sintetis hanya untuk kontrak/transformasi yang sudah terdefinisi; tunggu bukti closed/reopen, definisi lifecycle/waktu/TTR, crosswalk, field disposition, effective-scope policy, dan snapshot terdaftar sebelum memulai ETL. Pesan commit: `docs(phase-0): reconcile role and database readiness status`.

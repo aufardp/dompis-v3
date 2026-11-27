@@ -1,6 +1,6 @@
 # Phase 0D — Design Finalization Readiness
 
-Tanggal: 2026-11-26. Status: **candidate design reviewed; local migration compatibility probe passed; finalization/migration-data rehearsal belum dapat lulus**. Phase 0D review ini bukan persetujuan DDL atau izin perubahan bisnis.
+Tanggal: 2026-11-27 (status revalidated). Status: **candidate design reviewed; local migration compatibility probe passed; finalization/migration-data rehearsal belum dapat lulus**. Phase 0D review ini bukan persetujuan DDL atau izin perubahan bisnis.
 
 ## Candidate baseline yang sudah tersedia
 
@@ -12,7 +12,7 @@ Tanggal: 2026-11-26. Status: **candidate design reviewed; local migration compat
 |---|---|---|---|
 | Master hierarchy | `regions`, `branches`, `workzones`; workzone langsung child branch, `service_area` berupa text (`:25-44`) | `area → region → branch → service_area → workzone` | Tambah dua level dan parent chain setelah mapping/crosswalk disahkan; jangan flatten hierarchy |
 | User scope | `user_workzones` direct leaf grants (`:62-69`) | One `user_scopes` row targets exactly one dari lima level | Ganti setelah owner menyetujui effective grant/role policy; jangan port legacy roles atau activate hasil ambiguity |
-| User role | Check terbatas `superadmin/admin/helpdesk/viewer` (`:46-60`) | Nama role target pemilik: `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leader`, `officer`; hak/action mapping masih perlu persetujuan | Perbarui role names sesuai keputusan pemilik; tetapkan capability matrix owner-approved; role bukan scope; jangan implementasikan assignment teknisi |
+| User role | Scaffold awal membatasi role pada `superadmin/admin/helpdesk/viewer` (`:46-60`); Phase 2 kini menyimpan enam role target yang disetujui | Role target: `superadmin`, `team_leader`, `helpdesk`, `teknisi`, `senior_leader`, `officer`. Sepuluh capability hanya diberikan kepada `superadmin`; tiga role middle disetujui setara tetapi tetap tanpa grant sampai capability bersama ditentukan; `helpdesk`/`teknisi` ditunda | Role catalog lokal dan nama sudah diperbarui. Jangan migrasikan role/grant legacy atau mengaktifkan akun sebelum capability matrix, account policy, dan effective-scope parity disetujui; role bukan scope; jangan implementasikan assignment teknisi |
 | Ticket | Satu `tickets` dengan unique incident, `workzone_id` dan provenance/current-state fields (`:84-170`) | Ticket-first kanonik sesuai tujuan | Pertahankan unique incident/UUID; validasi constraint lifecycle, field nullability dan classifier sebelum migration |
 | Lifecycle/classification | `lifecycle`, `operational_bucket`, `kpi_seg` constraint dan field sudah ada (`:91-117,155-170`) | Rule registry masih candidate; source classifier punya precedence/conflicts | Constraint enum/NOT NULL dapat membekukan rule yang belum disahkan; jangan finalkan nilai/derivations sebelum 0B/0C sign-off |
 | Archive | Scaffold mendefinisikan `ticket_legacy_archive` (`:219-236`) | Restricted archive diperbolehkan untuk old-ID/history, field allowlist & PII retention perlu owner | No source data copied until field disposition/retention; role access harus diuji |
@@ -48,4 +48,4 @@ A new empty local database `dompis_v3_dev` was created on PostgreSQL 18.7 and ve
 - Actual result: migration committed successfully; 14 public base tables, 12 foreign keys and 40 indexes were present. Native `uuidv7()` returned a value. `bun run db:generate` completed and reported “No schema changes, nothing to migrate”.
 - This confirms syntax/application on this local PG18 version and current Drizzle-schema synchronization. It does not validate approved business semantics, production plans, legacy data, archive retention, restore, Bun SQL runtime connectivity, or reapplication/idempotency.
 - The database contains schema only and remains disposable development infrastructure. No business rows, secrets, production target or legacy data were involved.
-- PG18 satisfies only the PostgreSQL target part of C0C-06. Contract fixtures, owner decisions and legacy MySQL target registration remain blockers; final DDL and Phase 1 gates remain open.
+- PG18 satisfies only the PostgreSQL target part of C0C-06. The legacy audit previously identified local `dompis_db` in container `mysql_baru`, but its environment/owner is unclassified and it is not registered as an approved consistent migration snapshot/read-only source. Contract fixtures and owner decisions remain blockers; final DDL and Phase 1 gates remain open.
