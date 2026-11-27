@@ -40,7 +40,7 @@ Tanggal: 2026-11-27 (status revalidated). Status: **candidate design reviewed; l
 
 ## Phase 0D status
 
-Static readiness review is complete. **Final DDL/Drizzle design gate remains open** until contract/access/retention decisions and migration data acceptance are available. Phase 1 implementation has not started. The local target and migration probe are detailed below; next, resolve owner-dependent decisions, then review candidate DDL with an ADR, synthetic acceptance and restore/rollback evidence before proceeding.
+Static readiness review is complete. **Final DDL/Drizzle design gate remains open** until contract/access/retention evidence and migration data acceptance are available. The local Phase 1 foundation gate has since been completed, as recorded in `Phase-1-Foundation.md`; this does not close Phase 0C/0D or imply production readiness. The local target and migration probe are detailed below; next, resolve the remaining technical/policy gates, then review candidate DDL with synthetic acceptance and restore/rollback evidence before starting historical ETL.
 
 ## Addendum — local migration compatibility probe (2026-11-26)
 

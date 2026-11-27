@@ -24,6 +24,8 @@ The documentation set is consolidated and suitable as the reference for the next
 
 Details and history remain in [Decision Log](Decision-Log.md), [Business Rules](Business-Rules.md), and [PRD](PRD.md).
 
+Owner choices still needed are written in plain language, with defaults clearly labeled as recommendations, in [Phase 0C Owner Decision Packet](Phase-0C-Owner-Decision-Packet.md): Semesta's initial date window, whether GAUL is deferred, PII/archive access and retention, and whether local `dompis_db` is the migration source. No recommendation is treated as approved until the owner confirms it.
+
 ## Remaining gates, in execution order
 
 1. **NOSSA contract evidence:** obtain an approved sanitized same-incident closed→open example or authoritative version/order contract; verify pagination stability, equal-timestamp ordering, closed-window boundaries/completeness, and timestamp fields without offsets. Until then, do not claim replay can safely determine the latest incident state.

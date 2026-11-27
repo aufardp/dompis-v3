@@ -1860,13 +1860,55 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 ## 2026-11-27 — Consolidate documentation execution readiness
 
 - Phase: documentation quality gate for Phase 0C/0D handoff.
-- Tindakan: memperbarui indeks `docs/README.md` agar hanya merujuk dokumen yang tersedia dan menyelaraskan status Phase 0B/0C/0D/1/2. Menambahkan `Execution-Readiness.md` berisi keputusan owner yang tidak perlu ditanyakan ulang, status tiap phase, urutan gate tersisa, kegiatan aman yang dapat berjalan, serta batas ETL/cutover. Menyelaraskan `Implementation-Plan.md`, menandai bagian gate PRD v1.0 sebagai historis/superseded, dan memperbaiki pernyataan Workzone yang sebelumnya menyiratkan pemilik harus memberi crosswalk sebelum migration design.
-- File berubah: `docs/README.md`, `docs/Implementation-Plan.md`, `docs/PRD.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Execution-Readiness.md`, `docs/Handover.md`.
+- Tindakan: memperbarui indeks `docs/README.md` agar mengutamakan dokumen produk yang ikut distribusi Git dan menyelaraskan status Phase 0B/0C/0D/1/2. Menambahkan `Execution-Readiness.md` berisi keputusan owner yang tidak perlu ditanyakan ulang, status tiap phase, urutan gate tersisa, kegiatan aman yang dapat berjalan, serta batas ETL/cutover. Menyelaraskan `Implementation-Plan.md`, menandai bagian gate PRD v1.0 sebagai historis/superseded, dan memperbaiki pernyataan Workzone yang sebelumnya menyiratkan pemilik harus memberi crosswalk sebelum migration design.
+- File berubah: `docs/README.md`, `docs/Getting-Started.md`, `docs/Implementation-Plan.md`, `docs/PRD.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/Execution-Readiness.md`, `docs/Handover.md`.
 - Database target: tidak ada database diakses atau diubah; tidak ada endpoint dipanggil.
 - SQL/command tersanitasi: pemeriksaan tautan lokal markdown menggunakan Python terhadap 44 file `.md`; `git diff --check`.
 - Hasil pengujian aktual: 44 file Markdown diperiksa, 0 broken local links; `git diff --check` lulus. Tidak ada test suite, build, aplikasi, DB query, atau live API call.
-- Keputusan teknis: dokumentasi dapat menjadi acuan pekerjaan engineering berikutnya, tetapi Phase 0C tetap belum complete, Phase 0D final design gate masih terbuka, dan Phase 3A ETL belum aman. Owner mapping struktur dan keputusan bisnis yang telah diberikan dinyatakan settled; outstanding work ditulis sebagai bukti teknis/kebijakan retensi, bukan permintaan mengulang keputusan.
+- Keputusan teknis: dokumentasi dapat menjadi acuan pekerjaan engineering berikutnya, tetapi Phase 0C tetap belum complete, Phase 0D final design gate masih terbuka, dan Phase 3A ETL belum aman. Owner mapping struktur dan keputusan bisnis yang telah diberikan dinyatakan settled; outstanding work ditulis sebagai bukti teknis/kebijakan retensi, bukan permintaan mengulang keputusan. Pemeriksaan lanjutan juga memperjelas sampel NOSSA, memperbarui Getting Started dari scaffold awal menjadi instruksi workspace saat ini, dan mengoreksi status Phase 1 pada Phase 0D.
 - Risiko/kendala: NOSSA closed→open/order/window evidence, definisi interval/membership report yang belum tercakup PRD, offsetless timestamp evidence, archive field eligibility/PII retention, provenance snapshot, least-privilege migration role, dan isolated restore rehearsal masih diperlukan sebelum migration gate. Tidak ada perubahan runtime/schema/data.
 - Rollback: revert enam file dokumentasi di atas sebagai satu perubahan; tidak ada rollback database/runtime.
 - Langkah berikutnya: mulai pekerjaan berikutnya dari `Execution-Readiness.md`: lanjutkan static/synthetic design dan kumpulkan bukti yang terdaftar; jangan jalankan snapshot, ETL, live NOSSA call, produksi DDL/DML, atau cutover sebelum gate dan persetujuan runbook terkait terpenuhi.
 - Pesan commit: `docs: consolidate execution readiness and phase gates`.
+
+## 2026-11-27 — Reconcile supplied NOSSA fixture with data contract
+
+- Phase: Phase 0C — C0C-01 endpoint-shape and timestamp evidence review.
+- Tindakan: membandingkan Data Contract, fixture JSON sanitasi, discovery matrix, dan owner pair yang tersedia. Memisahkan bukti resource dari `/nossa` bulk sample (`nossa`, termasuk row berstatus CLOSED) dan incident lookup `/nossa-closed` (`nossa_closed`); mendokumentasikan dua key closed sample yang diawali CRLF dengan normalisasi exact-prefix dan collision guard; menegaskan offsetless `C_BOOKING_DATE` tetap raw sampai semantik upstream tersedia. Menjelaskan bahwa open/closed pair yang sudah diterima tidak diminta ulang dan membuktikan open→closed saja.
+- File berubah: `docs/Data-Contract.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses/diubah; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: parsing JSON fixture lokal untuk memastikan keys `open`/`closed` dan dua key CRLF; `rg` untuk meninjau klaim endpoint/time yang berpotensi konflik; `git diff --check`.
+- Hasil pengujian aktual: fixture JSON valid; tepat dua nama property closed diawali CRLF; `git diff --check` lulus. Tidak ada test suite, build, DB query, atau live API call.
+- Keputusan teknis: resource/endpoint label tidak menentukan lifecycle. Normalisasi key hanya boleh menghapus prefix CRLF persis yang teramati dan harus menolak collision; tidak boleh melakukan key cleanup generik. Legacy WIB parser bukan bukti timezone upstream.
+- Risiko/kendala: fixture belum menunjukkan closed→open aktual atau ordering/version yang bisa memvalidasi replay; pagination/tie/window completeness serta timezone offsetless tetap belum terverifikasi. Jangan mengklaim sync lengkap atau menjalankan live endpoint tanpa runbook terpisah.
+- Rollback: revert perubahan Data Contract/Phase 0C dan entry handover ini; tidak ada runtime/schema/database effect.
+- Langkah berikutnya: lanjutkan static contract reconciliation untuk pagination/checkpoint safety dan report/KPI gaps yang masih terbuka; implementasi request/replay atau ETL tetap menunggu source contract/synthetic acceptance dan migrasi gates.
+- Pesan commit: `docs(sync): reconcile supplied NOSSA fixture details`.
+
+## 2026-11-27 — Refresh current-workspace documentation and phase status
+
+- Phase: documentation quality gate — local developer onboarding and Phase 0D state.
+- Tindakan: mengganti Getting Started yang masih mengarahkan pembaca menginisialisasi repo dan mengulang Phase 0A dengan panduan menjalankan workspace v3 yang sudah ada, memakai DB lokal `dompis_v3`, dan menjaga worker/live sync tetap off. Mengoreksi Phase 0D bahwa foundation Phase 1 sudah lulus secara lokal, bukan belum dimulai. Memastikan README tidak membuat file instruksi/agent yang dikecualikan dari Git menjadi dependensi dokumentasi produk.
+- File berubah pada tindak lanjut ini: `docs/Getting-Started.md`, `docs/Phase-0D-Design-Readiness.md`, `docs/README.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses atau diubah; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: review statis `Getting-Started.md`, `Phase-0D-Design-Readiness.md`, dan target link lokal; `git diff --check`.
+- Hasil pengujian aktual: validasi JSON fixture dari entry sebelumnya tetap lulus; tautan Markdown internal docs diperiksa dan tidak ada yang rusak. Tidak ada test suite/build/DB/API call.
+- Keputusan teknis: dokumen setup menggambarkan keadaan repo sekarang dan memperingatkan agar tidak mengulang scaffold/drop database; phase status merujuk pada bukti aktual di `Phase-1-Foundation.md`. Dokumen agent lokal yang di-ignore tidak menjadi tautan wajib bagi pembaca GitHub.
+- Risiko/kendala: konfigurasi lokal dapat berbeda; jangan menjalankan `db:migrate` atau bootstrap tanpa verifikasi target lokal. Phase 0C/0D gates teknis/retensi tetap open; update onboarding tidak membuka izin ETL atau cutover.
+- Rollback: pulihkan versi sebelumnya dari tiga dokumen produk dan hapus entry ini; tidak ada runtime/schema/database rollback.
+- Langkah berikutnya: mulai task engineering aman mengikuti `Execution-Readiness.md`; sebelum ETL tetap perlukan bukti upstream dan kebijakan sumber/archive/restore yang tercantum.
+- Pesan commit: `docs: refresh local setup and phase status`.
+
+## 2026-11-27 — Present remaining business choices in plain language
+
+- Phase: Phase 0C — owner-decision readiness for C0C-02/C0C-05/C0C-06.
+- Tindakan: menambahkan ringkasan singkat yang tidak mengulang keputusan yang sudah dibuat. Menyajikan empat pilihan yang memang belum ditetapkan: rentang default Semesta; menunda atau mempertahankan GAUL; akses/retensi field sensitif; serta apakah `dompis_db` lokal merupakan sumber migrasi resmi. Rekomendasi engineering ditandai jelas sebagai rekomendasi, bukan persetujuan.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Execution-Readiness.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses/diubah; tidak ada endpoint dipanggil.
+- SQL/command tersanitasi: pemeriksaan statis decision packet/Execution Readiness; `git diff --check`.
+- Hasil pengujian aktual: dokumentasi dibaca silang; tidak ada test suite/build/DB/API call.
+- Keputusan teknis: owner input dibatasi pada pilihan bisnis/retensi/sumber yang tidak dapat dibuktikan dari kode; source pagination, completeness, timestamp parsing tetap memerlukan bukti upstream terpisah.
+- Risiko/kendala: Phase 0C tetap terbuka sampai keputusan pemilik dan bukti teknis/retensi/snapshot diterima; GAUL tidak boleh ditampilkan sebagai KPI v3 tanpa rule yang disepakati.
+- Rollback: revert tiga dokumen yang tercantum; tidak ada runtime/schema/database rollback.
+- Langkah berikutnya: gunakan pilihan ringkas tersebut untuk menutup policy gates; sementara menunggu, pekerjaan hanya boleh pada design/synthetic scope yang tidak bergantung pada keputusan itu.
+- Pesan commit: `docs(phase-0c): simplify remaining owner decisions`.

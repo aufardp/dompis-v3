@@ -4,6 +4,21 @@ Status: **belum disetujui; lembar kerja untuk menutup gate Phase 0C**. Jangan is
 
 Paket ini mengonsolidasikan input yang masih kurang setelah discovery statis. Nilai yang kosong berarti belum diputuskan; agent tidak boleh mengisinya dengan asumsi. Keputusan bisnis dicatat pemilik aplikasi, sedangkan kontrak teknis harus didukung artefak upstream atau bukti dari snapshot yang terdaftar.
 
+## Yang masih perlu Anda putuskan — versi sederhana
+
+Keputusan lifecycle/status, rumus compliance, daftar maksimum TTR, countdown Reguler, MTTR yang ditunda, role, struktur organisasi, nama Indibiz, serta kamus `source_vlookup` **sudah dicatat dan tidak ditanyakan ulang di sini**.
+
+| Topik | Pilihan yang perlu ditentukan | Rekomendasi untuk v3 | Dampak |
+|---|---|---|---|
+| Periode awal Semesta | Pilih default **7 hari**, **30 hari**, **90 hari**, atau **semua riwayat**. Ringkasan dan grafik akan memakai periode yang sama; pengguna tetap dapat mengganti rentang. | 30 hari sebagai titik awal; tidak mengubah basis tanggal `reported_date`. | Menentukan periode awal yang terlihat saat membuka Semesta, bukan aturan TTR atau kelayakan ticket. |
+| GAUL/recurring | Pilih **tunda dulu** atau **tetap masuk rilis awal**. Jika dipertahankan, perlu disepakati arti “berulang” (berapa kali dan dalam rentang berapa lama) sebelum angka ditampilkan. | Tunda dari rilis awal sampai definisinya disetujui; legacy ±60 hari/top 100 bukan definisi v3 otomatis. | Menghindari angka GAUL yang tampak pasti tetapi memakai aturan lama yang terbukti dapat undercount. |
+| Penyimpanan field historis sensitif | Pilih apakah field pelanggan/kontak/free-text sensitif **tidak masuk database aplikasi dan hanya tersimpan pada backup arsip terenkripsi**, atau **boleh disimpan di arsip PostgreSQL terbatas untuk Superadmin**. Tetapkan juga masa simpan (misalnya jumlah tahun atau rujuk kebijakan internal). | Jangan salin field sensitif ke arsip runtime sampai akses dan masa simpan ditetapkan; pertahankan backup sumber sesuai kebijakan organisasi yang berlaku. | Menentukan allowlist archive dan akses; tidak mengubah kewajiban menghitung seluruh row migrasi atau mencatat disposition. |
+| Sumber migrasi MySQL | Apakah `dompis_db` lokal yang pernah diperiksa adalah **sumber resmi yang akan dimigrasi**, atau **hanya salinan/dev** sehingga sumber resmi perlu ditentukan? | Anggap belum terdaftar sebagai sumber migrasi sampai statusnya dikonfirmasi dan snapshot konsisten dapat dibuat. | Menentukan database mana yang boleh dibekukan sebagai snapshot; tidak ada salinan/migrasi sebelum sumber dan snapshot terdaftar. |
+
+Anda dapat menjawab ringkas, misalnya: `Semesta 30 hari; GAUL tunda; field sensitif backup terenkripsi saja, simpan 7 tahun; dompis_db lokal adalah sumber migrasi.` Periode retensi contoh hanya format jawaban, bukan rekomendasi kebijakan.
+
+Catatan: closed/open endpoint pair sudah diterima. Tidak perlu mengirim contoh itu lagi. Bukti pagination, closed-window completeness, closed→open ordering, dan timezone pada timestamp tanpa offset adalah bukti teknis upstream; pilihan di atas tidak menggantikan bukti tersebut.
+
 ## Ringkasan schema lama dengan bahasa sederhana
 
 - **Ticket:** tabel lama punya 84 kolom bercampur: fakta ticket, hasil hitung/report lama, catatan manual, data pelanggan, dan kolom teknisi. Di v3, kolom yang dipakai empat menu menjadi kolom ticket; nilai historis lain disimpan di archive terbatas sesuai retensi. Assignment teknisi tidak menjadi fitur operasional.
