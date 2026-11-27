@@ -1,0 +1,36 @@
+# Phase 0C — Synthetic lifecycle golden fixture
+
+Status: **owner-approved examples for the enumerated status labels only**. This fixture tests the business mapping supplied by the application owner; it does not validate NOSSA response shape, field names, timestamps, source ordering, or closed/reopen endpoint coverage.
+
+## Status-to-lifecycle cases
+
+| Synthetic case | Current upstream status | Expected lifecycle | Expected reopen transition |
+|---|---|---|---|
+| `open_new` | `NEW` | `open` | none |
+| `open_draft` | `DRAFT` | `open` | none |
+| `open_analysis` | `ANALYSIS` | `open` | none |
+| `open_pending` | `PENDING` | `open` | none |
+| `open_backend` | `BACKEND` | `open` | none |
+| `closed_finalcheck` | `FINALCHECK` | `closed` | none |
+| `closed_resolved` | `RESOLVED` | `closed` | none |
+| `closed_mediacare` | `MEDIACARE` | `closed` | none |
+| `closed_salamsim` | `SALAMSIM` | `closed` | none |
+| `closed_closed` | `CLOSED` | `closed` | none |
+
+## Synthetic same-incident transition cases
+
+| Case | Previously observed status | Newly observed status | Expected current lifecycle | Expected transition |
+|---|---|---|---|---|
+| `closed_to_open_reopen` | `CLOSED` | `BACKEND` | `open` | `reopen` |
+| `finalcheck_to_new_reopen` | `FINALCHECK` | `NEW` | `open` | `reopen` |
+| `closed_to_closed` | `RESOLVED` | `CLOSED` | `closed` | no reopen |
+| `open_to_open` | `PENDING` | `ANALYSIS` | `open` | no reopen |
+
+## Deliberate coverage limits
+
+- Case/status values are the exact labels supplied by the owner. No case folding, trimming, aliasing, or additional status value is assumed.
+- Unlisted or null status behavior is not asserted because the owner has not yet decided it.
+- A reopen requires observations for the same incident in closed then open groups. This fixture does not establish how either NOSSA endpoint exposes that transition or how to order conflicting source rows.
+- No closure timestamp is derived from status. `resolved_at`, `closed_at`, timezone, source version/conflict, history retention, TTR/SLA, and KPI eligibility are outside this fixture and remain open.
+
+These cases are the golden expected outcomes for the enumerated owner-approved lifecycle rule. They must be supplemented with sanitized authoritative `/nossa` and `/nossa-closed` response fixtures before the integration contract or migration gate can pass.

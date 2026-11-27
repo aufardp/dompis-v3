@@ -1548,3 +1548,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert ADR-048 dan mapping pada empat dokumen keputusan/requirement; tidak ada code/database rollback.
 - Langkah berikutnya: validasi mapping dengan sanitized open/closed/reopen fixtures; minta definisi timestamp, unknown/new status handling dan source conflict sebelum aturan diterapkan atau dipakai menghitung report.
 - Pesan commit: `docs(phase-0c): record owner lifecycle status mapping`.
+
+## 2026-11-27 — Add synthetic lifecycle cases for owner-approved statuses
+
+- Phase: Phase 0C — C0C-02 partial golden-rule coverage.
+- Tindakan: menambahkan synthetic expected cases untuk seluruh 10 status yang disebut pemilik serta empat transisi same-incident, termasuk dua close→open reopen. Fixture menegaskan unlisted/null, casing, timestamp, conflict/version, source response shape, TTR/SLA, dan KPI belum ditetapkan; memperbarui readiness dan ADR-048 untuk membedakan contoh rule sintetis dari validasi sumber.
+- File berubah: `docs/Phase-0C-Lifecycle-Golden-Fixture.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Decision-Log.md`, `docs/Handover.md`.
+- Database target: tidak ada database diakses.
+- SQL/command tersanitasi: review silang aturan owner dan fixture sintetis; `git diff --check`.
+- Hasil pengujian aktual: 10 status mapping examples dan 4 transition cases tercatat; fixture tidak memakai data pelanggan. `git diff --check` lulus. Tidak ada test suite dijalankan karena tidak ada implementasi domain yang diubah.
+- Keputusan teknis: fixture ini meliputi hanya status enumerated owner-provided dan tidak dianggap bukti kontrak NOSSA atau kebijakan status lain.
+- Risiko/kendala: C0C-02 masih partial; source-backed closed/reopen fixture, unknown status rule, timestamp/timezone, source precedence, TTR/SLA, KPI dan remaining Phase 0C gates tetap terbuka.
+- Rollback: hapus fixture baru dan revert readiness/ADR/Handover references; tidak ada data/schema rollback.
+- Langkah berikutnya: buat executable domain golden tests ketika status-list completeness/unknown handling dan source evidence diterima; validasi close→open dengan sanitized response fixture.
+- Pesan commit: `docs(phase-0c): specify synthetic lifecycle golden cases`.
