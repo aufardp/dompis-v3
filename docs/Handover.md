@@ -1494,3 +1494,16 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Risiko/kendala: Phase 3A tetap diblokir snapshot, role, retention, lifecycle, crosswalk, serta authorization parity gates.
 - Rollback: revert perubahan readiness/paket dan entry Handover; tidak ada DB/source-code rollback.
 - Langkah berikutnya: tunggu dictionary/crosswalk, account/capability decisions, per-field disposition, sanitized NOSSA closed/reopen fixture, dan source snapshot terdaftar. Pesan commit: `docs(phase-3a): refresh geography and scope readiness evidence`.
+
+## 2026-11-27 — Reconcile known database registrations in Phase 0C owner packet
+
+- Phase: Phase 0C — C0C-06 evidence reconciliation.
+- Tindakan: mengisi bagian registrasi sumber/target pada owner packet menggunakan identitas non-secret yang sudah terverifikasi dan status snapshot/role/restore yang benar-benar diketahui. Memastikan paket tidak meminta pemilik mengulang identitas yang sudah tercatat, sekaligus memisahkan registrasi discovery dari otorisasi sumber migrasi.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi/query baru. Mengacu pada hasil terdahulu MySQL 8.0.46 lokal `dompis_db` dan PostgreSQL 18.7 lokal `dompis_v3`; tidak ada database yang berubah.
+- SQL/command tersanitasi: pemeriksaan silang `Database-Access.md`, Phase 0C packet, dan Handover; `git diff --check`.
+- Hasil pengujian aktual: dokumen kini mencatat MySQL sebagai discovery-only dengan provenance unclassified dan principal `root@%`; snapshot konsisten tidak terdaftar. PostgreSQL `dompis_v3` terdaftar untuk metadata/synthetic access, privilege role belum diverifikasi; `dompis_v3_dev` absent. Restore rehearsal belum dilakukan. `git diff --check` lulus; tidak ada test suite dijalankan.
+- Keputusan teknis: identitas database yang telah diketahui diperlakukan sebagai fakta registrasi; status snapshot, kewenangan migrasi, hak role, dan rehearsal tetap open sampai terdapat artefak, tidak ditebak.
+- Risiko/kendala: C0C-06 belum lulus; `root@%` terlalu luas untuk proses migrasi, source provenance belum terklasifikasi, dan target dev bersifat persisten sehingga tidak boleh di-reset sebagai latihan.
+- Rollback: revert perubahan pada tabel C0C-06 dan entry Handover; tidak ada database rollback.
+- Langkah berikutnya: pemilik/DBA menyediakan snapshot konsisten dan role read-only terbatas, role migrasi PostgreSQL non-superuser, serta target restore terisolasi dengan bukti backup/restore. Pesan commit: `docs(phase-0c): reconcile database registration evidence`.

@@ -118,10 +118,10 @@ Jangan menaruh password, DSN, token, atau secret di lembar ini. Kirim secret mel
 
 | Registry item | Nilai non-secret yang diperlukan | Status/owner |
 |---|---|---|
-| Legacy MySQL source | Engine/version, host label, port, database, environment classification, owner, schema allowlist, read-only role label |  |
-| Consistent source snapshot | Snapshot ID/time, source schema hash, row manifest/count method, isolation/consistency method, backup location/restore evidence, retention |  |
-| PostgreSQL development target | Engine/version, host label, port, database, environment, owner, schema allowlist, non-superuser migration role label |  |
-| Rollback/restore rehearsal | Procedure reference, backup verification, restore-test date/result, approver |  |
+| Legacy MySQL discovery source | MySQL 8.0.46; loopback `127.0.0.1:3306`; database `dompis_db`; container label `mysql_baru`; environment/data provenance unclassified; owner is application owner; bounded allowlist is registered in `Database-Access.md`; observed principal `root@%` is overprivileged and is not a migration role | Registered for bounded read-only discovery only; migration source approval, least-privilege role, and owner environment classification remain open. No secret is recorded. |
+| Consistent source snapshot | Snapshot ID/time, source schema hash, row manifest/count method, isolation/consistency method, backup location/restore evidence, retention | Not provided; no consistent snapshot is registered. |
+| PostgreSQL development target | PostgreSQL 18.7; local Unix socket (configured port 5432); database `dompis_v3`; development environment; application owner; `public` schema; observed role `pakbreng` | Identity registered for local development metadata/synthetic access only. Role privilege attributes and dedicated non-superuser migration role remain unverified. `dompis_v3_dev` is absent. |
+| Rollback/restore rehearsal | Procedure reference, backup verification, restore-test date/result, approver | Not performed on an isolated target; evidence and approver remain open. Do not reset the persistent `dompis_v3` database. |
 
 Acceptance: source snapshot immutable dan dapat diidentifikasi; metadata/credential cocok dengan registry melalui target guard; read role tidak dapat menulis; target rehearsal terisolasi dan restore terbukti. Identitas server saja tidak cukup untuk mengizinkan ETL.
 
