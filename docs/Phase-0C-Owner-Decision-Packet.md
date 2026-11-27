@@ -127,9 +127,11 @@ Rekomendasi sederhana: jangan buang ticket eligible. Simpan field yang dibutuhka
 
 Daftar kandidat pada mapping saat ini belum merupakan izin untuk menyimpan atau membuang field. Periksa khusus PII, free text, user/technician references, local/manual annotations, validation, pending, SLA/TTR historis, dan generated fields. Tidak boleh menghapus field/data eligible tanpa alasan dan disposition yang disetujui.
 
+Ringkasan audit inventory (bukan approval): ada 84 field; draft mapping menunjuk 38 field ke kolom typed ticket, 8 field sensitif ke restricted/offline, dan 38 field lain ke archive/metadata/transform/review. Delapan field sensitif yang ditandai saat ini: `contact_phone`, `contact_name`, `customer_name`, `sn_ont`, `alamat`, `teknisi_user_id`, `technician`, `manual_created_by`. Draft dapat berubah setelah pemakaian menu dan actual DDL divalidasi.
+
 | Keputusan umum | Keputusan pemilik |
 |---|---|
-| Archive legacy dan PII | **Usulan aman:** semua ticket historis eligible tetap tersimpan; PII/free-text yang tidak dibutuhkan menu berada hanya di archive terbatas, Superadmin-only, tanpa export/API umum. Mohon berikan periode retensi organisasi (atau nama kebijakan internal). |
+| Archive legacy dan PII | **Usulan:** semua ticket historis eligible tetap tercatat; delapan field sensitif di atas tidak masuk API umum. Pilih akses archive PII (Superadmin-only atau restricted offline saja) dan sebut masa simpan archive/backup atau nama kebijakan internal. Tanpa keputusan ini, saya tidak bisa menyetujui penyimpanan online PII/free-text. |
 | Ticket manual/incident invalid | Jangan hapus diam-diam; valid masuk `tickets`, invalid/collision tetap dihitung dalam archive/quarantine dengan alasan. |
 | Authoritative source mapping | **Ditetapkan pemilik:** tabel live `source_vlookup` legacy; bukan checked-in seed bila berbeda. Output `RESELLER` menjadi `INDIBIZ`. |
 | Approver dan tanggal keputusan |  |
@@ -143,7 +145,7 @@ Jangan menaruh password, DSN, token, atau secret di lembar ini. Kirim secret mel
 | Registry item | Nilai non-secret yang diperlukan | Status/owner |
 |---|---|---|
 | Legacy MySQL discovery source | MySQL 8.0.46; loopback `127.0.0.1:3306`; database `dompis_db`; container label `mysql_baru`; environment/data provenance unclassified; owner is application owner; bounded allowlist is registered in `Database-Access.md`; observed principal `root@%` is overprivileged and is not a migration role | Registered for bounded read-only discovery only; migration source approval, least-privilege role, and owner environment classification remain open. No secret is recorded. |
-| Consistent source snapshot | Snapshot ID/time, source schema hash, row manifest/count method, isolation/consistency method, backup location/restore evidence, retention | Not provided. Perlu menetapkan apakah `dompis_db` lokal adalah salinan sumber migrasi atau harus dibuat snapshot konsisten dari server produksi. |
+| Consistent source snapshot | Snapshot ID/time, source schema hash, row manifest/count method, isolation/consistency method, backup location/restore evidence, retention | Belum ada snapshot immutable. Keputusan sederhana yang diperlukan: apakah database MySQL lokal `dompis_db` adalah sumber yang akan dimigrasikan, atau hanya salinan/dev sehingga snapshot perlu dibuat dari sumber lain? Tidak ada snapshot atau export yang dibuat. |
 | PostgreSQL development target | PostgreSQL 18.7; local Unix socket (configured port 5432); database `dompis_v3`; development environment; application owner; `public` schema; observed role `pakbreng` | Identity registered for local development metadata/synthetic access only. Role is verified SUPERUSER/CREATEDB/CREATEROLE/REPLICATION, so it is not an acceptable runtime/migration role. No dedicated least-privilege role or isolated restore rehearsal is registered. `dompis_v3_dev` is absent. |
 | Rollback/restore rehearsal | Procedure reference, backup verification, restore-test date/result, approver | Not performed on an isolated target; evidence and approver remain open. Do not reset the persistent `dompis_v3` database. |
 

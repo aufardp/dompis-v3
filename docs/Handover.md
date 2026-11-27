@@ -1772,3 +1772,17 @@ File blueprint `docs/Legacy-Reference.md`, `docs/Getting-Started.md`, dan `docs/
 - Rollback: revert dokumentasi dan ADR-052; tidak ada runtime/schema/data change.
 - Langkah berikutnya: lanjutkan discovery pada field/archive retention dan database snapshot/restore gates tanpa mengulang keputusan TTR yang telah diberikan.
 - Pesan commit: `docs(phase-0c): reconcile TTR owner decisions`.
+
+## 2026-11-27 — Clarify archive and source-snapshot decisions needed
+
+- Phase: Phase 0C — C0C-05/C0C-06 readiness.
+- Tindakan: menghitung ulang inventory dari 84 baris `Legacy-Field-Mapping.md` tanpa membaca row pelanggan: 38 candidate typed ticket references, 8 restricted/offline candidates, dan 38 archive/metadata/transform/review candidates. Memperjelas owner packet dengan nama delapan field sensitif, pilihan kebijakan archive/PII, dan pertanyaan apakah `dompis_db` lokal merupakan sumber migrasi atau hanya salinan.
+- File berubah: `docs/Phase-0C-Owner-Decision-Packet.md`, `docs/Phase-0C-Contract-Access-Discovery.md`, `docs/Handover.md`.
+- Database target: tidak ada koneksi database; tidak ada source row yang dibaca/ditampilkan.
+- SQL/command tersanitasi: parser lokal membaca table markdown untuk menghitung disposition draft; `git diff --check`.
+- Hasil pengujian aktual: 84 inventory rows terhitung; draft grouping 38/8/38 total 84. `git diff --check` lulus. Tidak ada test suite atau DB query.
+- Keputusan teknis: angka adalah draft disposition dan tidak memberi izin menyimpan/menghapus PII. Tanpa retensi, archive access policy, dan status asal `dompis_db`, snapshot/migration tetap tidak dijalankan.
+- Risiko/kendala: data DB lokal berprovenance unclassified; MySQL role root dan PostgreSQL role pakbreng superuser; field-level PII/free-text disposition dan retention belum disetujui.
+- Rollback: revert dua dokumen dan catatan ini; tidak ada database/runtime changes.
+- Langkah berikutnya: minta pemilik menetapkan (1) sumber migrasi `dompis_db` vs snapshot lain, (2) PII/archive policy dan masa simpan, lalu siapkan role least-privilege dan isolated restore berdasarkan pilihan tersebut.
+- Pesan commit: `docs(phase-0c): clarify archive and snapshot gates`.
